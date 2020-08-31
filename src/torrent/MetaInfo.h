@@ -4,6 +4,23 @@
 #include <vector>
 #include <optional>
 
+struct FileInfo {
+    std::string fileName;
+    std::int32_t length;
+    std::optional<std::string> md5sum;  
+};
+
+struct InfoDict {
+    std::int32_t pieceLength;
+    std::string pieces;
+    // if set to 1 then publish
+    std::optional<std::int32_t> publish;
+    std::string directory;
+    std::vector<FileInfo> files;
+};
+
+
+
 struct MetaInfo {
     InfoDict info;
     std::string announce;
@@ -14,19 +31,7 @@ struct MetaInfo {
     std::optional<std::string> encoding;
 };
 
-struct InfoDict {
-    std::int32_t pieceLength;
-    std::string pieces;
-    // if set to 1 then publish
-    std::optional<std::int32_t> publish;
-    std::string directory;
-    std::vector<FileInfo>;
-};
 
-struct FileInfo {
-    std::string fileName;
-    std::int32_t length;
-    std::optional<std::string> md5sum;  
-};
+
 
 #endif
