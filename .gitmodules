@@ -1,0 +1,4 @@
+[submodule "libs/bencode"]
+	path = libs/bencode
+	url = https://github.com/Ferdinand-vW/bencode.git
+	branch = master
