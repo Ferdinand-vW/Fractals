@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <iterator>
 #include <fstream>
 // #include "bencoding/bencoding.h"
@@ -18,7 +19,14 @@ int main() {
     stringstream ss;
     ss << fs.rdbuf();
     auto v = bencode::decode<bencode::bdata>(ss);
-    cout << v.value() << endl;
+    auto bdict = v.value().get_bdict().value();
+    auto info = bdict.value().at(bencode::bstring("info"));
+    for (auto kvp : info->get_bdict()->value()) {
+        bencode::bstring k = kvp.first;
+        cout << k << " " << kvp.second->display_type() << endl;
+    }
+    // for_each(bdict.value().begin(), bdict.value().end(), [](pair<bencode::bstring,shared_ptr<bencode::bdata>> kvp) { cout << kvp.first << endl; });
+    // cout << v.value() << endl;
 };
     // auto decodedData = bencoding::decode(file);
     // std::string prettyString = bencoding::getPrettyRepr(decodedData);

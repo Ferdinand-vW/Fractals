@@ -1,4 +1,4 @@
-#ifndef METAINFO_H 
+#pragma once
 
 #include <string>
 #include <vector>
@@ -30,8 +30,3 @@ struct MetaInfo {
     std::optional<std::string> created_by;
     std::optional<std::string> encoding;
 };
-
-
-
-
-#endif
