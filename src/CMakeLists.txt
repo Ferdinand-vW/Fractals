@@ -6,8 +6,9 @@ file(GLOB SOURCES "*.cpp")
 # Add source to this project's executable.
 add_executable (Fractals ${SOURCES})
 # add_library(Fractals_lib STATIC ${SOURCES})
-message(${BENCODE_INCLUDE_DIR})
+
 target_include_directories(Fractals PUBLIC ${BENCODE_INCLUDE_DIR})
+target_include_directories(Fractals PUBLIC ${NEITHER_INCLUDE_DIR})
 target_link_libraries(Fractals bencode_lib)
 # target_link_libraries(Fractals_lib bencode_lib)
 

@@ -2,3 +2,8 @@
 	path = libs/bencode
 	url = https://github.com/Ferdinand-vW/bencode.git
 	branch = master
+[submodule "libs/neither"]
+	path = libs/neither
+	url = https://github.com/LoopPerfect/neither.git
+	branch = master
+	ignore = dirty

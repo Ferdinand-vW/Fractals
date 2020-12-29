@@ -14,7 +14,7 @@
 *.userprefs
 
 # Library dependencies
-deps/
+libs/
 
 # Build results
 [Dd]ebug/
