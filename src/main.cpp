@@ -28,13 +28,12 @@ int main() {
         cout << "Key: " << k << " " << kvp.second.display_type() << endl;
     }
 
-    auto eth = BencodeConvert::from_bencode(bdict);
-    cout << eth.rightValue.to_string() << endl;
+    auto eth = BencodeConvert::from_bdata(bdict);
+    cout << eth.leftValue << endl;
 
     auto ann = bdict.at("announce");
     cout << "announce: " << ann << endl;
     auto ann_list = bdict.at("announce-list");
-    // cout << *ann_list << endl;
 
     auto comment = bdict.at("comment");
     cout << "comment: " << comment << endl;
@@ -49,7 +48,7 @@ int main() {
     auto info = bdict.at("info").get_bdict().value();
     for (auto kvp : info.key_values()) {
         bencode::bstring k = kvp.first;
-        cout << k << " " << kvp.second.display_type() << endl;
+        cout << "info key: " << k << " " << kvp.second.display_type() << endl;
     }
 
     auto name = info.at("name");

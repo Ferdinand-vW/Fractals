@@ -13,31 +13,42 @@ using namespace neither;
 using namespace std::string_literals;
 
 struct FileInfo {
-    std::string fileName;
-    std::int32_t length;
-    std::optional<std::string> md5sum;  
+    public:
+        int length;
+        Maybe<std::string> md5sum;
+        std::vector<string> path;
+};
+
+struct MultiFile {
+    public:
+        Maybe<std::string> name; // directory name
+        std::vector<FileInfo> files;
+};
+
+struct SingleFile {
+    public:
+        Maybe<std::string> name; // file name
+        int length;
+        Maybe<std::string> md5sum;
 };
 
 struct InfoDict {
-    std::int32_t pieceLength;
-    std::string pieces;
-    // if set to 1 then publish
-    std::optional<std::int32_t> publish;
-    std::string directory;
-    std::vector<FileInfo> files;
+    public:
+        int piece_length;
+        std::string pieces;
+        Maybe<int> publish; // if set to 1 then publish
+        Either<SingleFile,MultiFile> file_mode;
 };
-
-
 
 struct MetaInfo {
     public:
-    // InfoDict info;
         std::string announce;
         Maybe<std::vector<std::vector<std::string>>> announce_list;
         Maybe<int> creation_date;
         Maybe<std::string> comment;
         Maybe<std::string> created_by;
         Maybe<std::string> encoding;
+        InfoDict info;
 
         string to_string(int len = 100) {
             auto s_mi = "MetaInfo"s;

@@ -52,4 +52,9 @@ A from_maybe(Maybe<A> m, A a) {
     else            { return m.value; }
 }
 
+template<class A,class B,class C>
+Either<A,Either<B,C>> either_of(Either<A,B> e1,Either<A,C> e2) {
+    if (!e1.isLeft) { return e1.rightMap([](const B &l) { return Either<B,C>(left(l)); }); }
+    else            { return e2.rightMap([](const C &r) { return Either<B,C>(right(r)); }); }
+}
 

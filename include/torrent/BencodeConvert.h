@@ -14,7 +14,12 @@ using namespace neither;
 
 class BencodeConvert {
     public:
-        static Either<string,MetaInfo> from_bencode(bencode::bdata bd) {
+        template <class A>
+        static Either<string,A> from_bdata(bencode::bdata bd);
+        template <class A>
+        static Either<string,A> from_bdict(bencode::bdict bd);
+
+        static Either<string,MetaInfo> from_bdata(bencode::bdata bd) {
             auto m_bd_mi = to_maybe(bd.get_bdict());
 
             auto to_metainfo = [](const bdict &m) -> Either<string,MetaInfo> { 
@@ -65,9 +70,14 @@ class BencodeConvert {
                           .flatMap(to_bstring)
                           .map(mem_fn(&bstring::value));
 
-                auto make_metainfo = [m_ann_l,m_cb,m_cd,m_cm,m_ec](const auto &ann) -> Either<string,MetaInfo> {
-                    const MetaInfo mi = { ann,m_ann_l,m_cd,m_cm,m_cb,m_ec }; 
-                    return right(mi);
+                auto e_id = maybe_to_either(to_maybe(m.find("info")),"Missing field info in meta info bdict")
+                            .rightFlatMap(from_bdata<InfoDict>);
+
+                auto make_metainfo = [m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &ann) -> Either<string,MetaInfo> {
+                    return e_id.rightMap([ann,m_ann_l,m_cb,m_cd,m_cm,m_ec](const InfoDict& inf) {
+                        const MetaInfo mi = { ann,m_ann_l,m_cd,m_cm,m_cb,m_ec,inf };
+                        return mi;
+                    }); 
                 };
                 return e_ann.rightFlatMap(make_metainfo);
             };
@@ -80,9 +90,59 @@ class BencodeConvert {
 
         // }
 
-        // InfoDict from_bencode(bencode::bdata bd) {
+        template <>
+        Either<std::string,SingleFile> from_bdict<SingleFile>(bencode::bdict bd) {
+            const string s("");
+            return left(s);
+        }
 
-        // }  
+        template <>
+        Either<std::string,MultiFile> from_bdict<MultiFile>(bencode::bdict bd) {
+            const string s("");
+            return left(s);
+        }
+
+        template<>
+        Either<std::string,InfoDict> from_bdata<InfoDict>(bencode::bdata bd) {
+            const auto e_bd_id = maybe_to_either(to_maybe(bd.get_bdict()), "Bencode should start with bdict for InfoDict");
+
+            return e_bd_id.rightFlatMap(from_bdict<InfoDict>);
+        }
+
+        template<>
+        Either<std::string,InfoDict> from_bdict<InfoDict>(bencode::bdict bd) {
+            auto m_piece_length = to_maybe(bd.find("piece length"))
+                                .flatMap(to_bint)
+                                .map(mem_fn(&bint::value));
+            int piece_length;
+            if(!m_piece_length.hasValue) 
+                 { return left("Attribute piece length missing from info"s);}
+            else { piece_length = m_piece_length.value; }
+            
+            auto m_pieces = to_maybe(bd.find("pieces"))
+                            .flatMap(to_bstring)
+                            .map(mem_fn(&bstring::value));
+            std::string pieces;
+            if(!m_pieces)
+                 { return left("Attribute pieces missing from info"s);}
+            else { pieces = m_pieces.value; }
+            
+            auto publish = to_maybe(bd.find("private"))
+                            .flatMap(to_bint)
+                            .map(mem_fn(&bint::value));
+
+            const auto e_single_file = from_bdict<SingleFile>(bd);
+            const auto e_multi_file  = from_bdict<MultiFile>(bd);
+            typedef Either<string,Either<SingleFile,MultiFile>> file_mode_type;
+
+            const auto e_file_mode = either_of(e_single_file,e_multi_file);
+
+            const auto infoDict = e_file_mode.rightMap(
+                [piece_length,pieces,publish](auto file_mode) 
+                    { return InfoDict {piece_length,pieces,publish,file_mode}; }
+            );
+            return infoDict;
+        }  
 
         // bencode::bdata to_bencode(InfoDict id) {
             
