@@ -40,6 +40,19 @@ Maybe<std::vector<B>> mmap_vector(std::vector<A> vec,std::function<Maybe<B>(A)> 
     return vec_out;
 }
 
+template <class A,class B,class C>
+Either<A,std::vector<C>> mmap_vector(std::vector<B> vec,std::function<Either<A,C>(B)> f) {
+    std::vector<C> vec_out;
+    for(auto &a : vec) {
+        const auto mb = f(a);
+        if(mb.isLeft) { return Either<A,std::vector<C>>(left(mb.leftValue)); }
+        else { vec_out.push_back(mb.rightValue); }
+    }
+
+    const std::vector<C> cvec_out = vec_out;
+    return Either<A,std::vector<C>>(right(cvec_out));
+}
+
 template <class A>
 Either<string,A> maybe_to_either(const Maybe<A> m,const std::string &s) {
     if(!m.hasValue) { return left(s); }

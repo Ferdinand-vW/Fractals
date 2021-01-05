@@ -92,14 +92,78 @@ class BencodeConvert {
 
         template <>
         Either<std::string,SingleFile> from_bdict<SingleFile>(bencode::bdict bd) {
-            const string s("");
-            return left(s);
+            auto name = to_maybe(bd.find("name"))
+                       .flatMap(to_bstring)
+                       .map(mem_fn(&bstring::value));
+            auto m_length = to_maybe(bd.find("length"))
+                           .flatMap(to_bint)
+                           .map(mem_fn(&bint::value));
+            auto e_length = maybe_to_either(m_length,"Missing length field for structure SingleFile");
+
+            auto md5sum = to_maybe(bd.find("md5sum"))
+                         .flatMap(to_bstring)
+                         .map(mem_fn(&bstring::value));
+
+            return e_length.rightMap(
+                [name,md5sum](const int length) { return SingleFile {name,length,md5sum}; }
+            );
+        }
+
+        template <>
+        Either<std::string,FileInfo> from_bdata<FileInfo>(bencode::bdata bd) {
+            const auto e_bd_id = maybe_to_either(to_maybe(bd.get_bdict()), "Bencode should start with bdict for FileInfo");
+
+            return e_bd_id.rightFlatMap(from_bdict<FileInfo>);
+        }
+
+        template <>
+        Either<std::string,FileInfo> from_bdict<FileInfo>(bencode::bdict bd) {
+            auto m_length = to_maybe(bd.find("length"))
+                           .flatMap(to_bint)
+                           .map(mem_fn(&bint::value));
+            auto e_length = maybe_to_either(m_length,"Missing length field for structure SingleFile");
+
+            auto md5sum = to_maybe(bd.find("md5sum"))
+                         .flatMap(to_bstring)
+                         .map(mem_fn(&bstring::value));
+
+            auto m_bdpath = to_maybe(bd.find("path"))
+                         .flatMap(to_blist)
+                         .map(mem_fn(&blist::value));
+
+            auto f = [](const auto &bd) -> Maybe<string> { return to_bstring(bd).map(mem_fn(&bstring::value)); };
+            auto m_path = m_bdpath.flatMap([f](const auto &v) -> Maybe<vector<string>> { 
+                    return mmap_vector<bdata,string>(v, f);
+                });
+            vector<string> path;
+            if(!m_path.hasValue) { return left("Missing path field for structure FileInfo"s); }
+            else                 { path = m_path.value; }
+
+            return e_length.rightMap(
+                [md5sum,path](const int &length) { return FileInfo {length,md5sum,path}; }
+            );
         }
 
         template <>
         Either<std::string,MultiFile> from_bdict<MultiFile>(bencode::bdict bd) {
-            const string s("");
-            return left(s);
+            auto name = to_maybe(bd.find("name"))
+                       .flatMap(to_bstring)
+                       .map(mem_fn(&bstring::value));
+            
+            auto e_bdfiles = maybe_to_either(
+                                to_maybe(bd.find("files"))
+                                .flatMap(to_blist)
+                                .map(mem_fn(&blist::value))
+                               ,"Missing files field for structure MultiFile");
+            
+            auto e_files = e_bdfiles.rightFlatMap([](const auto &v) -> Either<string,vector<FileInfo>> {
+                return mmap_vector<string,bdata,FileInfo>(v,from_bdata<FileInfo>);
+            });
+
+
+            return e_files.rightMap(
+                [name](const auto &files) { return MultiFile {name,files}; }
+            );
         }
 
         template<>
