@@ -1,3 +1,5 @@
+#pragma once
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -15,11 +17,12 @@ using namespace neither;
 class BencodeConvert {
     public:
         template <class A>
-        static Either<string,A> from_bdata(bencode::bdata bd);
+        static Either<string,A> from_bdata(const bencode::bdata &bd);
         template <class A>
         static Either<string,A> from_bdict(bencode::bdict bd);
 
-        static Either<string,MetaInfo> from_bdata(bencode::bdata bd) {
+        template <>
+        Either<string,MetaInfo> from_bdata<MetaInfo>(const bencode::bdata &bd) {
             auto m_bd_mi = to_maybe(bd.get_bdict());
 
             auto to_metainfo = [](const bdict &m) -> Either<string,MetaInfo> { 
@@ -51,24 +54,24 @@ class BencodeConvert {
                         return mmap_vector<bdata,vector<string>>(bl_val,bdata_to_vec);
                     };
                 auto m_ann_l = to_maybe(m.find("announce-list"))
-                              .flatMap(to_blist)
-                              .flatMap(make_announce_list);
+                                .flatMap(to_blist)
+                                .flatMap(make_announce_list);
 
                 auto m_cd = to_maybe(m.find("creation date"))
-                           .flatMap(to_bint)
-                           .map(mem_fn(&bint::value));
+                            .flatMap(to_bint)
+                            .map(mem_fn(&bint::value));
                 
                 auto m_cm = to_maybe(m.find("comment"))
-                           .flatMap(to_bstring)
-                           .map(mem_fn(&bstring::value));
+                            .flatMap(to_bstring)
+                            .map(mem_fn(&bstring::value));
 
                 auto m_cb = to_maybe(m.find("created by"))
                             .flatMap(to_bstring)
                             .map(mem_fn(&bstring::value));
                 
                 auto m_ec = to_maybe(m.find("encoding"))
-                          .flatMap(to_bstring)
-                          .map(mem_fn(&bstring::value));
+                            .flatMap(to_bstring)
+                            .map(mem_fn(&bstring::value));
 
                 auto e_id = maybe_to_either(to_maybe(m.find("info")),"Missing field info in meta info bdict")
                             .rightFlatMap(from_bdata<InfoDict>);
@@ -110,7 +113,7 @@ class BencodeConvert {
         }
 
         template <>
-        Either<std::string,FileInfo> from_bdata<FileInfo>(bencode::bdata bd) {
+        Either<std::string,FileInfo> from_bdata<FileInfo>(const bencode::bdata &bd) {
             const auto e_bd_id = maybe_to_either(to_maybe(bd.get_bdict()), "Bencode should start with bdict for FileInfo");
 
             return e_bd_id.rightFlatMap(from_bdict<FileInfo>);
@@ -167,7 +170,7 @@ class BencodeConvert {
         }
 
         template<>
-        Either<std::string,InfoDict> from_bdata<InfoDict>(bencode::bdata bd) {
+        Either<std::string,InfoDict> from_bdata<InfoDict>(const bencode::bdata &bd) {
             const auto e_bd_id = maybe_to_either(to_maybe(bd.get_bdict()), "Bencode should start with bdict for InfoDict");
 
             return e_bd_id.rightFlatMap(from_bdict<InfoDict>);

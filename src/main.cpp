@@ -11,8 +11,11 @@
 #include <string>
 
 #include <bencode/bencode.h>
-#include <neither/neither.hpp>
+
+#include "torrent/MetaInfo.h"
 #include "torrent/BencodeConvert.h"
+#include <neither/neither.hpp>
+
 #include "utils.h"
 // #include "bencode/error.h"
 
@@ -28,8 +31,10 @@ int main() {
         cout << "Key: " << k << " " << kvp.second.display_type() << endl;
     }
 
-    auto eth = BencodeConvert::from_bdata(bdict);
-    cout << eth.leftValue << endl;
+    const bdata bd = v.value();
+    neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
+
+    cout << "Error: "<< emi.rightValue.to_string() << endl;
 
     auto ann = bdict.at("announce");
     cout << "announce: " << ann << endl;
