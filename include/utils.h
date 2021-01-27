@@ -32,3 +32,7 @@ std::string intercalate(std::string del,std::vector<std::string> v) {
     }
     return out;
 }
+
+string make_sized_line(string s,int len) {
+    return s.substr(0,len) + "\n";
+}

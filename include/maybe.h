@@ -65,6 +65,18 @@ A from_maybe(Maybe<A> m, A a) {
     else            { return m.value; }
 }
 
+template <class A,class B>
+B maybe_to_val(const Maybe<A> &m,std::function<B(A)> f,B b) {
+    if(!m.hasValue) { return b; }
+    else            { return f(m.value); }
+}
+
+template <class A,class B,class C>
+C either_to_val(const Either<A,B> &e,std::function<C(A)> f,std::function<C(B)> g) {
+    if(e.isLeft) { return f(e.leftValue); }
+    else         { return g(e.rightValue); }
+}
+
 template<class A,class B,class C>
 Either<A,Either<B,C>> either_of(Either<A,B> e1,Either<A,C> e2) {
     if (!e1.isLeft) { return e1.rightMap([](const B &l) { return Either<B,C>(left(l)); }); }

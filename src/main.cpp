@@ -34,7 +34,7 @@ int main() {
     const bdata bd = v.value();
     neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
 
-    cout << "Error: "<< emi.rightValue.to_string() << endl;
+    cout << emi.rightValue.to_string() << endl;
 
     auto ann = bdict.at("announce");
     cout << "announce: " << ann << endl;
