@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -8,6 +9,7 @@
 #include "torrent/MetaInfo.h"
 #include "maybe.h"
 #include "neither/neither.hpp"
+#include "utils.h"
 
 using namespace std;
 using namespace bencode;
@@ -20,6 +22,8 @@ class BencodeConvert {
         static Either<string,A> from_bdata(const bencode::bdata &bd);
         template <class A>
         static Either<string,A> from_bdict(bencode::bdict bd);
+        
+        // static bdict to_bdict(A a);
 
         template <>
         Either<string,MetaInfo> from_bdata<MetaInfo>(const bencode::bdata &bd) {
@@ -211,15 +215,69 @@ class BencodeConvert {
             return infoDict;
         }  
 
-        // bencode::bdata to_bencode(InfoDict id) {
+        static bencode::bdict to_bdict(const FileInfo &fi) {
+            const bstring key_l("length");
+            const bint val_l(fi.length);
+
+            const bstring key_ps("paths");
+            auto paths = map_vector<string,bdata>(fi.path,[](const auto &s) { return bdata(bstring(s)); });
+            const blist val_ps(paths);
+
+            map<bstring,bdata> kv_map;
+            kv_map.insert({key_l,bdata(val_l)});
+            kv_map.insert({key_ps,bdata(val_ps)});
+
+            return bdict(kv_map);
+        }
+
+        static bencode::bdict to_bdict(const SingleFile &sf) {
+            map<bstring, bdata> kv_map;
+            const bstring key_l("length");
+            const bint val_l(sf.length);
+            kv_map.insert({key_l,bdata(val_l)});
             
-        // }
+            if(sf.md5sum.hasValue) { 
+                const bstring key_md5("md5sum");
+                const bstring val_md5(sf.md5sum.value);
+                kv_map.insert({key_md5,val_md5});
+            }
 
-        // FileInfo from_bencode(bencode::bdata bd) {
-
-        // }  
-
-        // bencode::bdata to_bencode(FileInfo fi) {
+            if(sf.name.hasValue) {
+                const bstring key_name("name");
+                const bstring val_name(sf.name.value);
+                kv_map.insert({key_name,val_name});
+            }
             
-        // }
+            
+            return bdict(kv_map);
+        }
+
+        static bencode::bdict to_bdict(const MultiFile &mf) {
+            map<bstring, bdata> kv_map;
+            const bstring key_fs("files");
+            // mf.name
+            
+            std::function<bdata(FileInfo)> fi_lam = [](const auto &fi) { return bdata(BencodeConvert::to_bdict(fi)); };
+            blist val_fs(map_vector(mf.files, fi_lam));
+
+            kv_map.insert({key_fs,bdata(val_fs)});
+            return bdict(kv_map);
+        }
+
+        static bencode::bdict to_bdict(InfoDict id) {
+            string key_pl("piece_length");
+            bint val_pl(id.piece_length);
+
+            string key_pcs("pieces");
+            bstring val_pcs(id.pieces);
+
+            std::function<bdict(SingleFile)> sf_lam = [](const auto &sf){ return BencodeConvert::to_bdict(sf); };
+            std::function<bdict(MultiFile)> mf_lam = [](const auto &mf){ return BencodeConvert::to_bdict(mf); };
+            bdict fm = either_to_val<SingleFile,MultiFile,bdict>(id.file_mode, sf_lam,mf_lam);
+            fm.insert({key_pl,val_pl});
+            fm.insert({key_pcs,val_pcs});
+
+            return fm;
+        }
+
 };

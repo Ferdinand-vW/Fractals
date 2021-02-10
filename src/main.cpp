@@ -14,6 +14,7 @@
 
 #include "torrent/MetaInfo.h"
 #include "torrent/BencodeConvert.h"
+#include "torrent/Request.h"
 #include <neither/neither.hpp>
 
 #include "utils.h"
@@ -26,44 +27,19 @@ int main() {
     ss << fs.rdbuf();
     auto v = bencode::decode<bencode::bdata>(ss);
     auto bdict = v.value().get_bdict().value();
-    for (auto kvp : bdict.key_values()) {
-        bencode::bstring k = kvp.first;
-        cout << "Key: " << k << " " << kvp.second.display_type() << endl;
-    }
-
     const bdata bd = v.value();
     neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
 
-    cout << emi.rightValue.to_string() << endl;
+    // cout << emi.rightValue.to_string() << endl;
+    TrackerRequest tr = TrackerRequest::make_request(emi.rightValue);
 
-    auto ann = bdict.at("announce");
-    cout << "announce: " << ann << endl;
-    auto ann_list = bdict.at("announce-list");
+    stringstream ss2("d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije");
+    auto b_test = bencode::decode<bencode::bdata>(ss2);
+    neither::Either<std::string,InfoDict> eid = BencodeConvert::from_bdata<InfoDict>(b_test.value());
+    InfoDict info_dict = eid.rightValue;
+    auto info_dict_enc = BencodeConvert::to_bdict(info_dict);
+    auto info_dict_s = bencode::encode(info_dict_enc);
+    cout << info_dict_s << endl;
 
-    auto comment = bdict.at("comment");
-    cout << "comment: " << comment << endl;
 
-    auto created_by = bdict.at("created by");
-    cout << "created by: " << created_by << endl;
-    auto creation_date = bdict.at("creation date");
-    cout << "creation date: " << creation_date << endl;
-    auto encoding = bdict.at("encoding");
-    cout << "encoding: " << encoding << endl;
-
-    auto info = bdict.at("info").get_bdict().value();
-    for (auto kvp : info.key_values()) {
-        bencode::bstring k = kvp.first;
-        cout << "info key: " << k << " " << kvp.second.display_type() << endl;
-    }
-
-    auto name = info.at("name");
-    cout << "name: " << name << endl;
-    auto piece_length = info.at("piece length");
-    cout << "piece length: " << piece_length << endl;
-
-    auto files = info.at("files");
-    for (auto item : files.get_blist()->value()) {
-        bencode::bdict k = item.get_bdict().value();
-        cout << k << endl;
-    }
 };

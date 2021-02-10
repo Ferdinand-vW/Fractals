@@ -1,6 +1,7 @@
 set(INCLUDES
     torrent/BencodeConvert.h
     torrent/MetaInfo.h
+    torrent/Request.h
     maybe.h
     utils.h
 )

@@ -9,13 +9,13 @@
 using namespace std;
 
 template <class A,class B>
-std::vector<B> map_vector(std::vector<A> v,std::function<B(A)> f) {
+static std::vector<B> map_vector(std::vector<A> v,std::function<B(A)> f) {
     std::vector<B> vec_out;
     std::transform(v.begin(),v.end(),std::back_inserter(vec_out),f);
     return vec_out;
 }
 
-std::string str_concat_vector(std::vector<std::string> v) {
+static std::string str_concat_vector(std::vector<std::string> v) {
     std::string out("");
     for(auto s : v) {
         out.append(s);
@@ -23,7 +23,7 @@ std::string str_concat_vector(std::vector<std::string> v) {
     return out;
 }
 
-std::string intercalate(std::string del,std::vector<std::string> v) {
+static std::string intercalate(std::string del,std::vector<std::string> v) {
     std::string out("");
     bool first = true;
     for(auto s : v) {
@@ -33,6 +33,6 @@ std::string intercalate(std::string del,std::vector<std::string> v) {
     return out;
 }
 
-string make_sized_line(string s,int len) {
+static string make_sized_line(string s,int len) {
     return s.substr(0,len) + "\n";
 }

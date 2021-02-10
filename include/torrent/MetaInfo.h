@@ -45,7 +45,9 @@ struct SingleFile {
         Maybe<std::string> md5sum;
 
         string to_string(int len = 100) {
-            return "SF { name: " + from_maybe(name,"<empty>"s) + ", length: " + to_string(length) + ", md5sum: " + from_maybe(md5sum,"<empty>"s);
+            string s ("SF { name: " + from_maybe(name,"<empty>"s) + ", length: " + std::to_string(length) + ", md5sum: " + from_maybe(md5sum,"<empty>"s));
+            cout << s;
+            return s;
         }
 };
 
