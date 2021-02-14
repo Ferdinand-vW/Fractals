@@ -15,11 +15,11 @@ TrackerRequest TrackerRequest::make_request(MetaInfo mi) {
 
     34FCC6C1ACC8C8A56DE3C2EF20924043CC51685E
     */
-    // const char * bencode_bytes = encoded.c_str();
-    const char * bencode_bytes = "d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije";
+    const char * bencode_bytes = encoded.c_str();
+    // const char * bencode_bytes = "d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije";
     std::ofstream fs;
     fs.open("test.txt",ios::binary);
-    fs << encoded;
+    fs << ("d4:info"s + encoded +  "e");
     fs.close();
     unsigned char info_hash[SHA_DIGEST_LENGTH];
     SHA1((unsigned char*)bencode_bytes, strlen(bencode_bytes), info_hash);

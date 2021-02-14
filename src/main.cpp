@@ -22,18 +22,16 @@
 
 int main() {
     std::ifstream fs;
-    fs.open("/home/ferdinand/dev/Fractals/examples/myTorrent2.torrent",std::ios::binary);
+    fs.open("/home/ferdinand/dev/Fractals/examples/alice.torrent",std::ios::binary);
     stringstream ss;
     ss << fs.rdbuf();
     auto v = bencode::decode<bencode::bdata>(ss);
-    auto bdict = v.value().get_bdict().value();
     const bdata bd = v.value();
     neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
 
-    // cout << emi.rightValue.to_string() << endl;
     TrackerRequest tr = TrackerRequest::make_request(emi.rightValue);
 
-    stringstream ss2("d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije");
+stringstream ss2("d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije");
     auto b_test = bencode::decode<bencode::bdata>(ss2);
     neither::Either<std::string,InfoDict> eid = BencodeConvert::from_bdata<InfoDict>(b_test.value());
     InfoDict info_dict = eid.rightValue;

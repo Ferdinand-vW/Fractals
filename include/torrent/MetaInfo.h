@@ -15,7 +15,7 @@ using namespace std::string_literals;
 
 struct FileInfo {
     public:
-        int length;
+        long long length;
         Maybe<std::string> md5sum;
         std::vector<string> path;
 
@@ -41,7 +41,7 @@ struct MultiFile {
 struct SingleFile {
     public:
         Maybe<std::string> name; // file name
-        int length;
+        long long length;
         Maybe<std::string> md5sum;
 
         string to_string(int len = 100) {
@@ -53,9 +53,9 @@ struct SingleFile {
 
 struct InfoDict {
     public:
-        int piece_length;
+        long long piece_length;
         std::string pieces;
-        Maybe<int> publish; // if set to 1 then publish
+        Maybe<long long> publish; // if set to 1 then publish
         Either<SingleFile,MultiFile> file_mode;
 
         string to_string(int len = 100) {
@@ -64,7 +64,7 @@ struct InfoDict {
             auto s_pcs = ", pieces: <bytestring>"s;
 
             auto pb_to_string = [](auto a) { return std::to_string(a); };
-            auto s_pb  = ", publish: "s + maybe_to_val<int,string>(publish,pb_to_string,"<empty>"s);
+            auto s_pb  = ", publish: "s + maybe_to_val<long long,string>(publish,pb_to_string,"<empty>"s);
             
             auto sf_to_string = [len](SingleFile sf) { return sf.to_string(len); };
             auto mf_to_string = [len](MultiFile mf) { return mf.to_string(len); };
@@ -78,9 +78,9 @@ struct InfoDict {
 
 struct MetaInfo {
     public:
-        std::string announce;
+        Maybe<std::string> announce;
         Maybe<std::vector<std::vector<std::string>>> announce_list;
-        Maybe<int> creation_date;
+        Maybe<long long> creation_date;
         Maybe<std::string> comment;
         Maybe<std::string> created_by;
         Maybe<std::string> encoding;
@@ -88,7 +88,7 @@ struct MetaInfo {
 
         string to_string(int len = 100) {
             auto s_mi = "MetaInfo"s;
-            auto s_ann = "{ announce: " + announce;
+            auto s_ann = "{ announce: "s + from_maybe(announce,"<empty>"s);
             
             auto m_ann_l_str = announce_list.map([](auto const l) -> string {
                 auto comma_separated = [](const auto &ls) { return "[" + intercalate(", ",ls) + "]"; };
@@ -96,7 +96,7 @@ struct MetaInfo {
                 return comma_separated(vs); 
                 });
             auto s_ann_l = ", announce_list: "s + from_maybe(m_ann_l_str, "<empty>"s);
-            auto int_to_string = [](const int& i) { return std::to_string(i); };
+            auto int_to_string = [](const auto& i) { return std::to_string(i); };
             auto s_cd    = ", creation_date: "s + from_maybe(creation_date.map(int_to_string), "<empty>"s);
             auto s_cmm   = ", comment: "s       + from_maybe(comment, "<empty>"s);
             auto s_cb    = ", created_by: "s    + from_maybe(created_by,"<empty>"s);

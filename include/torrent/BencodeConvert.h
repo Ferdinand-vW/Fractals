@@ -34,7 +34,6 @@ class BencodeConvert {
                             .flatMap(to_bstring)
                             .map(mem_fn(&bstring::value))
                             .map([](auto const &s) { return s; });
-                auto e_ann = maybe_to_either(m_ann,"Could not find announce in bencode data");
 
                 auto make_announce_list = 
                     [](const blist& bl) -> Maybe<vector<vector<string>>> {
@@ -80,13 +79,11 @@ class BencodeConvert {
                 auto e_id = maybe_to_either(to_maybe(m.find("info")),"Missing field info in meta info bdict")
                             .rightFlatMap(from_bdata<InfoDict>);
 
-                auto make_metainfo = [m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &ann) -> Either<string,MetaInfo> {
-                    return e_id.rightMap([ann,m_ann_l,m_cb,m_cd,m_cm,m_ec](const InfoDict& inf) {
-                        const MetaInfo mi = { ann,m_ann_l,m_cd,m_cm,m_cb,m_ec,inf };
+                auto make_metainfo = [m_ann,m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &inf) -> MetaInfo {
+                        const MetaInfo mi = { m_ann,m_ann_l,m_cd,m_cm,m_cb,m_ec,inf };
                         return mi;
-                    }); 
                 };
-                return e_ann.rightFlatMap(make_metainfo);
+                return e_id.rightMap(make_metainfo);
             };
 
             auto e_bd_mi = maybe_to_either(m_bd_mi, "Bencode should start with bdict for MetaInfo");
