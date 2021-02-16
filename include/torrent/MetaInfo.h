@@ -16,12 +16,13 @@ using namespace std::string_literals;
 struct FileInfo {
     public:
         long long length;
-        Maybe<std::string> md5sum;
+        Maybe<std::vector<char>> md5sum;
         std::vector<string> path;
 
 
         string to_string(int len = 100) {
-            return "{ length =  "s + std::to_string(length)+ ", path = [" + intercalate(",",path) + "], md5sum = " + from_maybe(md5sum,"<empty>"s) + "}";
+            Maybe<string> md5sum_s = md5sum.map([](const auto &v) { return string(v.begin(),v.end()); });
+            return "{ length =  "s + std::to_string(length)+ ", path = [" + intercalate(",",path) + "], md5sum = " + from_maybe(md5sum_s,"<empty>"s) + "}";
         }
 };
 
@@ -42,10 +43,11 @@ struct SingleFile {
     public:
         Maybe<std::string> name; // file name
         long long length;
-        Maybe<std::string> md5sum;
+        Maybe<std::vector<char>> md5sum;
 
         string to_string(int len = 100) {
-            string s ("SF { name: " + from_maybe(name,"<empty>"s) + ", length: " + std::to_string(length) + ", md5sum: " + from_maybe(md5sum,"<empty>"s));
+            Maybe<string> md5sum_s = md5sum.map([](const auto &v) { return string(v.begin(),v.end()); });
+            string s ("SF { name: " + from_maybe(name,"<empty>"s) + ", length: " + std::to_string(length) + ", md5sum: " + from_maybe(md5sum_s,"<empty>"s));
             cout << s;
             return s;
         }
@@ -54,7 +56,7 @@ struct SingleFile {
 struct InfoDict {
     public:
         long long piece_length;
-        std::string pieces;
+        std::vector<char> pieces;
         Maybe<long long> publish; // if set to 1 then publish
         Either<SingleFile,MultiFile> file_mode;
 

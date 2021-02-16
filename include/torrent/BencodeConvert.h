@@ -32,7 +32,7 @@ class BencodeConvert {
             auto to_metainfo = [](const bdict &m) -> Either<string,MetaInfo> { 
                 auto m_ann = to_maybe(m.find("announce"))
                             .flatMap(to_bstring)
-                            .map(mem_fn(&bstring::value))
+                            .map(mem_fn(&bstring::to_string))
                             .map([](auto const &s) { return s; });
 
                 auto make_announce_list = 
@@ -43,7 +43,7 @@ class BencodeConvert {
                             Maybe<vector<bdata>> outer_vec = to_blist(bd).map(mem_fn(&blist::value));
                             
                             auto bdata_to_string = [](const auto &bd) -> Maybe<string> {
-                                return to_bstring(bd).map(mem_fn(&bstring::value)); 
+                                return to_bstring(bd).map(mem_fn(&bstring::to_string)); 
                             };
 
                             Maybe<vector<string>> vec_of_string = 
@@ -66,15 +66,15 @@ class BencodeConvert {
                 
                 auto m_cm = to_maybe(m.find("comment"))
                             .flatMap(to_bstring)
-                            .map(mem_fn(&bstring::value));
+                            .map(mem_fn(&bstring::to_string));
 
                 auto m_cb = to_maybe(m.find("created by"))
                             .flatMap(to_bstring)
-                            .map(mem_fn(&bstring::value));
+                            .map(mem_fn(&bstring::to_string));
                 
                 auto m_ec = to_maybe(m.find("encoding"))
                             .flatMap(to_bstring)
-                            .map(mem_fn(&bstring::value));
+                            .map(mem_fn(&bstring::to_string));
 
                 auto e_id = maybe_to_either(to_maybe(m.find("info")),"Missing field info in meta info bdict")
                             .rightFlatMap(from_bdata<InfoDict>);
@@ -98,7 +98,7 @@ class BencodeConvert {
         Either<std::string,SingleFile> from_bdict<SingleFile>(bencode::bdict bd) {
             auto name = to_maybe(bd.find("name"))
                        .flatMap(to_bstring)
-                       .map(mem_fn(&bstring::value));
+                       .map(mem_fn(&bstring::to_string));
             auto m_length = to_maybe(bd.find("length"))
                            .flatMap(to_bint)
                            .map(mem_fn(&bint::value));
@@ -135,7 +135,7 @@ class BencodeConvert {
                          .flatMap(to_blist)
                          .map(mem_fn(&blist::value));
 
-            auto f = [](const auto &bd) -> Maybe<string> { return to_bstring(bd).map(mem_fn(&bstring::value)); };
+            auto f = [](const auto &bd) -> Maybe<string> { return to_bstring(bd).map(mem_fn(&bstring::to_string)); };
             auto m_path = m_bdpath.flatMap([f](const auto &v) -> Maybe<vector<string>> { 
                     return mmap_vector<bdata,string>(v, f);
                 });
@@ -152,7 +152,7 @@ class BencodeConvert {
         Either<std::string,MultiFile> from_bdict<MultiFile>(bencode::bdict bd) {
             auto name = to_maybe(bd.find("name"))
                        .flatMap(to_bstring)
-                       .map(mem_fn(&bstring::value));
+                       .map(mem_fn(&bstring::to_string));
             
             auto e_bdfiles = maybe_to_either(
                                 to_maybe(bd.find("files"))
@@ -190,7 +190,7 @@ class BencodeConvert {
             auto m_pieces = to_maybe(bd.find("pieces"))
                             .flatMap(to_bstring)
                             .map(mem_fn(&bstring::value));
-            std::string pieces;
+            std::vector<char> pieces;
             if(!m_pieces)
                  { return left("Attribute pieces missing from info"s);}
             else { pieces = m_pieces.value; }
@@ -262,7 +262,7 @@ class BencodeConvert {
         }
 
         static bencode::bdict to_bdict(InfoDict id) {
-            string key_pl("piece_length");
+            string key_pl("piece length");
             bint val_pl(id.piece_length);
 
             string key_pcs("pieces");

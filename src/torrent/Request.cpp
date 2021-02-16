@@ -1,3 +1,4 @@
+#include <cstring>
 #include <fstream>
 #include <openssl/sha.h>
 
@@ -14,16 +15,24 @@ TrackerRequest TrackerRequest::make_request(MetaInfo mi) {
     should be
 
     34FCC6C1ACC8C8A56DE3C2EF20924043CC51685E
+
+    d8595f3f254b8d6ec73594a54f31a21dbbe7aef8
     */
     const char * bencode_bytes = encoded.c_str();
-    // const char * bencode_bytes = "d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije";
+
+    // const char * bencode_bytes = "d6:lengthi163783e4:name9:alice.txt12:piece lengthi16384ee";
     std::ofstream fs;
-    fs.open("test.txt",ios::binary);
-    fs << ("d4:info"s + encoded +  "e");
+    fs.open("example.torrent",ios::binary);
+    auto encoded2 = "d13:creation datei1452468725091e8:encoding5:UTF-84:info"s + encoded + "e"s;
+    fs << encoded2;
     fs.close();
-    unsigned char info_hash[SHA_DIGEST_LENGTH];
-    SHA1((unsigned char*)bencode_bytes, strlen(bencode_bytes), info_hash);
-    for(int i = 0; i < SHA_DIGEST_LENGTH; i++) {
+    unsigned char info_hash[20];
+    cout << encoded2 << endl;
+    cout << strlen(bencode_bytes) << endl;
+    cout << encoded.length() << endl;
+    SHA1((unsigned char *)bencode_bytes, encoded.length(), info_hash);
+
+    for(int i = 0; i < 20; i++) {
         printf("%02x",info_hash[i]);
     }
     cout << endl;

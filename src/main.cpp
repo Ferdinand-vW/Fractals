@@ -30,14 +30,4 @@ int main() {
     neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
 
     TrackerRequest tr = TrackerRequest::make_request(emi.rightValue);
-
-stringstream ss2("d4:name5:b.txt6:lengthi1e12:piece lengthi32768e6:pieces20:1234567890abcdefghije");
-    auto b_test = bencode::decode<bencode::bdata>(ss2);
-    neither::Either<std::string,InfoDict> eid = BencodeConvert::from_bdata<InfoDict>(b_test.value());
-    InfoDict info_dict = eid.rightValue;
-    auto info_dict_enc = BencodeConvert::to_bdict(info_dict);
-    auto info_dict_s = bencode::encode(info_dict_enc);
-    cout << info_dict_s << endl;
-
-
 };
