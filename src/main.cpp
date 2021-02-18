@@ -29,5 +29,5 @@ int main() {
     const bdata bd = v.value();
     neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
 
-    TrackerRequest tr = TrackerRequest::make_request(emi.rightValue);
+    Request tr = Request::make_request(emi.rightValue);
 };

@@ -15,6 +15,9 @@ endforeach()
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
+find_package(CURL REQUIRED)
+include_directories(${CURL_INCLUDE_DIR})
+
 include_directories(include)
 include_directories(${NEITHER_INCLUDE_DIR})
 

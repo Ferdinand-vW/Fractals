@@ -12,6 +12,7 @@ target_include_directories(Fractals PUBLIC ${BENCODE_INCLUDE_DIR})
 target_include_directories(Fractals PUBLIC ${NEITHER_INCLUDE_DIR})
 target_link_libraries(Fractals bencode_lib)
 target_link_libraries(Fractals OpenSSL::SSL)
+target_link_libraries(Fractals ${CURL_LIBRARIES})
 # target_link_libraries(Fractals_lib bencode_lib)
 
 set_target_properties(Fractals PROPERTIES

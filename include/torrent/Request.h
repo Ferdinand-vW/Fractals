@@ -11,7 +11,7 @@ using namespace neither;
 
 enum class Event { Started, Stopped, Completed };
 
-struct TrackerRequest {
+struct Request {
     public:
         // urlencoded 20-byte hash of info key
         std::string info_hash;
@@ -34,5 +34,5 @@ struct TrackerRequest {
         //key
         //trackerid
 
-        static TrackerRequest make_request(MetaInfo mi);
+        static Request make_request(MetaInfo mi);
 };
