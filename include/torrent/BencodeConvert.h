@@ -5,11 +5,13 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include "bencode/bencode.h"
+
+#include <bencode/bencode.h>
+#include <neither/neither.hpp>
+
 #include "torrent/MetaInfo.h"
-#include "maybe.h"
-#include "neither/neither.hpp"
-#include "utils.h"
+#include "common/maybe.h"
+#include "common/utils.h"
 
 using namespace std;
 using namespace bencode;
@@ -32,8 +34,7 @@ class BencodeConvert {
             auto to_metainfo = [](const bdict &m) -> Either<string,MetaInfo> { 
                 auto m_ann = to_maybe(m.find("announce"))
                             .flatMap(to_bstring)
-                            .map(mem_fn(&bstring::to_string))
-                            .map([](auto const &s) { return s; });
+                            .map(mem_fn(&bstring::to_string));
 
                 auto make_announce_list = 
                     [](const blist& bl) -> Maybe<vector<vector<string>>> {
@@ -79,11 +80,12 @@ class BencodeConvert {
                 auto e_id = maybe_to_either(to_maybe(m.find("info")),"Missing field info in meta info bdict")
                             .rightFlatMap(from_bdata<InfoDict>);
 
-                auto make_metainfo = [m_ann,m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &inf) -> MetaInfo {
-                        const MetaInfo mi = { m_ann,m_ann_l,m_cd,m_cm,m_cb,m_ec,inf };
-                        return mi;
+                auto make_metainfo = [m_ann,m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &inf) -> Either<string,MetaInfo> {
+                        if(!m_ann.hasValue) { return left("Missing field announce in meta info dict"s); }
+                        const MetaInfo mi = { m_ann.value,m_ann_l,m_cd,m_cm,m_cb,m_ec,inf };
+                        return right(mi);
                 };
-                return e_id.rightMap(make_metainfo);
+                return e_id.rightFlatMap(make_metainfo);
             };
 
             auto e_bd_mi = maybe_to_either(m_bd_mi, "Bencode should start with bdict for MetaInfo");
@@ -109,7 +111,7 @@ class BencodeConvert {
                          .map(mem_fn(&bstring::value));
 
             return e_length.rightMap(
-                [name,md5sum](const int length) { return SingleFile {name,length,md5sum}; }
+                [name,md5sum](const long long length) { return SingleFile {name,length,md5sum}; }
             );
         }
 
@@ -144,7 +146,7 @@ class BencodeConvert {
             else                 { path = m_path.value; }
 
             return e_length.rightMap(
-                [md5sum,path](const int &length) { return FileInfo {length,md5sum,path}; }
+                [md5sum,path](const long long &length) { return FileInfo {length,md5sum,path}; }
             );
         }
 

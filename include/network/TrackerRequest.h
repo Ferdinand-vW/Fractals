@@ -11,10 +11,12 @@ using namespace neither;
 
 enum class Event { Started, Stopped, Completed };
 
-struct Request {
+struct TrackerRequest {
     public:
+        std::string announce;
+        std::vector<unsigned char> info_hash;
         // urlencoded 20-byte hash of info key
-        std::string info_hash;
+        std::string url_info_hash;
         // urlencoded 20-byte string used as unique id for client
         std::string peer_id;
         // port number that client is listening on
@@ -33,6 +35,30 @@ struct Request {
         // Maybe<std::int16_t> numwant;
         //key
         //trackerid
-
-        static Request make_request(MetaInfo mi);
 };
+
+typedef std::string IPv6;
+typedef std::vector<std::string> IPv4;
+typedef std::string DNS;
+
+struct Peer {
+    std::string peer_id;
+    std::variant<IPv6,IPv4,DNS> ip;
+    int port;
+};
+
+struct TrackerResponse {
+    public:
+        std::string failure_reason;
+        neither::Maybe<std::string> warning_message;
+        int interval;
+        neither::Maybe<int> min_interval;
+        neither::Maybe<std::string> tracker_id;
+        int complete;
+        int incomplete;
+        std::vector<Peer> peers;
+};
+
+neither::Either<string,TrackerRequest> makeTrackerRequest(const MetaInfo & mi);
+
+neither::Either<string,TrackerResponse> sendTrackerRequest(const TrackerRequest &tr);

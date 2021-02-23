@@ -4,10 +4,11 @@
 #include <string>
 #include <vector>
 #include <optional>
+
 #include <neither/neither.hpp>
 
-#include "utils.h"
-#include "maybe.h"
+#include "common/utils.h"
+#include "common/maybe.h"
 
 using namespace std;
 using namespace neither;
@@ -80,7 +81,7 @@ struct InfoDict {
 
 struct MetaInfo {
     public:
-        Maybe<std::string> announce;
+        std::string announce;
         Maybe<std::vector<std::vector<std::string>>> announce_list;
         Maybe<long long> creation_date;
         Maybe<std::string> comment;
@@ -90,7 +91,7 @@ struct MetaInfo {
 
         string to_string(int len = 100) {
             auto s_mi = "MetaInfo"s;
-            auto s_ann = "{ announce: "s + from_maybe(announce,"<empty>"s);
+            auto s_ann = "{ announce: "s + announce;
             
             auto m_ann_l_str = announce_list.map([](auto const l) -> string {
                 auto comma_separated = [](const auto &ls) { return "[" + intercalate(", ",ls) + "]"; };
