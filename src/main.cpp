@@ -17,7 +17,7 @@
 
 #include "torrent/MetaInfo.h"
 #include "torrent/BencodeConvert.h"
-#include "network/TrackerRequest.h"
+#include "network/http/Tracker.h"
 
 
 #include "common/utils.h"

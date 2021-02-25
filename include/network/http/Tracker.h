@@ -49,7 +49,6 @@ struct Peer {
 
 struct TrackerResponse {
     public:
-        std::string failure_reason;
         neither::Maybe<std::string> warning_message;
         int interval;
         neither::Maybe<int> min_interval;
