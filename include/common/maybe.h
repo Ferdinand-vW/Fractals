@@ -40,6 +40,17 @@ static Maybe<std::vector<B>> mmap_vector(std::vector<A> vec,std::function<Maybe<
     return vec_out;
 }
 
+template <class A,class B, class C>
+static Either<B,std::vector<C>> mmap_vector(std::vector<A> vec,std::function<Either<B,C>(A)> f) {
+    std::vector<C> vec_out;
+    for(auto &a : vec) {
+        auto eb = f(a);
+        if(eb.isLeft) { return neither::left<B>(eb.leftValue); }
+        else { vec_out.push_back(eb.rightValue); }
+    }
+    return neither::right<std::vector<C>>(vec_out);
+}
+
 template <class A>
 static neither::Maybe<A> choice (Maybe<A> a1,Maybe<A> a2) {
     if(a1.hasValue) { return a1; }

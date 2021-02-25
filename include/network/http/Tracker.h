@@ -37,13 +37,9 @@ struct TrackerRequest {
         //trackerid
 };
 
-typedef std::string IPv6;
-typedef std::vector<std::string> IPv4;
-typedef std::string DNS;
-
 struct Peer {
     std::string peer_id;
-    std::variant<IPv6,IPv4,DNS> ip;
+    std::string ip;
     int port;
 };
 

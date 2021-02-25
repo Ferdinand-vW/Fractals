@@ -5,6 +5,7 @@
 #include <openssl/sha.h>
 #include <curl/curl.h>
 #include <string>
+#include <arpa/inet.h>
 
 #include "bencode/encode.h"
 #include "common/maybe.h"
@@ -70,7 +71,29 @@ std::string toHttpGetUrl(const TrackerRequest &tr) {
 }
 
 neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) {
+    auto parse_peer = [](const bdata &bd) -> Either<std::string,Peer> {
+        auto mpeer_dict = to_maybe(bd.get_bdict());
+        if (!mpeer_dict.hasValue) { return neither::left("Could not coerce bdata to bdict for peer"s); }
+        auto peer_dict = mpeer_dict.value;
 
+        auto mpeer_id = to_maybe(peer_dict.find("peer_id"))
+                       .flatMap(to_bstring)
+                       .map(mem_fn(&bstring::to_string));
+        auto mip      = to_maybe(peer_dict.find("ip"))
+                       .flatMap(to_bstring)
+                       .map(mem_fn(&bstring::to_string));
+        auto mport    = to_maybe(peer_dict.find("port"))
+                       .flatMap(to_bint)
+                       .map(mem_fn(&bint::value));
+        
+        if(!mpeer_id.hasValue) { return neither::left("Could not find field peer_id in peers dictionary"s); }
+        if(!mip.hasValue)      { return neither::left("Could not find field ip in peers dictionary"s); }
+        if(!mport.hasValue)    { return neither::left("Could not find field port in peers dictionary"s); }
+
+        return neither::right(Peer { mpeer_id.value, mip.value, (int)mport.value });
+    };
+
+    return mmap_vector<bdata,std::string,Peer>(bl.value(),parse_peer);
 }
 
 neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
