@@ -81,32 +81,38 @@ int main() {
     for(int i = 0;i<20;i++) {
         printf("%02x",tr.info_hash[i]);
     }
-    cout << endl;
-    CURLcode res;
-    CURL *curl = curl_easy_init();
-    string readBuffer;
-    string param = "https://torrent.ubuntu.com/announce?info_hash="+tr.url_info_hash+"&peer_id=abcdefghijklmnopqrst&port=6882"
-                                          +"&uploaded=0&downloaded=0&left=1484680095&compact=0&no_peer_id=0";
-    if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, param.c_str());
-        /* example.com is redirected, so we tell libcurl to follow redirection */ 
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-    
-        /* Perform the request, res will get the return code */ 
-        res = curl_easy_perform(curl);
-        /* Check for errors */ 
-        if(res != CURLE_OK)
-          fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                  curl_easy_strerror(res));
-    
-        /* always cleanup */ 
-        curl_easy_cleanup(curl);
-    }
 
-    cout << readBuffer;
+    auto resp = sendTrackerRequest(tr);
+    if(resp.isLeft) { cout << resp.leftValue << endl; }
+    
+    cout << resp.isLeft << endl;
+
+    // cout << endl;
+    // CURLcode res;
+    // CURL *curl = curl_easy_init();
+    // string readBuffer;
+    // // string param = "https://torrent.ubuntu.com/announce?info_hash="+tr.url_info_hash+"&peer_id=abcdefghijklmnopqrst&port=6882"
+    // //                                       +"&uploaded=0&downloaded=0&left=1484680095&compact=0&no_peer_id=0";
+    // if(curl) {
+    //     curl_easy_setopt(curl, CURLOPT_URL, param.c_str());
+    //     /* example.com is redirected, so we tell libcurl to follow redirection */ 
+    //     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+    //     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    //     curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
+    //     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    
+    //     /* Perform the request, res will get the return code */ 
+    //     res = curl_easy_perform(curl);
+    //     /* Check for errors */ 
+    //     if(res != CURLE_OK)
+    //       fprintf(stderr, "curl_easy_perform() failed: %s\n",
+    //               curl_easy_strerror(res));
+    
+    //     /* always cleanup */ 
+    //     curl_easy_cleanup(curl);
+    // }
+
+    // cout << readBuffer;
 
 
 };

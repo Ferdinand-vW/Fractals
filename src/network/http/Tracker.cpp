@@ -2,6 +2,7 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <netinet/in.h>
 #include <openssl/sha.h>
 #include <curl/curl.h>
 #include <string>
@@ -31,8 +32,9 @@ neither::Either<std::string,TrackerRequest> makeTrackerRequest(const MetaInfo &m
         return neither::left("Failed url encode of info hash: "s + str_info_hash); 
     } 
     else {
-        std::string peer_id = "hello";
-        int port = 68812;
+        cout << endl << muri_info.value << endl;
+        std::string peer_id = "abcdefghijklmnopqrst";
+        int port = 6882;
         int uploaded = 0;
         int downloaded = 0;
         int left = 0;
@@ -65,7 +67,7 @@ std::string toHttpGetUrl(const TrackerRequest &tr) {
     std::string lft_prm = "left="+std::to_string(tr.left);
     std::string cmpt_prm = "compact="+std::to_string(tr.compact);
 
-    std::string url = tr.announce + intercalate("&", {ih_prm,peer_prm,port_prm,upl_prm,dl_prm,lft_prm,cmpt_prm});
+    std::string url = ann_base + intercalate("&", {ih_prm,peer_prm,port_prm,upl_prm,dl_prm,lft_prm,cmpt_prm});
 
     return url;
 }
@@ -90,14 +92,33 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
         if(!mip.hasValue)      { return neither::left("Could not find field ip in peers dictionary"s); }
         if(!mport.hasValue)    { return neither::left("Could not find field port in peers dictionary"s); }
 
-        return neither::right(Peer { mpeer_id.value, mip.value, (int)mport.value });
+        return neither::right(Peer { mpeer_id.value, mip.value, (uint)mport.value });
     };
 
     return mmap_vector<bdata,std::string,Peer>(bl.value(),parse_peer);
 }
 
 neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
+    if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
+    
+    std::vector<Peer> peers;
+    for(int i = 0; i < bytes.size() - 6; i+=6) {
+        struct sockaddr_in sa;
+        char buffer[4];
+        std::copy(bytes.begin()+i,bytes.begin()+i+4,buffer);
+        char result[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET,(void*)(&buffer[0]),result, sizeof result);
+        
+        std::string ip(result);
+        cout << (ushort)(unsigned char)bytes[i+4] << " : " << (ushort)(unsigned char)bytes[i+5] << endl;
+        ushort port = (unsigned char)bytes[i+4] * 256 + (unsigned char)bytes[i+5];
 
+        auto peer_id = ip + ":" + std::to_string(port);
+        cout << peer_id << endl;
+        peers.push_back(Peer { peer_id, ip, port});
+    }
+
+    return neither::right<std::vector<Peer>>(peers);
 }
 
 
@@ -177,7 +198,8 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
     CURL *curl = curl_easy_init();
     std::string readBuffer;
     string url = toHttpGetUrl(tr);
-    
+    cout << endl;
+    cout << url << endl;
     //"https://torrent.ubuntu.com/announce?info_hash="+tr.url_info_hash+"&peer_id=abcdefghijklmnopqrst&port=6882"
       //                                    +"&uploaded=0&downloaded=0&left=1484680095&compact=0&no_peer_id=0";
     if(curl) {
@@ -190,26 +212,21 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
     
         /* Perform the request, res will get the return code */ 
         res = curl_easy_perform(curl);
-    
-        /* always cleanup */ 
-        curl_easy_cleanup(curl);
-    }
-    else {
         if(res != CURLE_OK) { 
             std::string curl_err = curl_easy_strerror(res);
             return left("curl_easy_perform() failed: "+curl_err); 
         }
-
-           
-
+        /* always cleanup */ 
+        curl_easy_cleanup(curl);
     }
 
     stringstream ss(readBuffer);
+    cout << "response: " << readBuffer << endl;
     auto mresp = bencode::decode<bencode::bdict>(ss);
 
     if (!mresp.has_value()) { return neither::left(mresp.error().message()); }
 
     auto resp = mresp.value();
 
-    return neither::left<std::string>(readBuffer);
+    return parseTrackerReponse(resp);
 }
