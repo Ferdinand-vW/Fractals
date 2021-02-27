@@ -8,6 +8,7 @@
 #include <string>
 #include <arpa/inet.h>
 
+#include "app/Client.h"
 #include "bencode/encode.h"
 #include "common/maybe.h"
 #include "common/utils.h"
@@ -19,11 +20,6 @@ neither::Either<std::string,TrackerRequest> makeTrackerRequest(const MetaInfo &m
     bdict info_dict = BencodeConvert::to_bdict(mi.info);
     auto encoded = bencode::encode(info_dict);
 
-    ofstream file;
-    file.open("example.txt");
-    file << encoded;
-    file.close();
-
     auto info_hash     = sha1_encode(encoded);
     auto muri_info     = url_encode(info_hash);
     auto str_info_hash = string(info_hash.begin(),info_hash.end());
@@ -32,8 +28,7 @@ neither::Either<std::string,TrackerRequest> makeTrackerRequest(const MetaInfo &m
         return neither::left("Failed url encode of info hash: "s + str_info_hash); 
     } 
     else {
-        cout << endl << muri_info.value << endl;
-        std::string peer_id = "abcdefghijklmnopqrst";
+        std::string peer_id = generate_peerId();
         int port = 6882;
         int uploaded = 0;
         int downloaded = 0;
@@ -110,8 +105,7 @@ neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes
         inet_ntop(AF_INET,(void*)(&buffer[0]),result, sizeof result);
         
         std::string ip(result);
-        cout << (ushort)(unsigned char)bytes[i+4] << " : " << (ushort)(unsigned char)bytes[i+5] << endl;
-        ushort port = (unsigned char)bytes[i+4] * 256 + (unsigned char)bytes[i+5];
+        ushort port = static_cast<unsigned char>(bytes[i+4]) * 256 + static_cast<unsigned char>(bytes[i+5]);
 
         auto peer_id = ip + ":" + std::to_string(port);
         cout << peer_id << endl;
@@ -198,10 +192,7 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
     CURL *curl = curl_easy_init();
     std::string readBuffer;
     string url = toHttpGetUrl(tr);
-    cout << endl;
-    cout << url << endl;
-    //"https://torrent.ubuntu.com/announce?info_hash="+tr.url_info_hash+"&peer_id=abcdefghijklmnopqrst&port=6882"
-      //                                    +"&uploaded=0&downloaded=0&left=1484680095&compact=0&no_peer_id=0";
+
     if(curl) {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
@@ -221,7 +212,6 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
     }
 
     stringstream ss(readBuffer);
-    cout << "response: " << readBuffer << endl;
     auto mresp = bencode::decode<bencode::bdict>(ss);
 
     if (!mresp.has_value()) { return neither::left(mresp.error().message()); }

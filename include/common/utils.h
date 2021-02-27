@@ -22,3 +22,5 @@ std::string intercalate(std::string del,std::vector<std::string> v);
 
 std::string make_sized_line(std::string s,int len);
 
+std::string random_alphaNumerical(int length);
+
