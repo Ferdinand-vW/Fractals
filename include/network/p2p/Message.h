@@ -92,10 +92,10 @@ class Piece {
     char m_messageId = 7;
     int m_index;
     int m_begin;
-    std::vector<char> m_block;
+    std::unique_ptr<std::vector<char>> m_block;
     
     public:
-        Piece(int index,int begin, std::vector<char> block);
+        Piece(int index,int begin, std::unique_ptr<std::vector<char>> block);
         std::vector<char> to_bytes_repr() const;
 };
 
@@ -114,7 +114,7 @@ class Cancel {
 class Port {
     int m_len = 3;
     char m_messageId = 9;
-    ushort m_port;
+    int m_port;
 
     public:
         Port(int port);

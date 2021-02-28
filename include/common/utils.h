@@ -24,3 +24,6 @@ std::string make_sized_line(std::string s,int len);
 
 std::string random_alphaNumerical(int length);
 
+std::vector<char> int_to_bytes(int n);
+
+std::vector<char> bitfield_to_bytes(std::vector<bool> bitfields);

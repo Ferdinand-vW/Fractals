@@ -41,3 +41,48 @@ std::string random_alphaNumerical(int length) {
 
     return s;
 }
+
+std::vector<char> int_to_bytes(int n)  {
+    std::vector<char> v;
+    v.push_back(n >> 24);
+    v.push_back(n >> 16);
+    v.push_back(n >> 8);
+    v.push_back(n);
+
+    return v;
+}
+
+std::vector<char> bitfield_to_bytes(std::vector<bool> bits) {
+    std::vector<char> v;
+    char c = 0;
+    int i = 0;
+    while(i < bits.size()) {
+        if(i % 8 == 0) {
+            v.push_back(c);
+            c = 0;
+        }
+
+        c |= bits[i] << (7 - (i % 8));
+        i++;
+    }
+
+    //If we did not get a multiple of 8 as input then
+    //push the last byte padded with zeros on the right
+    if (i % 8 != 0) {
+        v.push_back(c);
+    }
+
+    return v;
+}
+
+/*
+s = 7 i = 0
+s = 6 i = 1
+s = 5 i = 2
+s = 4 i = 3
+s = 3 i = 4
+s = 2 i = 5
+s = 1 i = 6
+s = 0 i = 7
+s = 7 i = 0
+*/
