@@ -2,8 +2,9 @@
 #include "common/utils.h"
 #include <cstdlib>
 #include <string>
+#include <neither/neither.hpp>
 
-std::string str_concat_vector(std::vector<std::string> v) {
+std::string str_concat_vector(const std::vector<std::string> &v) {
     std::string out("");
     for(auto s : v) {
         out.append(s);
@@ -11,7 +12,7 @@ std::string str_concat_vector(std::vector<std::string> v) {
     return out;
 }
 
-std::string intercalate(std::string del,std::vector<std::string> v) {
+std::string intercalate(std::string del,const std::vector<std::string> &v) {
     std::string out("");
     bool first = true;
     for(auto s : v) {
@@ -52,7 +53,19 @@ std::vector<char> int_to_bytes(int n)  {
     return v;
 }
 
-std::vector<char> bitfield_to_bytes(std::vector<bool> bits) {
+int bytes_to_int(std::deque<char> &d) {
+    if (d.size() < 4) { return {}; }
+
+    int n = 0;
+    for(int i = 0; i < 4; i++) {
+        n |= (unsigned char)d.front() << (24 - i * 8);
+        d.pop_front();
+    }
+
+    return n;
+}
+
+std::vector<char> bitfield_to_bytes(const std::vector<bool> &bits) {
     std::vector<char> v;
     char c = 0;
     int i = 0;
@@ -70,6 +83,17 @@ std::vector<char> bitfield_to_bytes(std::vector<bool> bits) {
     //push the last byte padded with zeros on the right
     if (i % 8 != 0) {
         v.push_back(c);
+    }
+
+    return v;
+}
+
+std::vector<bool> bytes_to_bitfield(int len,std::deque<char> &bytes) {
+    std::vector<bool> v;
+    for(int i = 0; i < len; i++) {
+        char c = bytes[i];
+
+        for(int j = 0; j < 8; j++) { v.push_back(c >> (7 - j)); }
     }
 
     return v;

@@ -2,6 +2,7 @@
 
 #include "neither/maybe.hpp"
 #include <algorithm>
+#include <deque>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -10,15 +11,15 @@
 #include <functional>
 
 template <class A,class B>
-std::vector<B> map_vector(std::vector<A> v,std::function<B(A)> f) {
+std::vector<B> map_vector(const std::vector<A> &v,std::function<B(A)> f) {
     std::vector<B> vec_out;
     std::transform(v.begin(),v.end(),std::back_inserter(vec_out),f);
     return vec_out;
 }
 
-std::string str_concat_vector(std::vector<std::string> v);
+std::string str_concat_vector(const std::vector<std::string> &v);
 
-std::string intercalate(std::string del,std::vector<std::string> v);
+std::string intercalate(std::string del,const std::vector<std::string> &v);
 
 std::string make_sized_line(std::string s,int len);
 
@@ -26,4 +27,7 @@ std::string random_alphaNumerical(int length);
 
 std::vector<char> int_to_bytes(int n);
 
-std::vector<char> bitfield_to_bytes(std::vector<bool> bitfields);
+int bytes_to_int(std::deque<char> &d);
+
+std::vector<char> bitfield_to_bytes(const std::vector<bool> &bitfields);
+std::vector<bool> bytes_to_bitfield(int len,std::deque<char> &bitfields);

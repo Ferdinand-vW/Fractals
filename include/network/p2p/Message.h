@@ -5,11 +5,11 @@
 #include <neither/maybe.hpp>
 #include <string>
 #include <vector>
+#include <deque>
 
 class IMessage {
     public:
         virtual std::vector<char> to_bytes_repr() const = 0;
-        static std::unique_ptr<IMessage> from_bytes_repr(std::vector<char> bytes);
 };
 
 class HandShake : public IMessage {
@@ -19,8 +19,9 @@ class HandShake : public IMessage {
     std::string m_url_info_hash;
     std::string m_peer_id;
     public:
-        HandShake(unsigned char pstrlen,std::string pstr,std::string url_info_hash,std::string peer_id);
+        HandShake(unsigned char pstrlen,std::string pstr,char (&reserved)[8],std::string url_info_hash,std::string peer_id);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<HandShake> from_bytes_repr(unsigned char len,std::deque<char> &&bytes);
 };
 
 class KeepAlive : public IMessage {
@@ -64,6 +65,7 @@ class Have : public IMessage {
     public:
         Have(int piece_index);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<Have> from_bytes_repr(std::deque<char> &bytes);
 };
 
 class Bitfield : public IMessage {
@@ -71,8 +73,9 @@ class Bitfield : public IMessage {
     char m_messageId = 5;
     std::vector<bool> m_bitfield;
     public:
-        Bitfield(int len,std::vector<bool> bitfield);
+        Bitfield(int len,const std::vector<bool> &bitfield);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<Bitfield> from_bytes_repr(int len, std::deque<char> &bytes);
 };
 
 class Request : public IMessage {
@@ -85,6 +88,7 @@ class Request : public IMessage {
     public:
         Request(int index,int begin,int length);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<Request> from_bytes_repr(std::deque<char> &bytes);
 };
 
 class Piece {
@@ -92,11 +96,12 @@ class Piece {
     char m_messageId = 7;
     int m_index;
     int m_begin;
-    std::unique_ptr<std::vector<char>> m_block;
+    std::vector<char> m_block;
     
     public:
-        Piece(int index,int begin, std::unique_ptr<std::vector<char>> block);
+        Piece(int index,int begin, std::vector<char> &&block);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<Piece> from_bytes_repr(int m_len,std::deque<char> &&bytes);
 };
 
 class Cancel {
@@ -109,6 +114,7 @@ class Cancel {
     public:
         Cancel(int index,int begin,int length);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<Cancel> from_bytes_repr(std::deque<char> &bytes);
 };
 
 class Port {
@@ -119,4 +125,5 @@ class Port {
     public:
         Port(int port);
         std::vector<char> to_bytes_repr() const;
+        static std::unique_ptr<Port> from_bytes_repr(std::deque<char> &bytes);
 };
