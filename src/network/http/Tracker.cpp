@@ -16,33 +16,45 @@
 #include "network/http/Tracker.h"
 #include "common/encode.h"
 
-neither::Either<std::string,TrackerRequest> makeTrackerRequest(const MetaInfo &mi) {
+std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
+    auto peers_str = intercalate(", ",map_vector<Peer,std::string>(s.peers, [](const Peer &p) {
+        return "("s + p.peer_id + "," + p.ip + "," + std::to_string(p.port) + ")";
+    }));
+    os << "Tracker Reponse: " << endl;
+    os << "{ tracker id: "+from_maybe(s.tracker_id,""s) << endl;
+    os << ", complete: " + std::to_string(s.complete) << endl;
+    os << ", incomplete: " + std::to_string(s.incomplete) << endl;
+    os << ", interval: " + std::to_string(s.interval) << endl;
+    os << ", min interval: " + std::to_string(s.min_interval) << endl;
+    os << ", warning message: " + from_maybe(s.warning_message,""s) << endl;
+    os << ", peers: " + peers_str << endl;
+    os << "}" << endl;
+
+    return os;
+}
+
+TrackerRequest makeTrackerRequest(const MetaInfo &mi) {
     bdict info_dict = BencodeConvert::to_bdict(mi.info);
     auto encoded = bencode::encode(info_dict);
 
-    auto info_hash     = sha1_encode(encoded);
-    auto muri_info     = url_encode(info_hash);
-    auto str_info_hash = string(info_hash.begin(),info_hash.end());
     
-    if(!muri_info.hasValue) { 
-        return neither::left("Failed url encode of info hash: "s + str_info_hash); 
-    } 
-    else {
-        std::string peer_id = generate_peerId();
-        int port = 6882;
-        int uploaded = 0;
-        int downloaded = 0;
-        int left = 0;
-        int compact = 1;
-        const TrackerRequest request = TrackerRequest { 
-                                  mi.announce
-                                  , info_hash, muri_info.value
-                                  , peer_id, port
-                                  , uploaded, downloaded
-                                  , left, compact
-                                  };
-        return neither::Either<string,TrackerRequest>(right(request));;
-    }
+    auto info_hash = sha1_encode(encoded);
+    auto uri_info  = url_encode(info_hash);
+    auto peer_id   = generate_peerId();
+    auto str_peer_id = url_encode(peer_id);
+    int port = 6882;
+    int uploaded = 0;
+    int downloaded = 0;
+    int left = 0;
+    int compact = 1;
+    const TrackerRequest request = TrackerRequest { 
+                                mi.announce
+                                , info_hash, uri_info
+                                , peer_id, str_peer_id, port
+                                , uploaded, downloaded
+                                , left, compact
+                                };
+    return request;
 }
 
 std::size_t writeTrackerResponseData(void *contents,std::size_t size,std::size_t nmemb,void *userp) {
@@ -55,7 +67,7 @@ std::size_t writeTrackerResponseData(void *contents,std::size_t size,std::size_t
 std::string toHttpGetUrl(const TrackerRequest &tr) {
     std::string ann_base = tr.announce + "?";
     std::string ih_prm   = "info_hash="+tr.url_info_hash;
-    std::string peer_prm = "peer_id="+tr.peer_id;
+    std::string peer_prm = "peer_id="+tr.url_peer_id;
     std::string port_prm = "port="+std::to_string(tr.port);
     std::string upl_prm = "uploaded="+std::to_string(tr.uploaded);
     std::string dl_prm  = "downloaded="+std::to_string(tr.downloaded);

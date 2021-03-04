@@ -14,11 +14,12 @@ enum class Event { Started, Stopped, Completed };
 struct TrackerRequest {
     public:
         std::string announce;
-        std::vector<unsigned char> info_hash;
+        std::vector<char> info_hash;
         // urlencoded 20-byte hash of info key
         std::string url_info_hash;
+        std::vector<char> peer_id;
         // urlencoded 20-byte string used as unique id for client
-        std::string peer_id;
+        std::string url_peer_id;
         // port number that client is listening on
         int port;
         // total amount uploaded in base 10 ASCII
@@ -52,8 +53,10 @@ struct TrackerResponse {
         int complete;
         int incomplete;
         std::vector<Peer> peers;
+
+        friend std::ostream & operator<<(std::ostream& out, const TrackerResponse & s);
 };
 
-neither::Either<string,TrackerRequest> makeTrackerRequest(const MetaInfo & mi);
+TrackerRequest makeTrackerRequest(const MetaInfo & mi);
 
 neither::Either<string,TrackerResponse> sendTrackerRequest(const TrackerRequest &tr);

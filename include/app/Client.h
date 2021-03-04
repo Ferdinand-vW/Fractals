@@ -2,4 +2,4 @@
 
 #include "common/utils.h"
 
-std::string generate_peerId();
+std::vector<char> generate_peerId();

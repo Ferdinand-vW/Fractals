@@ -12,6 +12,9 @@ foreach (H ${NEITHER_HEADERS})
     file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR})
 endforeach()
 
+find_package(Boost REQUIRED COMPONENTS system thread)
+include_directories(${Boost_INCLUDE_DIR})
+
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 

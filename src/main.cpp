@@ -1,7 +1,12 @@
 #include <iostream>
 #include <algorithm>
 #include <bitset>
+#include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/completion_condition.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <c++/7/bits/c++config.h>
+#include <deque>
+#include <functional>
 #include <iterator>
 #include <fstream>
 // #include "bencoding/bencoding.h"
@@ -11,12 +16,14 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <boost/asio.hpp>
 
 #include <curl/curl.h>
 #include <bencode/bencode.h>
 #include <neither/neither.hpp>
 
 #include "network/p2p/Message.h"
+#include "network/p2p/MessageType.h"
 #include "torrent/MetaInfo.h"
 #include "torrent/BencodeConvert.h"
 #include "network/http/Tracker.h"
@@ -24,6 +31,69 @@
 
 #include "common/utils.h"
 // #include "bencode/error.h"
+
+using namespace boost::asio;
+using ip::tcp;
+using std::string;
+using std::cout;
+using std::endl;
+
+// string read_(tcp::socket & socket) {
+//        boost::asio::streambuf buf;
+//        boost::asio::read_until( socket, buf, "\n" );
+//        string data = boost::asio::buffer_cast<const char*>(buf.data());
+//        return data;
+// }
+// void send_(tcp::socket & socket, const string& message) {
+//        const string msg = message + "\n";
+//        int n = 4;
+//        boost::asio::write( socket, boost::asio::buffer(message),boost::asio::transfer_exactly(),error );
+// }
+
+std::unique_ptr<IMessage> parse_message(int m_length,int m_messageId,std::deque<char> &deq_buf) {
+    switch (m_messageId) {
+        case 0: return std::make_unique<Choke>(Choke());
+        case 1: return std::make_unique<UnChoke>(UnChoke());
+        case 2: return std::make_unique<Interested>(Interested());
+        case 3: return std::make_unique<NotInterested>(NotInterested());
+        case 4: return Have::from_bytes_repr(deq_buf);
+        case 5: return Bitfield::from_bytes_repr(m_length, deq_buf);
+        case 6: return Request::from_bytes_repr(deq_buf);
+        case 7: return Piece::from_bytes_repr(m_length, deq_buf);
+        case 8: return Cancel::from_bytes_repr(deq_buf);
+        case 9: return Port::from_bytes_repr(deq_buf);
+        default:
+            throw m_messageId;
+    }
+}
+
+std::unique_ptr<IMessage> read_message(tcp::socket &socket) {
+    boost::asio::streambuf buf;
+    boost::system::error_code error;
+    int n = 4;
+    // read the message length
+    int n_bytes = boost::asio::read(socket,buf,boost::asio::transfer_exactly(n),error);
+
+    std::deque<char> deq_buf(boost::asio::buffers_begin(buf.data()),boost::asio::buffers_end(buf.data()));
+    int m_length = bytes_to_int(deq_buf);
+    buf.consume(n_bytes);
+
+    if (m_length == 0) { return std::make_unique<KeepAlive>(KeepAlive()); }
+
+    n = m_length;
+    while (n > 0) {
+        n_bytes = boost::asio::read(socket,buf,boost::asio::transfer_exactly(m_length),error);
+        n -= n_bytes;
+
+        std::copy(boost::asio::buffers_begin(buf.data()),boost::asio::buffers_end(buf.data()),back_inserter(deq_buf));
+    }
+
+    char m_messageId = deq_buf.front();
+    deq_buf.pop_front();
+
+    return parse_message(m_length,(unsigned char)m_messageId,deq_buf);
+        
+}
 
 int main() {
     std::ifstream fs;
@@ -34,6 +104,13 @@ int main() {
     const bdata bd = v.value();
     neither::Either<std::string,MetaInfo> emi = BencodeConvert::from_bdata<MetaInfo>(bd);
 
+    auto tr = emi.rightMap(makeTrackerRequest);
+    auto resp = tr.rightFlatMap(sendTrackerRequest);
+    if(resp.isLeft) {
+        cout << resp.leftValue << endl;
+    } else {
+        cout << resp.rightValue << endl;
+    }
 
     int i = 12345670;
 
@@ -62,14 +139,77 @@ int main() {
     std::bitset<8> a(c);
     cout << a << endl;
 
-    
-    // const TrackerRequest tr = makeTrackerRequest(emi.rightValue).rightValue;
-    // for(int i = 0;i<20;i++) {
-    //     printf("%02x",tr.info_hash[i]);
-    // }
+    boost::asio::io_service io_service;
+    //socket creation
+     tcp::socket socket(io_service);
+    //connection
+    auto peer = resp.rightValue.peers.front();
+    auto peer_ip = peer.ip;
+    auto peer_port = peer.port; 
+    cout << peer.peer_id << endl;
+    // 155.94.241.194:51413
+     socket.connect( tcp::endpoint( boost::asio::ip::address::from_string(peer_ip), peer_port ));
+    // request/message from client
+    auto info_hash = tr.rightValue.info_hash;
+    auto peer_id   = tr.rightValue.peer_id;
+    char reserved[8] = {0,0,0,0,0,0,0,0};
+    auto handshake = HandShake(19,"BitTorrent protocol",reserved,info_hash,peer_id);
+    auto handshake_bytes = handshake.to_bytes_repr();
+    cout << handshake_bytes.size() << endl;
+    cout << peer_id.size() << endl;
+    cout << info_hash.size() << endl;
+    // cout << std::string(handshake.to_bytes_repr().begin(),handshake.to_bytes_repr().end()) << endl;
+     const string msg1 = "Hello from Client!\n";
+     boost::system::error_code error;
+     boost::asio::write( socket, boost::asio::buffer(handshake.to_bytes_repr()), error );
+     if( !error ) {
+        cout << "Client sent hello message!" << endl;
+     }
+     else {
+        cout << "send failed: " << error.message() << endl;
+     }
+    // getting response from server
+    std::deque<char> buff;
+    boost::asio::streambuf receive_buffer;
+    // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    while(buff.size() < 68) {
+        auto n = boost::asio::read(socket, receive_buffer,boost::asio::transfer_exactly(68), error);
+        if( error && error != boost::asio::error::eof ) {
+            cout << "receive failed: " << error.message() << endl;
+        }
+        else {
+            // cout << string(data) << " s" << endl;
+            string msg(boost::asio::buffers_begin(receive_buffer.data())
+                      ,boost::asio::buffers_end(receive_buffer.data()));
+            cout << "Msg size: " << msg.size() << " | " << n << endl;
+            cout << "Read: " << msg << endl;
+            std::copy(msg.begin(),msg.end(),back_inserter(buff));
 
-    // auto resp = sendTrackerRequest(tr);
-    // if(resp.isLeft) { cout << resp.leftValue << endl; }
-    
-    // cout << resp.isLeft << endl;
+            receive_buffer.consume(n);
+        }    
+    }
+
+    char pstrlen = buff.front();
+    buff.pop_front();
+    auto hs = HandShake::from_bytes_repr(pstrlen, buff);
+    auto rsv = hs->m_reserved;
+    std::deque<char> vec_reserved;
+    vec_reserved.assign(rsv,rsv+8);
+    auto bitfield = bytes_to_bitfield(vec_reserved.size(), vec_reserved);
+    std::string str_bf;
+    for(auto b : bitfield) { b ? str_bf.push_back('1') : str_bf.push_back('0'); };
+
+    cout << "pstrlen: " << int(hs->m_pstrlen) << endl;
+    cout << "pstr: " << hs->m_pstr << endl;
+    cout << "rsv: " << str_bf << endl;
+    cout << "ih: " << bytes_to_hex(hs->m_info_hash) << endl;
+    cout << "p: " << bytes_to_hex(hs->m_peer_id) << endl;
+
+
+    boost::asio::write(socket,boost::asio::buffer(Interested().to_bytes_repr()),error);
+
+    auto im = read_message(socket);
+
+    auto m_mt = im->get_messageType();
+    cout << messageType_to_string(m_mt.value()) << endl;
 };

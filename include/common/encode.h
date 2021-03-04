@@ -8,6 +8,6 @@
 
 using namespace std;
 
-vector<unsigned char> sha1_encode(string bytes);
+vector<char> sha1_encode(string bytes);
 
-neither::Maybe<string> url_encode (const vector<unsigned char> &bytes);
+std::string url_encode (const vector<char> &bytes);

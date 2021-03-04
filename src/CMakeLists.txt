@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 
 # file(GLOB SOURCES "*.cpp" "")
-set(SOURCES main.cpp app/Client.cpp network/http/Tracker.cpp network/p2p/Message.cpp common/encode.cpp common/utils.cpp)
+set(SOURCES main.cpp app/Client.cpp network/http/Tracker.cpp network/p2p/Message.cpp network/p2p/MessageType.cpp common/encode.cpp common/utils.cpp)
 
 # Add source to this project's executable.
 add_executable (Fractals ${SOURCES})
@@ -13,6 +13,7 @@ target_include_directories(Fractals PUBLIC ${NEITHER_INCLUDE_DIR})
 target_link_libraries(Fractals bencode_lib)
 target_link_libraries(Fractals OpenSSL::SSL)
 target_link_libraries(Fractals ${CURL_LIBRARIES})
+target_link_libraries(Fractals ${BOOST_LIBRARIES} pthread)
 # target_link_libraries(Fractals_lib bencode_lib)
 
 set_target_properties(Fractals PROPERTIES

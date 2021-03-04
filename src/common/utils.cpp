@@ -1,7 +1,11 @@
 
 #include "common/utils.h"
+#include <algorithm>
 #include <cstdlib>
+#include <iomanip>
+#include <iterator>
 #include <string>
+#include <sstream>
 #include <neither/neither.hpp>
 
 std::string str_concat_vector(const std::vector<std::string> &v) {
@@ -41,6 +45,16 @@ std::string random_alphaNumerical(int length) {
     }
 
     return s;
+}
+
+std::string bytes_to_hex(const std::vector<char> &bytes) {
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for(auto &b : bytes) {
+        ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(b)); 
+    };
+
+    return ss.str();
 }
 
 std::vector<char> int_to_bytes(int n)  {

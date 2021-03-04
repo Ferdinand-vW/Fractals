@@ -25,6 +25,8 @@ std::string make_sized_line(std::string s,int len);
 
 std::string random_alphaNumerical(int length);
 
+std::string bytes_to_hex(const std::vector<char> &bytes);
+
 std::vector<char> int_to_bytes(int n);
 
 int bytes_to_int(std::deque<char> &d);
