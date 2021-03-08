@@ -8,29 +8,29 @@
 using namespace neither;
 
 template <class A>
-static neither::Maybe<A> to_maybe(std::optional<A> opt) {
+static neither::Maybe<A> to_maybe(const std::optional<A> &opt) {
     if(opt.has_value()) { return opt.value(); }
     else                { return {}; }
 }
 
-static neither::Maybe<bencode::bstring> to_bstring(bencode::bdata bd) {
+static neither::Maybe<bencode::bstring> to_bstring(const bencode::bdata &bd) {
     return to_maybe(bd.get_bstring());
 }
 
-static neither::Maybe<bencode::bint> to_bint(bencode::bdata bd) {
+static neither::Maybe<bencode::bint> to_bint(const bencode::bdata &bd) {
     return to_maybe(bd.get_bint());
 }
 
-static neither::Maybe<bencode::blist> to_blist(bencode::bdata bd) {
+static neither::Maybe<bencode::blist> to_blist(const bencode::bdata &bd) {
     return to_maybe(bd.get_blist());
 }
 
-static neither::Maybe<bencode::bdict> to_bdict(bencode::bdata bd) {
+static neither::Maybe<bencode::bdict> to_bdict(const bencode::bdata &bd) {
     return to_maybe(bd.get_bdict());
 }
 
 template <class A,class B>
-static Maybe<std::vector<B>> mmap_vector(std::vector<A> vec,std::function<Maybe<B>(A)> f) {
+static Maybe<std::vector<B>> mmap_vector(const std::vector<A> &vec,std::function<Maybe<B>(A)> f) {
     std::vector<B> vec_out;
     for(auto &a : vec) {
         auto mb = f(a);
@@ -41,7 +41,7 @@ static Maybe<std::vector<B>> mmap_vector(std::vector<A> vec,std::function<Maybe<
 }
 
 template <class A,class B, class C>
-static Either<B,std::vector<C>> mmap_vector(std::vector<A> vec,std::function<Either<B,C>(A)> f) {
+static Either<B,std::vector<C>> mmap_vector(const std::vector<A> &vec,std::function<Either<B,C>(A)> f) {
     std::vector<C> vec_out;
     for(auto &a : vec) {
         auto eb = f(a);

@@ -14,6 +14,8 @@ class IMessage {
     public:
         // virtual int get_length();
         virtual std::optional<MessageType> get_messageType() = 0;
+        // length specified by BitTorrent specification
+        virtual int get_length() = 0;
         virtual std::vector<char> to_bytes_repr() const = 0;
         virtual ~IMessage() {};
 };
@@ -29,6 +31,8 @@ class HandShake : public IMessage {
         HandShake(unsigned char pstrlen,std::string pstr,char (&reserved)[8],std::vector<char> info_hash,std::vector<char> peer_id);
         std::vector<char> to_bytes_repr() const;
         std::optional<MessageType> get_messageType();
+        // Does not include size of char pstrlen
+        int get_length();
         static std::unique_ptr<HandShake> from_bytes_repr(unsigned char len,std::deque<char> &bytes);
 };
 
@@ -36,6 +40,7 @@ class KeepAlive : public IMessage {
     int m_len = 0;
     public:
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
 };
 
@@ -44,6 +49,7 @@ class Choke : public IMessage {
     MessageType m_messageType = MessageType::MT_Choke;
     public:
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
 };
 
@@ -52,6 +58,7 @@ class UnChoke : public IMessage {
     MessageType m_messageType = MessageType::MT_UnChoke;
     public:
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
 };
 
@@ -60,6 +67,7 @@ class Interested : public IMessage {
     MessageType m_messageType = MessageType::MT_Interested;
     public:
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
 };
 
@@ -68,16 +76,20 @@ class NotInterested : public IMessage {
     MessageType m_messageType = MessageType::MT_NotInterested;
     public:
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
 };
 
 class Have : public IMessage {
     int m_len = 5;
     MessageType m_messageType = MessageType::MT_Have;
-    int m_piece_index;
+    
     public:
+        int m_piece_index;
+
         Have(int piece_index);
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Have> from_bytes_repr(std::deque<char> &bytes);
 };
@@ -85,10 +97,13 @@ class Have : public IMessage {
 class Bitfield : public IMessage {
     int m_len;
     MessageType m_messageType = MessageType::MT_Bitfield;
-    std::vector<bool> m_bitfield;
+    
     public:
+        std::vector<bool> m_bitfield;
+
         Bitfield(int len,const std::vector<bool> &bitfield);
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Bitfield> from_bytes_repr(int len, std::deque<char> &bytes);
 };
@@ -103,6 +118,7 @@ class Request : public IMessage {
     public:
         Request(int index,int begin,int length);
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Request> from_bytes_repr(std::deque<char> &bytes);
 };
@@ -110,13 +126,15 @@ class Request : public IMessage {
 class Piece : public IMessage {
     int m_len;
     MessageType m_messageType = MessageType::MT_Piece;
-    int m_index;
-    int m_begin;
-    std::vector<char> m_block;
     
     public:
+        int m_index;
+        int m_begin;
+        std::vector<char> m_block;
+
         Piece(int index,int begin, std::vector<char> &&block);
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Piece> from_bytes_repr(int m_len,std::deque<char> &bytes);
 };
@@ -131,6 +149,7 @@ class Cancel : public IMessage {
     public:
         Cancel(int index,int begin,int length);
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Cancel> from_bytes_repr(std::deque<char> &bytes);
 };
@@ -143,6 +162,7 @@ class Port : public IMessage {
     public:
         Port(int port);
         std::optional<MessageType> get_messageType();
+        int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Port> from_bytes_repr(std::deque<char> &bytes);
 };

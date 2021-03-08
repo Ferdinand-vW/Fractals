@@ -40,26 +40,12 @@ struct MultiFile {
         }
 };
 
-struct SingleFile {
-    public:
-        Maybe<std::string> name; // file name
-        long long length;
-        Maybe<std::vector<char>> md5sum;
-
-        string to_string(int len = 100) {
-            Maybe<string> md5sum_s = md5sum.map([](const auto &v) { return string(v.begin(),v.end()); });
-            string s ("SF { name: " + from_maybe(name,"<empty>"s) + ", length: " + std::to_string(length) + ", md5sum: " + from_maybe(md5sum_s,"<empty>"s));
-            cout << s;
-            return s;
-        }
-};
-
 struct InfoDict {
     public:
         long long piece_length;
         std::vector<char> pieces;
         Maybe<long long> publish; // if set to 1 then publish
-        Either<SingleFile,MultiFile> file_mode;
+        Either<FileInfo,MultiFile> file_mode;
 
         string to_string(int len = 100) {
             auto s_id  = "InfoDict"s;
@@ -69,9 +55,9 @@ struct InfoDict {
             auto pb_to_string = [](auto a) { return std::to_string(a); };
             auto s_pb  = ", publish: "s + maybe_to_val<long long,string>(publish,pb_to_string,"<empty>"s);
             
-            auto sf_to_string = [len](SingleFile sf) { return sf.to_string(len); };
+            auto sf_to_string = [len](FileInfo fi) { return fi.to_string(len); };
             auto mf_to_string = [len](MultiFile mf) { return mf.to_string(len); };
-            auto s_fm  = ", file mode: "s + either_to_val<SingleFile,MultiFile,string>(file_mode,sf_to_string,mf_to_string);
+            auto s_fm  = ", file mode: "s + either_to_val<FileInfo,MultiFile,string>(file_mode,sf_to_string,mf_to_string);
             auto s_end = "\n}\n"s;
             auto v = {s_id,s_pl,s_pcs,s_pb};
             auto to_line = [len](auto s) { return make_sized_line(s,len); };

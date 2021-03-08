@@ -23,6 +23,8 @@ std::string intercalate(std::string del,const std::vector<std::string> &v);
 
 std::string make_sized_line(std::string s,int len);
 
+std::string concat_paths(std::vector<std::string> v);
+
 std::string random_alphaNumerical(int length);
 
 std::string bytes_to_hex(const std::vector<char> &bytes);

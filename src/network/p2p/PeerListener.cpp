@@ -1,7 +1,7 @@
 #include "network/p2p/PeerListener.h"
 #include "common/utils.h"
 
-PeerListener::PeerListener(PeerId p,tcp::socket &sock) : m_peer(p),m_socket(sock) {};
+PeerListener::PeerListener(PeerId p,std::shared_ptr<tcp::socket> sock) : m_socket(sock),m_peer(p) {};
 
 std::unique_ptr<IMessage> parse_message(int m_length,int m_messageId,std::deque<char> &deq_buf) {
     switch (m_messageId) {
@@ -46,4 +46,8 @@ std::unique_ptr<IMessage> read_message(tcp::socket &socket) {
 
     return parse_message(m_length,(unsigned char)m_messageId,deq_buf);
         
+}
+
+PeerId PeerListener::get_peerId() {
+    return m_peer;
 }

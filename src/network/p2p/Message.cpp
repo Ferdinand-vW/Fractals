@@ -1,6 +1,7 @@
 #include "network/p2p/Message.h"
 #include "common/utils.h"
 #include "network/p2p/MessageType.h"
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <vector>
@@ -16,6 +17,11 @@ HandShake::HandShake(unsigned char pstrlen,std::string pstr,char (&reserved)[8],
 
 std::optional<MessageType> HandShake::get_messageType() {
     return {};
+}
+
+int HandShake::get_length() {
+    int pstrlen = static_cast<int>(static_cast<unsigned char>(m_pstrlen)) ;
+    return pstrlen + strlen(m_reserved) + m_info_hash.size() + m_peer_id.size();
 }
 
 std::vector<char> HandShake::to_bytes_repr() const {
@@ -52,6 +58,10 @@ std::optional<MessageType> KeepAlive::get_messageType() {
     return {};
 }
 
+int KeepAlive::get_length() {
+    return m_len;
+}
+
 std::vector<char> Choke::to_bytes_repr() const {
     std::vector<char> v = int_to_bytes(m_len);
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
@@ -61,6 +71,10 @@ std::vector<char> Choke::to_bytes_repr() const {
 
 std::optional<MessageType> Choke::get_messageType() {
     return m_messageType;
+}
+
+int Choke::get_length() {
+    return m_len;
 }
 
 std::vector<char> UnChoke::to_bytes_repr() const {
@@ -74,6 +88,10 @@ std::optional<MessageType> UnChoke::get_messageType() {
     return m_messageType;
 }
 
+int UnChoke::get_length() {
+    return m_len;
+}
+
 std::vector<char> Interested::to_bytes_repr() const {
     std::vector<char> v = int_to_bytes(m_len);
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
@@ -83,6 +101,10 @@ std::vector<char> Interested::to_bytes_repr() const {
 
 std::optional<MessageType> Interested::get_messageType() {
     return m_messageType;
+}
+
+int Interested::get_length() {
+    return m_len;
 }
 
 std::vector<char> NotInterested::to_bytes_repr() const {
@@ -96,12 +118,20 @@ std::optional<MessageType> NotInterested::get_messageType() {
     return m_messageType;
 }
 
+int NotInterested::get_length() {
+    return m_len;
+}
+
 Have::Have(int piece_index) {
     m_piece_index = piece_index;
 }
 
 std::optional<MessageType> Have::get_messageType() {
     return m_messageType;
+}
+
+int Have::get_length() {
+    return m_len;
 }
 
 std::vector<char> Have::to_bytes_repr() const {
@@ -127,6 +157,10 @@ std::optional<MessageType> Bitfield::get_messageType() {
     return m_messageType;
 }
 
+int Bitfield::get_length() {
+    return m_len;
+}
+
 std::vector<char> Bitfield::to_bytes_repr() const {
     std::vector<char> v = int_to_bytes(m_len);
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
@@ -150,6 +184,10 @@ Request::Request(int index, int begin, int length) {
 
 std::optional<MessageType> Request::get_messageType() {
     return m_messageType;
+}
+
+int Request::get_length() {
+    return m_len;
 }
 
 std::vector<char> Request::to_bytes_repr() const {
@@ -184,6 +222,10 @@ std::optional<MessageType> Piece::get_messageType() {
     return m_messageType;
 }
 
+int Piece::get_length() {
+    return m_len;
+}
+
 std::vector<char> Piece::to_bytes_repr() const {
     std::vector<char> v(int_to_bytes(m_len));
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
@@ -214,6 +256,10 @@ std::optional<MessageType> Cancel::get_messageType() {
     return m_messageType;
 }
 
+int Cancel::get_length() {
+    return m_len;
+}
+
 std::vector<char> Cancel::to_bytes_repr() const {
     std::vector<char> v(int_to_bytes(m_len));
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
@@ -242,6 +288,10 @@ Port::Port(int port) {
 
 std::optional<MessageType> Port::get_messageType() {
     return m_messageType;
+}
+
+int Port::get_length() {
+    return m_len;
 }
 
 std::vector<char> Port::to_bytes_repr() const {

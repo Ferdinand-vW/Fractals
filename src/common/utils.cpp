@@ -6,6 +6,7 @@
 #include <iterator>
 #include <string>
 #include <sstream>
+#include <boost/filesystem.hpp>
 #include <neither/neither.hpp>
 
 std::string str_concat_vector(const std::vector<std::string> &v) {
@@ -28,6 +29,15 @@ std::string intercalate(std::string del,const std::vector<std::string> &v) {
 
 std::string make_sized_line(std::string s,int len) {
     return s.substr(0,len) + "\n";
+}
+
+std::string concat_paths(std::vector<std::string> v) {
+    boost::filesystem::path p = "";
+    for(auto s : v) {
+        p /= s;
+    }
+
+    return p.string();
 }
 
 std::string random_alphaNumerical(int length) {

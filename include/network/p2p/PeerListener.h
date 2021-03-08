@@ -12,14 +12,15 @@ using ip::tcp;
 class PeerListener {
     bool m_run = false;
     bool m_connected = false;
-    tcp::socket m_socket;
+    std::shared_ptr<tcp::socket> m_socket;
     PeerId m_peer;
 
     public:
-        PeerListener(PeerId m_peer,tcp::socket &socket);
+        PeerListener(PeerId m_peer,std::shared_ptr<tcp::socket> socket);
 
-        ConnectionEnded listen();
+        PeerId get_peerId();
 
         std::unique_ptr<IMessage> wait_message();
+
         void stop();
 };
