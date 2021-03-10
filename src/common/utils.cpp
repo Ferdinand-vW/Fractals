@@ -6,7 +6,7 @@
 #include <iterator>
 #include <string>
 #include <sstream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <neither/neither.hpp>
 
 std::string str_concat_vector(const std::vector<std::string> &v) {
@@ -32,7 +32,7 @@ std::string make_sized_line(std::string s,int len) {
 }
 
 std::string concat_paths(std::vector<std::string> v) {
-    boost::filesystem::path p = "";
+    std::filesystem::path p = "";
     for(auto s : v) {
         p /= s;
     }

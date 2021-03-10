@@ -2,7 +2,13 @@
 
 #include <string>
 
-struct PeerId {
-    std::string ip;
-    uint port;
+class PeerId {
+    public:
+        std::string m_ip;
+        uint m_port;
+
+        PeerId(std::string ip,uint port);
+
+        bool operator<(const PeerId &p2) const;
+
 };

@@ -22,5 +22,7 @@ class PeerListener {
 
         std::unique_ptr<IMessage> wait_message();
 
+        std::unique_ptr<HandShake> receive_handshake();
+
         void stop();
 };

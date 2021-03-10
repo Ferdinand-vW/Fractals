@@ -27,10 +27,12 @@ class Client {
 
     std::shared_ptr<tcp::socket> m_socket;
 
-    std::shared_ptr<Torrent> m_torrent;
+    Torrent m_torrent;
     
     public:
-        Client(std::shared_ptr<tcp::socket> socket,std::shared_ptr<Torrent> torrent);
+        std::vector<char> m_client_id;
+        
+        Client(std::shared_ptr<tcp::socket> socket,const Torrent &torrent);
 
         bool connect_peer(PeerId p);
 
@@ -45,6 +47,8 @@ class Client {
         void received_cancel(PeerId p, Cancel c);
         void received_garbage(PeerId p);
         // void received_port(PeerId p,Port port)
+
+        void send_handshake(const HandShake &hs);
 
         void add_peer(PeerId p);
 };

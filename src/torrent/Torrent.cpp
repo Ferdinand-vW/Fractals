@@ -1,29 +1,45 @@
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/directory.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <fstream>
+#include <iterator>
 
+#include "bencode/bencode.h"
+#include "common/encode.h"
 #include "common/utils.h"
 #include "torrent/Torrent.h"
 #include "torrent/MetaInfo.h"
+#include "torrent/BencodeConvert.h"
 
 
 Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_mi(mi) {
     auto info = m_mi.info;
     auto fm = info.file_mode;
-    boost::filesystem::path p(fileName);
+    std::filesystem::path p(fileName);
     if(fm.isLeft) {
-        auto paths = fm.leftValue.path;
-        if(paths.begin() != paths.end()) { m_name = paths.front(); }
-        else { m_name = p.filename().stem().string(); }
-        m_files.push_back(fm.leftValue);
+        auto fname = from_maybe(fm.leftValue.name,fileName);
+        std::vector<std::string> paths;
+        paths.push_back(fname);
+        m_files.push_back(FileInfo { fm.leftValue.length, fm.leftValue.md5sum, paths});
     }
     else {
         auto mdir = fm.rightValue.name;
         m_dir = from_maybe(mdir,p.filename().stem().string());
-        m_files = fm.rightValue.files;
+        std::copy(fm.rightValue.files.begin(),fm.rightValue.files.end(),back_inserter(m_files));
     }
+
+    m_info_hash = sha1_encode(bencode::encode(BencodeConvert::to_bdict(m_mi.info)));
+}
+
+Torrent Torrent::read_torrent(std::string fp) {
+    std::ifstream fstream;
+    fstream.open(fp, std::ifstream::binary);
+    auto mbd = bencode::decode<bencode::bdict>(fstream);
+    bencode::bdict bd_ = mbd.value();
+
+    std::filesystem::path p(fp);
+    neither::Either<std::string,MetaInfo> bd = BencodeConvert::from_bdata<MetaInfo>(bencode::bdata(bd_));
+
+    return Torrent(bd.rightValue,p.stem().string());
+
 }
 
 std::vector<FileData> Torrent::match_file_data(int piece,int offset, int len) {
@@ -69,14 +85,14 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
     
     //create root directory if does not exist
     if(m_dir != "") {
-        boost::filesystem::create_directory(m_dir);
+        std::filesystem::create_directory(m_dir);
     }
 
     for(auto fd : fds) {
         auto fp = concat_paths(fd.fi.path);
-        boost::filesystem::path p(fp);
-        boost::filesystem::create_directories(p); //creates the (sub)directories if they don't exist already
-        if(!boost::filesystem::exists(p)) {
+        std::filesystem::path p(fp);
+        std::filesystem::create_directories(p); //creates the (sub)directories if they don't exist already
+        if(!std::filesystem::exists(p)) {
             std::fstream fstream;
             fstream.open(fp,std::fstream::out | std::fstream::binary);
             fstream.seekp(fd.fi.length-1);
@@ -85,7 +101,7 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
     }
 }
 
-void Torrent::write_data(int piece, int offset, std::vector<char> bytes) {
+void Torrent::write_data(int piece, int offset, const std::vector<char> &bytes) {
     auto fds = match_file_data(piece, offset, bytes.size());
 
     create_files(fds);

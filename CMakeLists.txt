@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.8)
 project(Fractals)
 
+set(CMAKE_CXX_STANDARD 17)
+
 set(SOURCE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
 set(NEITHER_HEADER_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/include)
@@ -12,7 +14,7 @@ foreach (H ${NEITHER_HEADERS})
     file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR})
 endforeach()
 
-find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(Boost 1.74.0 COMPONENTS system thread REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 find_package(OpenSSL REQUIRED)

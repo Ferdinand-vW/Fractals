@@ -1,4 +1,3 @@
-#include <c++/7/bits/c++config.h>
 #include <cstring>
 #include <fstream>
 #include <functional>

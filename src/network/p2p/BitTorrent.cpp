@@ -1,12 +1,54 @@
 #include "network/p2p/BitTorrent.h"
+#include "network/http/Tracker.h"
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/address.hpp>
+#include <memory>
 
 BitTorrent::BitTorrent(Torrent &t) : m_torrent(t) {};
 
-void setup() {
+void BitTorrent::request_peers() {
+    auto tr = makeTrackerRequest(m_torrent.m_mi);
+    auto resp = sendTrackerRequest(tr);
 
+    if(resp.isLeft) {
+        cout << "Failed to receive tracker response with error " << resp.leftValue << endl;
+    }
+    else {
+        for(auto &p : resp.rightValue.peers) {
+            PeerId peer = PeerId { p.ip,p.port };
+            m_available_peers.insert(peer);
+        }
+    }
 }
 
-void perform_handshake() {
+
+PeerId BitTorrent::choose_peer() {
+    auto it = m_available_peers.begin();
+    PeerId p = *it;
+    m_available_peers.erase(p);
+    return p;
+}
+
+void BitTorrent::connect_to_peer(PeerId p) {
+    boost::asio::io_service io_service;
+    tcp::socket socket(io_service);
+    auto endp = tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port);
+    socket.connect(endp);
+
+    auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
+    Client c(shared_socket,m_torrent);
+    PeerListener pl(p,shared_socket);
+
+    m_client = std::make_shared<Client>(c);
+    m_peer = std::make_shared<PeerListener>(pl);
+}
+
+void BitTorrent::perform_handshake() {
+    std::string prot("BitTorrent protocol");
+    char reserved[8] = {0,0,0,0,0,0,0,0};
+    auto handshake = HandShake(prot.size(),prot,reserved,m_torrent.m_info_hash,m_client->m_client_id);
+    m_client->send_handshake(handshake);
+    auto peer_handshake = m_peer->receive_handshake();
 
 }
 
@@ -69,6 +111,6 @@ void BitTorrent::run() {
     
     perform_handshake();
 
-    startThread(read_messages(m_client,m_peer));
+    // startThread(read_messages(m_client,m_peer));
 
 }

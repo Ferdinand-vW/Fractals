@@ -6,8 +6,6 @@
 #include <neither/maybe.hpp>
 #include <vector>
 
-using namespace std;
+std::vector<char> sha1_encode(std::string bytes);
 
-vector<char> sha1_encode(string bytes);
-
-std::string url_encode (const vector<char> &bytes);
+std::string url_encode (const std::vector<char> &bytes);

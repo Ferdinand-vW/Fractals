@@ -29,4 +29,10 @@ class BitTorrent {
     public:
         BitTorrent (Torrent &t);
         void run();
+
+    private:
+        void request_peers();
+        PeerId choose_peer();
+        void connect_to_peer(PeerId p);
+        void perform_handshake();
 };
