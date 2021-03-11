@@ -8,6 +8,7 @@
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
 #include "torrent/Torrent.h"
+#include "torrent/PieceData.h"
 
 using namespace boost::asio;
 using ip::tcp;
@@ -19,15 +20,17 @@ struct P2PStatus {
     bool m_peer_interested = false;
     std::set<int> m_available_pieces;
 };
-
 class Client {
     std::map<PeerId,P2PStatus> m_peer_status;
 
-    std::set<int> m_pieces;
+    std::set<int> m_missing_pieces;
+    std::set<int> m_existing_pieces;
 
     std::shared_ptr<tcp::socket> m_socket;
 
     Torrent m_torrent;
+
+    std::shared_ptr<PieceData> cur_piece;
     
     public:
         std::vector<char> m_client_id;
@@ -49,6 +52,7 @@ class Client {
         // void received_port(PeerId p,Port port)
 
         void send_handshake(const HandShake &hs);
+        void send_piece_request(PeerId p);
 
         void add_peer(PeerId p);
 };

@@ -67,6 +67,16 @@ std::string bytes_to_hex(const std::vector<char> &bytes) {
     return ss.str();
 }
 
+std::string bytes_to_hex(const std::deque<char> &bytes) {
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for(auto &b : bytes) {
+        ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(b)); 
+    };
+
+    return ss.str();
+}
+
 std::vector<char> int_to_bytes(int n)  {
     std::vector<char> v;
     v.push_back(n >> 24);

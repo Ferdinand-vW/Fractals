@@ -28,6 +28,7 @@ std::string concat_paths(std::vector<std::string> v);
 std::string random_alphaNumerical(int length);
 
 std::string bytes_to_hex(const std::vector<char> &bytes);
+std::string bytes_to_hex(const std::deque<char> &bytes);
 
 std::vector<char> int_to_bytes(int n);
 

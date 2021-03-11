@@ -111,11 +111,12 @@ class Bitfield : public IMessage {
 class Request : public IMessage {
     int m_len = 13;
     MessageType m_messageType = MessageType::MT_Request;
-    int m_index;
-    int m_begin;
-    int m_length;
-
+    
     public:
+        int m_index;
+        int m_begin;
+        int m_length;
+
         Request(int index,int begin,int length);
         std::optional<MessageType> get_messageType();
         int get_length();

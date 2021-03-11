@@ -44,7 +44,7 @@ int main() {
     auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/ubuntu.torrent");
     auto bt = BitTorrent(torr);
 
-    // bt.run();
+    bt.run();
 }
 
 // int main() {

@@ -5,6 +5,7 @@
 #include "bencode/bencode.h"
 #include "common/encode.h"
 #include "common/utils.h"
+#include "network/p2p/Message.h"
 #include "torrent/Torrent.h"
 #include "torrent/MetaInfo.h"
 #include "torrent/BencodeConvert.h"
@@ -101,10 +102,15 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
     }
 }
 
-void Torrent::write_data(int piece, int offset, const std::vector<char> &bytes) {
-    auto fds = match_file_data(piece, offset, bytes.size());
+void Torrent::write_data(PieceData &&pd) {
+    auto fds = match_file_data(pd.m_piece_index, 0, pd.m_length);
 
     create_files(fds);
+
+    std::vector<char> bytes;
+    for(auto &b : pd.m_blocks) {
+        std::move(b.m_data.begin(),b.m_data.end(),back_inserter(bytes));
+    }
 
     int bytes_pos = 0;
     for(auto fd : fds) {
@@ -114,8 +120,9 @@ void Torrent::write_data(int piece, int offset, const std::vector<char> &bytes) 
 
         fstream.seekp(fd.begin); // set the correct offset to start write
 
-        std::vector<char> bytes_for_file(bytes.begin() + bytes_pos,bytes.begin() + fd.end - fd.begin);
+        std::vector<char> bytes_for_file(bytes.begin() + bytes_pos,bytes.begin() + bytes_pos + fd.end - fd.begin);
         fstream.write(bytes_for_file.data(), bytes_for_file.size());
+        bytes_pos = fd.end - fd.begin;
 
         fstream.close();
     }

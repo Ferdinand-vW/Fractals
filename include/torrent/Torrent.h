@@ -1,6 +1,7 @@
 #pragma once
 
 #include "torrent/MetaInfo.h"
+#include "torrent/PieceData.h"
 #include <string>
 
 struct FileData {
@@ -19,7 +20,7 @@ class Torrent {
 
         Torrent(MetaInfo &mi,std::string fileName);
 
-        void write_data(int piece,int offset,const std::vector<char> &bytes);
+        void write_data(PieceData && pd);
         static Torrent read_torrent(std::string fp);
 
     private:
