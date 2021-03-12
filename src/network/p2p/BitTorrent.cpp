@@ -2,6 +2,7 @@
 #include "network/http/Tracker.h"
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/address.hpp>
+#include <condition_variable>
 #include <memory>
 #include <thread>
 
@@ -41,7 +42,9 @@ void BitTorrent::connect_to_peer(PeerId p) {
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
     cout << "created shared pointer to socket" << endl;
 
-    Client c(shared_socket,m_torrent);
+    std::mutex mu;
+    std::condition_variable cv;
+    Client c(mu,cv,shared_socket,m_torrent);
     PeerListener pl(p,shared_socket);
 
     m_client = std::make_shared<Client>(c);
@@ -58,6 +61,15 @@ void BitTorrent::perform_handshake() {
     auto peer_handshake = m_peer->receive_handshake();
     cout << "received handshake" << endl;
 
+}
+
+void request_pieces(std::shared_ptr<Client> client,std::shared_ptr<PeerListener> peer) {
+
+    while(!client->has_all_pieces() && !client->is_choked_by(peer->get_peerId())) {
+
+        client->send_piece_request(peer->get_peerId());
+
+    }
 }
 
 
@@ -130,7 +142,8 @@ void BitTorrent::run() {
     perform_handshake();
 
     std::thread peer_thread(read_messages,m_client,m_peer);
-
+    std::thread client_thread(request_pieces,m_client,m_peer);
+    client_thread.join();
     peer_thread.join();
     // startThread(read_messages(m_client,m_peer));
 

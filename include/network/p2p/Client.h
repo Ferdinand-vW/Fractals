@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <fstream>
 #include <set>
 #include <boost/asio.hpp>
@@ -28,6 +29,9 @@ class Client {
 
     std::shared_ptr<tcp::socket> m_socket;
 
+    std::mutex& m_request_mutex;
+    std::condition_variable &m_request_cv;
+
     Torrent m_torrent;
 
     std::shared_ptr<PieceData> cur_piece;
@@ -35,9 +39,12 @@ class Client {
     public:
         std::vector<char> m_client_id;
         
-        Client(std::shared_ptr<tcp::socket> socket,const Torrent &torrent);
+        Client(std::mutex &request_mutex,std::condition_variable &request_cv
+              ,std::shared_ptr<tcp::socket> socket,const Torrent &torrent);
 
         bool connect_peer(PeerId p);
+        bool has_all_pieces();
+        bool is_choked_by(PeerId p);
 
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
