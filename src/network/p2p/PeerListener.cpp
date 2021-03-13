@@ -11,8 +11,7 @@
 
 PeerListener::PeerListener(PeerId p
                           ,std::shared_ptr<Client> client
-                          ,boost::asio::io_context::strand strand
-                          ,std::shared_ptr<tcp::socket> sock) : m_strand(strand),m_client(client),m_socket(sock),m_peer(p) {
+                          ,std::shared_ptr<tcp::socket> sock) : m_client(client),m_socket(sock),m_peer(p) {
 
 };
 
@@ -61,9 +60,6 @@ std::unique_ptr<HandShake> PeerListener::receive_handshake() {
 
 void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
 
-    m_strand.post([]() {
-
-    });
 }
 
 

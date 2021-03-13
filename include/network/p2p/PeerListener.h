@@ -20,7 +20,6 @@ class PeerListener {
     bool m_run = false;
     bool m_connected = false;
     std::shared_ptr<tcp::socket> m_socket;
-    boost::asio::io_context::strand m_strand;
     std::shared_ptr<Client> m_client;
     PeerId m_peer;
 
@@ -29,11 +28,11 @@ class PeerListener {
     public:
         PeerListener(PeerId m_peer
                     ,std::shared_ptr<Client> client
-                    ,boost::asio::io_context::strand strand
                     ,std::shared_ptr<tcp::socket> socket);
 
         PeerId get_peerId();
 
+        void read_messages();
         void read_message_length(boost::system::error_code error, size_t size);
         void read_message_body(boost::system::error_code error, size_t size, int length);
 

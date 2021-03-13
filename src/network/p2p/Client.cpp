@@ -1,13 +1,17 @@
 #include "network/p2p/Client.h"
+#include "boost/bind.hpp"
 #include "app/Client.h"
 #include "network/p2p/PeerId.h"
 #include "torrent/PieceData.h"
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/io_context.hpp>
 #include <condition_variable>
 #include <mutex>
 #include <string>
 
 Client::Client(std::unique_ptr<std::mutex> request_mutex,std::unique_ptr<std::condition_variable> request_cv
-              ,std::shared_ptr<tcp::socket> socket,std::shared_ptr<Torrent> torrent)
+              ,std::shared_ptr<tcp::socket> socket
+              ,std::shared_ptr<Torrent> torrent)
               : m_request_cv(std::move(request_cv))
               ,m_request_mutex(std::move(request_mutex))
               ,m_socket(socket)
@@ -104,9 +108,21 @@ void Client::send_handshake(const HandShake &hs) {
     boost::asio::write(*m_socket.get(),boost::asio::buffer(hs.to_bytes_repr()));
 }
 
+void Client::send_messages(PeerId p) {
+    send_interested(p);
+
+
+}
+
 void Client::send_interested(PeerId p) {
     std::unique_lock<std::mutex> lock(*m_request_mutex.get());
-    boost::asio::write(*m_socket.get(),boost::asio::buffer(Interested().to_bytes_repr()));
+    boost::asio::async_write(*m_socket.get()
+                            ,boost::asio::buffer(Interested().to_bytes_repr())
+                            ,boost::bind(&Client::sent_interested,this, p));
+}
+
+void Client::sent_interested(PeerId p) {
+    m_peer_status[p].m_am_interested = true;
 }
 
 void Client::send_piece_request(PeerId p) {

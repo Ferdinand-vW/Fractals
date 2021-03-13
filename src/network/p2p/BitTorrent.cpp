@@ -37,7 +37,6 @@ void BitTorrent::connect_to_peer(PeerId p) {
     cout << "connecting.." << endl;
     socket.connect(endp);
     
-
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
     cout << "created shared pointer to socket" << endl;
 
@@ -46,9 +45,9 @@ void BitTorrent::connect_to_peer(PeerId p) {
 
     Client c(std::move(mu),std::move(cv),shared_socket,m_torrent);
     m_client = std::make_shared<Client>(std::move(c));
-    boost::asio::io_context::strand strand(*m_io.get());
+    
 
-    PeerListener pl(p,m_client,strand,shared_socket);
+    PeerListener pl(p,m_client,shared_socket);
 
     m_peer = std::make_shared<PeerListener>(std::move(pl));
 }
@@ -147,7 +146,8 @@ void BitTorrent::run() {
     perform_handshake();
 
     
-    // read_peer_messages(m_peer);
+    // m_client
+    // m_peer->read_message_length(boost::system::error_code error, size_t size)
 
     m_io->run();
 

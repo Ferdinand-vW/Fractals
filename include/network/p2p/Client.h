@@ -49,7 +49,8 @@ class Client {
         std::vector<char> m_client_id;
         
         Client(std::unique_ptr<std::mutex> request_mutex,std::unique_ptr<std::condition_variable> request_cv
-              ,std::shared_ptr<tcp::socket> socket,std::shared_ptr<Torrent> torrent);
+              ,std::shared_ptr<tcp::socket> socket
+              ,std::shared_ptr<Torrent> torrent);
 
         bool connect_peer(PeerId p);
         bool has_all_pieces();
@@ -68,8 +69,12 @@ class Client {
         // void received_port(PeerId p,Port port)
 
         void send_handshake(const HandShake &hs);
+        void send_messages(PeerId p);
         void send_interested(PeerId p);
         void send_piece_request(PeerId p);
 
         void add_peer(PeerId p);
+
+    private:
+        void sent_interested(PeerId p);
 };
