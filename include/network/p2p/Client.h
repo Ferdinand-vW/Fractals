@@ -22,7 +22,7 @@ struct P2PStatus {
     std::set<int> m_available_pieces;
 };
 
-enum class PieceProgress { Nothing, Requested, Downloading, Completed };
+enum class PieceProgress { Nothing, Requested, Downloaded, Completed };
 struct PieceStatus {
     PieceProgress m_progress;
     PieceData m_data;

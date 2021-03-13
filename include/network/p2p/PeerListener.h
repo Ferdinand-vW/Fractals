@@ -32,11 +32,10 @@ class PeerListener {
 
         PeerId get_peerId();
 
+        void parse_message(int length,MessageType mt,std::deque<char> &deq_buf);
         void read_messages();
         void read_message_length(boost::system::error_code error, size_t size);
-        void read_message_body(boost::system::error_code error, size_t size, int length);
-
-        std::unique_ptr<IMessage> wait_message();
+        void read_message_body(boost::system::error_code error, size_t size, int length, int remaining);
 
         std::unique_ptr<HandShake> receive_handshake();
 

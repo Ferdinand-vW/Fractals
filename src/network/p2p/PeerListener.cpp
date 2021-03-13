@@ -2,12 +2,17 @@
 #include "common/utils.h"
 #include "network/p2p/MessageType.h"
 #include <algorithm>
+#include <boost/asio/placeholders.hpp>
+#include <boost/bind.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/streambuf.hpp>
 #include <boost/system/error_code.hpp>
 #include <deque>
 #include <iterator>
+#include <mutex>
+#include <streambuf>
 
 PeerListener::PeerListener(PeerId p
                           ,std::shared_ptr<Client> client
@@ -15,18 +20,46 @@ PeerListener::PeerListener(PeerId p
 
 };
 
-std::unique_ptr<IMessage> parse_message(int length,MessageType mt,std::deque<char> &deq_buf) {
+void PeerListener::parse_message(int length,MessageType mt,std::deque<char> &deq_buf) {
     switch (mt) {
-        case MessageType::MT_Choke: return std::make_unique<Choke>(Choke());
-        case MessageType::MT_UnChoke: return std::make_unique<UnChoke>(UnChoke());
-        case MessageType::MT_Interested: return std::make_unique<Interested>(Interested());
-        case MessageType::MT_NotInterested: return std::make_unique<NotInterested>(NotInterested());
-        case MessageType::MT_Have: return Have::from_bytes_repr(deq_buf);
-        case MessageType::MT_Bitfield: return Bitfield::from_bytes_repr(length, deq_buf);
-        case MessageType::MT_Request: return Request::from_bytes_repr(deq_buf);
-        case MessageType::MT_Piece: return Piece::from_bytes_repr(length, deq_buf);
-        case MessageType::MT_Cancel: return Cancel::from_bytes_repr(deq_buf);
-        case MessageType::MT_Port: return Port::from_bytes_repr(deq_buf);
+        case MessageType::MT_Choke:
+            m_client->received_choke(m_peer);
+        case MessageType::MT_UnChoke: 
+            m_client->received_unchoke(m_peer);
+        case MessageType::MT_Interested: 
+            m_client->received_interested(m_peer);
+        case MessageType::MT_NotInterested: 
+            m_client->received_not_interested(m_peer);
+        case MessageType::MT_Have: {
+            auto h = Have::from_bytes_repr(deq_buf);
+            m_client->received_have(m_peer, h->m_piece_index);
+            break;
+        }
+        case MessageType::MT_Bitfield: {
+            auto bf = Bitfield::from_bytes_repr(length, deq_buf);
+            m_client->received_bitfield(m_peer, *bf.get());
+            break;
+        }
+        case MessageType::MT_Request: {
+            auto r = Request::from_bytes_repr(deq_buf);
+            m_client->received_request(m_peer, *r.get());
+            break;
+        }
+        case MessageType::MT_Piece: {
+            auto p = Piece::from_bytes_repr(length, deq_buf);
+            m_client->received_piece(m_peer, *p.get());
+            break;
+        }
+        case MessageType::MT_Cancel: {
+            auto c = Cancel::from_bytes_repr(deq_buf);
+            // m_client->received_cancel(m_peer, *c.get());
+            break;
+        }
+        case MessageType::MT_Port: {
+            // auto p = Port::from_bytes_repr(deq_buf);
+            // m_client->receive
+            break;
+        }
         default:
             throw mt;
     }
@@ -57,62 +90,68 @@ std::unique_ptr<HandShake> PeerListener::receive_handshake() {
     return HandShake::from_bytes_repr(pstrlen, deq_buf);
 }
 
+void PeerListener::read_messages() {
+    boost::asio::async_read(*m_socket.get()
+                           ,*m_streambuf.get()
+                           ,boost::asio::transfer_exactly(4)
+                           ,boost::bind(&PeerListener::read_message_length,this
+                           ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
+}
 
 void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
+    std::deque<char> deq_buf(boost::asio::buffers_begin(m_streambuf->data())
+                            ,boost::asio::buffers_end(m_streambuf->data()));
 
-}
-
-
-void PeerListener::read_message_body(boost::system::error_code error, size_t size, int length) {
-
-}
-
-std::unique_ptr<IMessage> PeerListener::wait_message() {
-    boost::asio::streambuf buf;
-    boost::system::error_code error;
-    int n = 4;
-    // read the message length
-    int n_bytes = boost::asio::read(*m_socket.get(),buf,boost::asio::transfer_exactly(n),error);
-    std::cout << "read messages " << n_bytes << std::endl;
-    std::deque<char> deq_buf(boost::asio::buffers_begin(buf.data()),boost::asio::buffers_end(buf.data()));
     std::string length_hex = bytes_to_hex(deq_buf);
     std::cout << "length hex: " << length_hex << std::endl;
     int m_length = bytes_to_int(deq_buf);
     std::cout << "message size: " << m_length << std::endl;
     std::cout << "deq buf size: " << deq_buf.size() << std::endl;
-    buf.consume(n_bytes);
+    m_streambuf->consume(size);
 
-    if (m_length == 0) { return std::make_unique<KeepAlive>(KeepAlive()); }
-
-    n = m_length;
-    while (n > 0) {
-        n_bytes = boost::asio::read(*m_socket.get(),buf,boost::asio::transfer_exactly(n),error);
-        n -= n_bytes;
-
-        std::vector<char> buff;
-        std::string msg(boost::asio::buffers_begin(buf.data())
-                      ,boost::asio::buffers_end(buf.data()));
-        std::copy(msg.begin(),msg.end(),back_inserter(buff));
-        std::string hex_msg = bytes_to_hex(buff);
-        std::cout << "hex_msg: " << hex_msg << std::endl;
-
-        std::copy(boost::asio::buffers_begin(buf.data()),boost::asio::buffers_end(buf.data()),back_inserter(deq_buf));
-        buf.consume(n_bytes);
-    }
-
-    std::string message_hex = bytes_to_hex(deq_buf);
-    std::cout << "message hex: " << message_hex << std::endl;
-
-    unsigned char m_messageId = deq_buf.front();
-    std::cout << (int)m_messageId << std::endl;
-    std::cout << messageType_to_string(messageType_from_id(m_messageId)) << std::endl;
-    deq_buf.pop_front();
-
-    return parse_message(m_length,messageType_from_id(m_messageId),deq_buf);
-        
+    boost::asio::async_read(*m_socket.get()
+                           ,*m_streambuf.get()
+                           ,boost::asio::transfer_exactly(m_length)
+                           ,boost::bind(&PeerListener::read_message_body,this
+                           ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
+                           ,m_length
+                           ,m_length));
 }
 
 
+void PeerListener::read_message_body(boost::system::error_code error, size_t size, int length, int remaining) {
+    if (size < remaining) {
+        boost::asio::async_read(*m_socket.get()
+                           ,*m_streambuf.get()
+                           ,boost::asio::transfer_exactly(remaining - size)
+                           ,boost::bind(&PeerListener::read_message_body,this
+                           ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
+                           ,length
+                           ,remaining - size));
+
+    } else {
+
+        if(length == 0) { read_messages(); /* m_client->received */}
+
+        std::deque<char> buff;
+        std::copy(boost::asio::buffers_begin(m_streambuf->data())
+                 ,boost::asio::buffers_end(m_streambuf->data())
+                 ,back_inserter(buff));
+        std::string hex_msg = bytes_to_hex(buff);
+        std::cout << "hex_msg: " << hex_msg << std::endl;
+
+        unsigned char m_messageId = buff.front();
+        std::cout << (int)m_messageId << std::endl;
+        std::cout << messageType_to_string(messageType_from_id(m_messageId)) << std::endl;
+        buff.pop_front();
+
+        parse_message(length,messageType_from_id(m_messageId),buff);
+
+        m_streambuf->consume(length);
+
+        read_messages();
+    }
+}
 
 PeerId PeerListener::get_peerId() {
     return m_peer;

@@ -86,7 +86,12 @@ void Client::received_piece(PeerId p, Piece pc) {
     cur_piece->m_data.add_block(b);
     if(cur_piece->m_data.is_complete()) {
         
-        cur_piece->m_progress = PieceProgress::Completed;
+        if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
+            cur_piece->m_progress = PieceProgress::Completed;
+        } else { //otherwise we can continue to request pieces
+            cur_piece->m_progress = PieceProgress::Nothing;
+        }
+        
         PieceData piece = cur_piece->m_data;
         m_torrent->write_data(std::move(piece));
 
@@ -109,13 +114,6 @@ void Client::send_handshake(const HandShake &hs) {
 }
 
 void Client::send_messages(PeerId p) {
-    send_interested(p);
-
-
-}
-
-void Client::send_interested(PeerId p) {
-    std::unique_lock<std::mutex> lock(*m_request_mutex.get());
     boost::asio::async_write(*m_socket.get()
                             ,boost::asio::buffer(Interested().to_bytes_repr())
                             ,boost::bind(&Client::sent_interested,this, p));
@@ -123,26 +121,38 @@ void Client::send_interested(PeerId p) {
 
 void Client::sent_interested(PeerId p) {
     m_peer_status[p].m_am_interested = true;
+
+    send_piece_request(p);
 }
 
 void Client::send_piece_request(PeerId p) {
     std::unique_lock<std::mutex> lock(*m_request_mutex.get());
+    
+    //only continue if we're not being choked by the peer or if we've not yet requested a (new) piece
+    m_request_cv->wait(lock,[this,p]() { 
+        auto progress = cur_piece->m_progress;
+        auto choking = m_peer_status[p].m_peer_choking; 
+        return !choking && (progress != PieceProgress::Requested); });
 
-    if(cur_piece->m_progress == PieceProgress::Downloading) {
+    if(cur_piece->m_progress == PieceProgress::Downloaded) {
         Request request(cur_piece->m_data.m_piece_index,cur_piece->m_data.next_block_begin(),m_torrent->m_mi.info.piece_length);
-        
-        boost::asio::write(*m_socket.get(),boost::asio::buffer(request.to_bytes_repr()));
+        cur_piece->m_progress = PieceProgress::Requested;
+        boost::asio::async_write(*m_socket.get()
+                                ,boost::asio::buffer(request.to_bytes_repr())
+                                ,boost::bind(&Client::send_piece_request,this,p));
 
-    } else if (cur_piece->m_progress == PieceProgress::Completed || cur_piece->m_progress == PieceProgress::Nothing) {
+    } else if (cur_piece->m_progress == PieceProgress::Nothing) {
         // find new piece to download
         auto piece = m_peer_status[p].m_available_pieces.begin();
         m_peer_status[p].m_available_pieces.erase(piece);
 
+        cur_piece->m_progress = PieceProgress::Requested;
         Request request(cur_piece->m_data.m_piece_index,0,m_torrent->m_mi.info.piece_length);
-        boost::asio::write(*m_socket.get(),boost::asio::buffer(request.to_bytes_repr()));
-    } else {
-        cout << "Unexpected Piece progress Requested in send piece request" << endl;
-    }
+        boost::asio::async_write(*m_socket.get()
+                        ,boost::asio::buffer(request.to_bytes_repr())
+                        ,boost::bind(&Client::send_piece_request,this,p));
 
-    m_request_cv->wait(lock);
+    } else {
+        cout << "Completed downloading. Leaving thread.." << endl;
+    }
 }
