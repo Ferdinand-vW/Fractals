@@ -141,6 +141,8 @@ void BitTorrent::run() {
     
     perform_handshake();
 
+    
+    read_peer_messages(m_client,m_peer);
     std::thread peer_thread(read_messages,m_client,m_peer);
     std::thread client_thread(request_pieces,m_client,m_peer);
     client_thread.join();

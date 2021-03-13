@@ -4,11 +4,17 @@
 #include <algorithm>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/system/error_code.hpp>
 #include <deque>
 #include <iterator>
 
-PeerListener::PeerListener(PeerId p,std::shared_ptr<tcp::socket> sock) : m_socket(sock),m_peer(p) {};
+PeerListener::PeerListener(PeerId p
+                          ,std::shared_ptr<Client> client
+                          ,boost::asio::io_context::strand strand
+                          ,std::shared_ptr<tcp::socket> sock) : m_strand(strand),m_client(client),m_socket(sock),m_peer(p) {
+
+};
 
 std::unique_ptr<IMessage> parse_message(int length,MessageType mt,std::deque<char> &deq_buf) {
     switch (mt) {
@@ -50,6 +56,17 @@ std::unique_ptr<HandShake> PeerListener::receive_handshake() {
     }
 
     return HandShake::from_bytes_repr(pstrlen, deq_buf);
+}
+
+
+void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
+
+    m_socket->async_read(*m_socket.get(),)
+}
+
+
+void PeerListener::read_message_body(boost::system::error_code error, size_t size, int length) {
+
 }
 
 std::unique_ptr<IMessage> PeerListener::wait_message() {
