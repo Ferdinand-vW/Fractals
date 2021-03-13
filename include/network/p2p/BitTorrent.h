@@ -4,6 +4,7 @@
 #include "network/p2p/Client.h"
 #include "network/p2p/PeerListener.h"
 #include "network/p2p/PeerId.h"
+#include <boost/asio/io_service.hpp>
 /*
 
 One Client class per Torrent
@@ -25,9 +26,11 @@ class BitTorrent {
     std::shared_ptr<Client> m_client;
     std::shared_ptr<PeerListener> m_peer;
     std::set<PeerId> m_available_peers;
-    Torrent m_torrent;
+    
+    std::shared_ptr<Torrent> m_torrent;
+    std::shared_ptr<boost::asio::io_context> m_io;
     public:
-        BitTorrent (Torrent &t);
+        BitTorrent (std::shared_ptr<Torrent> t,std::shared_ptr<boost::asio::io_context> io);
         void run();
 
     private:

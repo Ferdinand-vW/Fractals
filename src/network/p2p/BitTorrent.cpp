@@ -6,10 +6,10 @@
 #include <memory>
 #include <thread>
 
-BitTorrent::BitTorrent(Torrent &t) : m_torrent(t) {};
+BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent,std::shared_ptr<boost::asio::io_context> io) : m_torrent(torrent),m_io(io) {};
 
 void BitTorrent::request_peers() {
-    auto tr = makeTrackerRequest(m_torrent.m_mi);
+    auto tr = makeTrackerRequest(m_torrent->m_mi);
     auto resp = sendTrackerRequest(tr);
 
     if(resp.isLeft) {
@@ -32,8 +32,7 @@ PeerId BitTorrent::choose_peer() {
 }
 
 void BitTorrent::connect_to_peer(PeerId p) {
-    boost::asio::io_service io_service;
-    tcp::socket socket(io_service);
+    tcp::socket socket(*m_io.get());
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port);
     cout << "connecting.." << endl;
     socket.connect(endp);
@@ -42,19 +41,22 @@ void BitTorrent::connect_to_peer(PeerId p) {
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
     cout << "created shared pointer to socket" << endl;
 
-    std::mutex mu;
-    std::condition_variable cv;
-    Client c(mu,cv,shared_socket,m_torrent);
-    PeerListener pl(p,shared_socket);
+    std::unique_ptr<std::mutex> mu;
+    std::unique_ptr<std::condition_variable> cv;
 
-    m_client = std::make_shared<Client>(c);
-    m_peer = std::make_shared<PeerListener>(pl);
+    Client c(std::move(mu),std::move(cv),shared_socket,m_torrent);
+    m_client = std::make_shared<Client>(std::move(c));
+    boost::asio::io_context::strand strand(*m_io.get());
+
+    PeerListener pl(p,m_client,strand,shared_socket);
+
+    m_peer = std::make_shared<PeerListener>(std::move(pl));
 }
 
 void BitTorrent::perform_handshake() {
     std::string prot("BitTorrent protocol");
     char reserved[8] = {0,0,0,0,0,0,0,0};
-    auto handshake = HandShake(prot.size(),prot,reserved,m_torrent.m_info_hash,m_client->m_client_id);
+    auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
     cout << "sending handshake..." << endl;
     m_client->send_handshake(handshake);
     cout << "receiving handshake..." << endl;
@@ -73,7 +75,10 @@ void request_pieces(std::shared_ptr<Client> client,std::shared_ptr<PeerListener>
 }
 
 
-ConnectionEnded read_messages(std::shared_ptr<Client> client,std::shared_ptr<PeerListener> pl) {
+ConnectionEnded read_peer_messages(std::shared_ptr<Client> client,std::shared_ptr<PeerListener> pl) {
+    
+    
+    
     PeerId p = pl->get_peerId();
     while (true) {
         auto m = pl->wait_message();
@@ -142,11 +147,13 @@ void BitTorrent::run() {
     perform_handshake();
 
     
-    read_peer_messages(m_client,m_peer);
-    std::thread peer_thread(read_messages,m_client,m_peer);
-    std::thread client_thread(request_pieces,m_client,m_peer);
-    client_thread.join();
-    peer_thread.join();
+    // read_peer_messages(m_peer);
+
+    m_io->run();
+    // std::thread peer_thread(read_messages,m_client,m_peer);
+    // std::thread client_thread(request_pieces,m_client,m_peer);
+    // client_thread.join();
+    // peer_thread.join();
     // startThread(read_messages(m_client,m_peer));
 
 }

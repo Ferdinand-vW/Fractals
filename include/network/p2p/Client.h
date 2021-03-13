@@ -29,18 +29,18 @@ class Client {
 
     std::shared_ptr<tcp::socket> m_socket;
 
-    std::mutex& m_request_mutex;
-    std::condition_variable &m_request_cv;
+    std::unique_ptr<std::mutex> m_request_mutex;
+    std::unique_ptr<std::condition_variable> m_request_cv;
 
-    Torrent m_torrent;
+    std::shared_ptr<Torrent> m_torrent;
 
     std::shared_ptr<PieceData> cur_piece;
     
     public:
         std::vector<char> m_client_id;
         
-        Client(std::mutex &request_mutex,std::condition_variable &request_cv
-              ,std::shared_ptr<tcp::socket> socket,const Torrent &torrent);
+        Client(std::unique_ptr<std::mutex> request_mutex,std::unique_ptr<std::condition_variable> request_cv
+              ,std::shared_ptr<tcp::socket> socket,std::shared_ptr<Torrent> torrent);
 
         bool connect_peer(PeerId p);
         bool has_all_pieces();

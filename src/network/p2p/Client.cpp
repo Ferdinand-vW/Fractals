@@ -5,12 +5,15 @@
 #include <mutex>
 #include <string>
 
-Client::Client(std::mutex &request_mutex,std::condition_variable & request_cv
-              ,std::shared_ptr<tcp::socket> socket,const Torrent &torrent) 
-              : m_request_cv(request_cv),m_request_mutex(request_mutex),m_socket(socket),m_torrent(torrent) {
+Client::Client(std::unique_ptr<std::mutex> request_mutex,std::unique_ptr<std::condition_variable> request_cv
+              ,std::shared_ptr<tcp::socket> socket,std::shared_ptr<Torrent> torrent)
+              : m_request_cv(std::move(request_cv))
+              ,m_request_mutex(std::move(request_mutex))
+              ,m_socket(socket)
+              ,m_torrent(torrent) {
     m_client_id = generate_peerId();
     // Pieces are zero based index
-    for(int i = 0; i < torrent.m_mi.info.pieces.size();i++) {
+    for(int i = 0; i < torrent->m_mi.info.pieces.size();i++) {
         m_missing_pieces.insert(i);
     }
 };
@@ -70,7 +73,7 @@ void Client::received_piece(PeerId p, Piece pc) {
 
     cur_piece->add_block(b);
     if(cur_piece->is_complete()) {
-        m_torrent.write_data(std::move(*cur_piece.get()));
+        m_torrent->write_data(std::move(*cur_piece.get()));
 
         // update internal state of required pieces
         m_missing_pieces.erase(cur_piece->m_piece_index);
@@ -78,7 +81,7 @@ void Client::received_piece(PeerId p, Piece pc) {
 
         cur_piece.reset();
 
-        m_request_cv.notify_one();
+        m_request_cv->notify_one();
     }
 }
 
@@ -91,16 +94,16 @@ void Client::send_handshake(const HandShake &hs) {
 }
 
 void Client::send_piece_request(PeerId p) {
-    std::unique_lock<std::mutex> lock(m_request_mutex);
+    std::unique_lock<std::mutex> lock(*m_request_mutex.get());
 
     if(cur_piece != nullptr) {
         std::cout << "Cannot request new piece. Client busy downloading " << cur_piece->m_piece_index << std::endl;
     } else {
         auto piece = m_peer_status[p].m_available_pieces.begin();
-        Request request(*piece,cur_piece->next_block_begin(),m_torrent.m_mi.info.piece_length);
+        Request request(*piece,cur_piece->next_block_begin(),m_torrent->m_mi.info.piece_length);
         m_peer_status[p].m_available_pieces.erase(piece);
         boost::asio::write(*m_socket.get(),boost::asio::buffer(request.to_bytes_repr()));
     }
 
-    m_request_cv.wait(lock);
+    m_request_cv->wait(lock);
 }

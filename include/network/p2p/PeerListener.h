@@ -6,6 +6,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/system/error_code.hpp>
 #include <cstddef>
+#include <streambuf>
 
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
@@ -23,7 +24,7 @@ class PeerListener {
     std::shared_ptr<Client> m_client;
     PeerId m_peer;
 
-    boost::asio::streambuf streambuf;
+    std::unique_ptr<boost::asio::streambuf> m_streambuf;
 
     public:
         PeerListener(PeerId m_peer

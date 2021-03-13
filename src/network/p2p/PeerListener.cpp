@@ -61,7 +61,9 @@ std::unique_ptr<HandShake> PeerListener::receive_handshake() {
 
 void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
 
-    m_socket->async_read(*m_socket.get(),)
+    m_strand.post([]() {
+
+    });
 }
 
 

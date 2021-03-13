@@ -3,6 +3,7 @@
 #include <bitset>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>
+#include <boost/asio/io_service.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <c++/7/bits/c++config.h>
 #include <deque>
@@ -42,7 +43,10 @@ using std::endl;
 
 int main() {
     auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/ubuntu.torrent");
-    auto bt = BitTorrent(torr);
+    auto torr_ptr = std::make_shared<Torrent>(torr);
+
+    std::shared_ptr<boost::asio::io_context> io;
+    auto bt = BitTorrent(torr_ptr,io);
 
     bt.run();
 }
