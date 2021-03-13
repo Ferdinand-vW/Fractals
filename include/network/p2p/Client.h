@@ -21,6 +21,14 @@ struct P2PStatus {
     bool m_peer_interested = false;
     std::set<int> m_available_pieces;
 };
+
+enum class PieceProgress { Nothing, Requested, Downloading, Completed };
+struct PieceStatus {
+    PieceProgress m_progress;
+    PieceData m_data;
+};
+
+
 class Client {
     std::map<PeerId,P2PStatus> m_peer_status;
 
@@ -34,7 +42,8 @@ class Client {
 
     std::shared_ptr<Torrent> m_torrent;
 
-    std::shared_ptr<PieceData> cur_piece;
+
+    std::unique_ptr<PieceStatus> cur_piece;
     
     public:
         std::vector<char> m_client_id;
@@ -59,6 +68,7 @@ class Client {
         // void received_port(PeerId p,Port port)
 
         void send_handshake(const HandShake &hs);
+        void send_interested(PeerId p);
         void send_piece_request(PeerId p);
 
         void add_peer(PeerId p);

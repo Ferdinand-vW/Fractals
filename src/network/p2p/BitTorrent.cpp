@@ -150,6 +150,23 @@ void BitTorrent::run() {
     // read_peer_messages(m_peer);
 
     m_io->run();
+
+/*
+read peer messages
+<- bitfield
+update client
+<- unchoked
+update client
+<- piece
+update client
+<- have
+update client
+send peer messages
+if choked -> interested
+if unchoked && not downloading -> send piece request
+else wait
+
+*/
     // std::thread peer_thread(read_messages,m_client,m_peer);
     // std::thread client_thread(request_pieces,m_client,m_peer);
     // client_thread.join();
