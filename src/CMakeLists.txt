@@ -25,9 +25,8 @@ target_include_directories(Fractals PUBLIC ${NEITHER_INCLUDE_DIR})
 target_link_libraries(Fractals bencode_lib)
 target_link_libraries(Fractals OpenSSL::SSL)
 target_link_libraries(Fractals ${CURL_LIBRARIES})
-target_link_libraries(Fractals ${BOOST_LIBRARIES} pthread)
-# target_link_libraries(Fractals std::filesystem)
-# target_link_libraries(Fractals_lib bencode_lib)
+target_link_libraries(Fractals ${BOOST_LIBRARIES})
+target_link_libraries(Fractals pthread)
 
 set_target_properties(Fractals PROPERTIES
             CXX_STANDARD 17

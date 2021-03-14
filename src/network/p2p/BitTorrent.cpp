@@ -1,12 +1,13 @@
 #include "network/p2p/BitTorrent.h"
 #include "network/http/Tracker.h"
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <condition_variable>
 #include <memory>
 #include <thread>
 
-BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent,std::shared_ptr<boost::asio::io_context> io) : m_torrent(torrent),m_io(io) {};
+BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent,boost::asio::io_context &io) : m_torrent(torrent),m_io(io) {};
 
 void BitTorrent::request_peers() {
     auto tr = makeTrackerRequest(m_torrent->m_mi);
@@ -32,7 +33,9 @@ PeerId BitTorrent::choose_peer() {
 }
 
 void BitTorrent::connect_to_peer(PeerId p) {
-    tcp::socket socket(*m_io.get());
+    cout << "right before" << endl;
+    tcp::socket socket(m_io);
+    cout << "after" << endl;
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port);
     cout << "connecting.." << endl;
     socket.connect(endp);
@@ -40,8 +43,8 @@ void BitTorrent::connect_to_peer(PeerId p) {
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
     cout << "created shared pointer to socket" << endl;
 
-    std::unique_ptr<std::mutex> mu;
-    std::unique_ptr<std::condition_variable> cv;
+    std::unique_ptr<std::mutex> mu = std::make_unique<std::mutex>();
+    std::unique_ptr<std::condition_variable> cv = std::make_unique<std::condition_variable>();
 
     Client c(std::move(mu),std::move(cv),shared_socket,m_torrent);
     m_client = std::make_shared<Client>(std::move(c));
@@ -85,11 +88,12 @@ void BitTorrent::run() {
     
     perform_handshake();
 
-    
+    m_peer->read_messages();
+    m_client->send_messages(p);
     // m_client
     // m_peer->read_message_length(boost::system::error_code error, size_t size)
 
-    m_io->run();
+    m_io.run();
 
 /*
 read peer messages

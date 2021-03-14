@@ -16,7 +16,7 @@
 
 PeerListener::PeerListener(PeerId p
                           ,std::shared_ptr<Client> client
-                          ,std::shared_ptr<tcp::socket> sock) : m_client(client),m_socket(sock),m_peer(p) {
+                          ,std::shared_ptr<tcp::socket> sock) : m_client(client),m_socket(sock),m_peer(p),m_streambuf(std::make_unique<boost::asio::streambuf>()) {
 
 };
 
@@ -91,14 +91,17 @@ std::unique_ptr<HandShake> PeerListener::receive_handshake() {
 }
 
 void PeerListener::read_messages() {
+    cout << "read messages" << endl;
     boost::asio::async_read(*m_socket.get()
                            ,*m_streambuf.get()
                            ,boost::asio::transfer_exactly(4)
                            ,boost::bind(&PeerListener::read_message_length,this
                            ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
+    cout << "after async read" << endl;
 }
 
 void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
+    cout << "read message length" << endl;
     std::deque<char> deq_buf(boost::asio::buffers_begin(m_streambuf->data())
                             ,boost::asio::buffers_end(m_streambuf->data()));
 
@@ -107,6 +110,8 @@ void PeerListener::read_message_length(boost::system::error_code error, size_t s
     int m_length = bytes_to_int(deq_buf);
     std::cout << "message size: " << m_length << std::endl;
     std::cout << "deq buf size: " << deq_buf.size() << std::endl;
+    std::cout << "read size: " << size << std::endl;
+    std::cout << m_streambuf->size() << std::endl;
     m_streambuf->consume(size);
 
     boost::asio::async_read(*m_socket.get()
@@ -116,10 +121,12 @@ void PeerListener::read_message_length(boost::system::error_code error, size_t s
                            ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
                            ,m_length
                            ,m_length));
+    std::cout << "here" << endl;
 }
 
 
 void PeerListener::read_message_body(boost::system::error_code error, size_t size, int length, int remaining) {
+    cout << "read message body" << endl;
     if (size < remaining) {
         boost::asio::async_read(*m_socket.get()
                            ,*m_streambuf.get()

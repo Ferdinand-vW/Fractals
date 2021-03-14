@@ -28,9 +28,9 @@ class BitTorrent {
     std::set<PeerId> m_available_peers;
     
     std::shared_ptr<Torrent> m_torrent;
-    std::shared_ptr<boost::asio::io_context> m_io;
+    boost::asio::io_context &m_io;
     public:
-        BitTorrent (std::shared_ptr<Torrent> t,std::shared_ptr<boost::asio::io_context> io);
+        BitTorrent (std::shared_ptr<Torrent> t,boost::asio::io_context &io);
         void run();
 
     private:

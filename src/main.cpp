@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <boost/asio.hpp>
@@ -42,10 +43,13 @@ using std::cout;
 using std::endl;
 
 int main() {
+    std::shared_ptr<std::mutex> mu = make_shared<std::mutex>();
+    std::unique_lock<std::mutex> lock(*mu.get());
+
     auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/ubuntu.torrent");
     auto torr_ptr = std::make_shared<Torrent>(torr);
 
-    std::shared_ptr<boost::asio::io_context> io;
+    boost::asio::io_context io;
     auto bt = BitTorrent(torr_ptr,io);
 
     bt.run();

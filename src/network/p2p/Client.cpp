@@ -114,9 +114,11 @@ void Client::send_handshake(const HandShake &hs) {
 }
 
 void Client::send_messages(PeerId p) {
+    cout << "send messages" << endl;
     boost::asio::async_write(*m_socket.get()
                             ,boost::asio::buffer(Interested().to_bytes_repr())
                             ,boost::bind(&Client::sent_interested,this, p));
+    cout << "after sent" << endl;
 }
 
 void Client::sent_interested(PeerId p) {
@@ -126,13 +128,15 @@ void Client::sent_interested(PeerId p) {
 }
 
 void Client::send_piece_request(PeerId p) {
+    cout << "send piece request" << endl;
     std::unique_lock<std::mutex> lock(*m_request_mutex.get());
-    
+    cout << "taken lock" << endl;
     //only continue if we're not being choked by the peer or if we've not yet requested a (new) piece
     m_request_cv->wait(lock,[this,p]() { 
         auto progress = cur_piece->m_progress;
         auto choking = m_peer_status[p].m_peer_choking; 
         return !choking && (progress != PieceProgress::Requested); });
+    cout << "notified by cv" << endl;
 
     if(cur_piece->m_progress == PieceProgress::Downloaded) {
         Request request(cur_piece->m_data.m_piece_index,cur_piece->m_data.next_block_begin(),m_torrent->m_mi.info.piece_length);
