@@ -16,5 +16,6 @@ class PieceData {
 
         bool is_complete();
         void add_block(const Block &b);
+        int remaining();
         int next_block_begin();
 };

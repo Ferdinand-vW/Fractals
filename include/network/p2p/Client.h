@@ -1,7 +1,9 @@
 #pragma once
 
+#include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <fstream>
+#include <memory>
 #include <set>
 #include <boost/asio.hpp>
 
@@ -26,10 +28,11 @@ enum class PieceProgress { Nothing, Requested, Downloaded, Completed };
 struct PieceStatus {
     PieceProgress m_progress;
     PieceData m_data;
+    long long offset; // Use offset to determine from which point to request block 
 };
 
 
-class Client {
+class Client : public enable_shared_from_this<Client> {
     std::map<PeerId,P2PStatus> m_peer_status;
 
     std::set<int> m_missing_pieces;
@@ -37,6 +40,7 @@ class Client {
 
     std::shared_ptr<tcp::socket> m_socket;
 
+    // wrapped in unique pointers to make Client movable
     std::unique_ptr<std::mutex> m_request_mutex;
     std::unique_ptr<std::condition_variable> m_request_cv;
 
@@ -48,8 +52,7 @@ class Client {
     public:
         std::vector<char> m_client_id;
         
-        Client(std::unique_ptr<std::mutex> request_mutex,std::unique_ptr<std::condition_variable> request_cv
-              ,std::shared_ptr<tcp::socket> socket
+        Client(std::shared_ptr<tcp::socket> socket
               ,std::shared_ptr<Torrent> torrent);
 
         bool connect_peer(PeerId p);
@@ -71,10 +74,11 @@ class Client {
         void send_handshake(const HandShake &hs);
         void send_messages(PeerId p);
         void send_interested(PeerId p);
-        void send_piece_request(PeerId p);
+        void send_piece_request(PeerId p,boost::system::error_code error, size_t size);
 
         void add_peer(PeerId p);
 
     private:
-        void sent_interested(PeerId p);
+        void sent_interested(PeerId p,boost::system::error_code error, size_t size);
+        void select_piece(PeerId p);
 };

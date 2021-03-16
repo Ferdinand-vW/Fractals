@@ -4,6 +4,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/system/error_code.hpp>
 #include <cstddef>
 #include <streambuf>
@@ -16,7 +17,7 @@
 using namespace boost::asio;
 using ip::tcp;
 
-class PeerListener {
+class PeerListener : public enable_shared_from_this<PeerListener> {
     bool m_run = false;
     bool m_connected = false;
     std::shared_ptr<tcp::socket> m_socket;

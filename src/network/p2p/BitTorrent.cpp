@@ -43,10 +43,7 @@ void BitTorrent::connect_to_peer(PeerId p) {
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
     cout << "created shared pointer to socket" << endl;
 
-    std::unique_ptr<std::mutex> mu = std::make_unique<std::mutex>();
-    std::unique_ptr<std::condition_variable> cv = std::make_unique<std::condition_variable>();
-
-    Client c(std::move(mu),std::move(cv),shared_socket,m_torrent);
+    Client c(shared_socket,m_torrent);
     m_client = std::make_shared<Client>(std::move(c));
     
 
@@ -67,15 +64,6 @@ void BitTorrent::perform_handshake() {
 
 }
 
-void request_pieces(std::shared_ptr<Client> client,std::shared_ptr<PeerListener> peer) {
-
-    while(!client->has_all_pieces() && !client->is_choked_by(peer->get_peerId())) {
-
-        client->send_piece_request(peer->get_peerId());
-
-    }
-}
-
 void BitTorrent::run() {
     request_peers();
     cout << "num peers: " << m_available_peers.size() << endl;
@@ -89,32 +77,10 @@ void BitTorrent::run() {
     perform_handshake();
 
     m_peer->read_messages();
-    m_client->send_messages(p);
-    // m_client
-    // m_peer->read_message_length(boost::system::error_code error, size_t size)
+    std::thread t(&Client::send_messages,m_client,p);
 
     m_io.run();
 
-/*
-read peer messages
-<- bitfield
-update client
-<- unchoked
-update client
-<- piece
-update client
-<- have
-update client
-send peer messages
-if choked -> interested
-if unchoked && not downloading -> send piece request
-else wait
-
-*/
-    // std::thread peer_thread(read_messages,m_client,m_peer);
-    // std::thread client_thread(request_pieces,m_client,m_peer);
-    // client_thread.join();
-    // peer_thread.join();
-    // startThread(read_messages(m_client,m_peer));
+    t.join();
 
 }

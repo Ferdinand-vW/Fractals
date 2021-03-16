@@ -83,13 +83,15 @@ std::vector<FileData> Torrent::match_file_data(int piece,int offset, int len) {
 }
 
 void Torrent::create_files(const std::vector<FileData> &fds) {
-    
+    cout << "creating files" << endl;
     //create root directory if does not exist
     if(m_dir != "") {
+        cout << "created dir: " << m_dir << endl;
         std::filesystem::create_directory(m_dir);
     }
 
     for(auto fd : fds) {
+        cout << "creating file: "<< intercalate("/",fd.fi.path) << endl;
         auto fp = concat_paths(fd.fi.path);
         std::filesystem::path p(fp);
         std::filesystem::create_directories(p); //creates the (sub)directories if they don't exist already
@@ -102,7 +104,35 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
     }
 }
 
+int Torrent::size_of_piece(int piece) {
+    auto info = m_mi.info;
+    int piece_length = info.piece_length;
+
+    // All pieces but last have uniform size as specified in the info dict
+    if(piece != info.pieces.size() -1) { return piece_length; }
+    
+    // For the last piece we need to compute the total file size (sum of all file lengths)
+    if(info.file_mode.isLeft) {
+        //if single file mode then it's simple
+        int file_length = info.file_mode.leftValue.length;
+        cout << "file length" << file_length << endl;
+        //last piece has size of remainder of file
+        return file_length - (info.pieces.size() - 1) * info.piece_length;
+    } else {
+        //In multi file mode we need to traverse over each file and sum
+        int sum_file_lengths = 0;
+        for(auto &f : info.file_mode.rightValue.files) {
+            sum_file_lengths += f.length;
+        }
+
+        cout << "sum of files" << sum_file_lengths << endl;
+
+        return sum_file_lengths - (info.pieces.size() - 1) * info.piece_length;
+    }
+}
+
 void Torrent::write_data(PieceData &&pd) {
+    cout << "write data" << endl;
     auto fds = match_file_data(pd.m_piece_index, 0, pd.m_length);
 
     create_files(fds);
@@ -112,6 +142,7 @@ void Torrent::write_data(PieceData &&pd) {
         std::move(b.m_data.begin(),b.m_data.end(),back_inserter(bytes));
     }
 
+    cout << "writing " << bytes.size() << " bytes" << endl;
     int bytes_pos = 0;
     for(auto fd : fds) {
         std::fstream fstream;
