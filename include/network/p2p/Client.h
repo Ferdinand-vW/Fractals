@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <fstream>
@@ -39,20 +40,20 @@ class Client : public enable_shared_from_this<Client> {
     std::set<int> m_existing_pieces;
 
     std::shared_ptr<tcp::socket> m_socket;
+    std::shared_ptr<boost::asio::deadline_timer> m_timer;
 
     // wrapped in unique pointers to make Client movable
     std::unique_ptr<std::mutex> m_request_mutex;
     std::unique_ptr<std::condition_variable> m_request_cv;
 
     std::shared_ptr<Torrent> m_torrent;
-
-
     std::unique_ptr<PieceStatus> cur_piece;
     
     public:
         std::vector<char> m_client_id;
         
         Client(std::shared_ptr<tcp::socket> socket
+              ,std::shared_ptr<deadline_timer> timer
               ,std::shared_ptr<Torrent> torrent);
 
         bool connect_peer(PeerId p);
@@ -72,10 +73,12 @@ class Client : public enable_shared_from_this<Client> {
         // void received_port(PeerId p,Port port)
 
         void send_handshake(const HandShake &hs);
+        void wait_for_unchoke(PeerId p);
         void send_messages(PeerId p);
         void send_interested(PeerId p);
+        void wait_send_piece_request(PeerId p,boost::system::error_code error, size_t size);
         void send_piece_request(PeerId p,boost::system::error_code error, size_t size);
-
+        void send_bitfield(PeerId p);
         void add_peer(PeerId p);
 
     private:

@@ -34,7 +34,9 @@ std::string make_sized_line(std::string s,int len) {
 std::string concat_paths(std::vector<std::string> v) {
     std::filesystem::path p = "";
     for(auto s : v) {
-        p /= s;
+        if(s != "") {
+            p /= s;
+        }
     }
 
     return p.string();
@@ -43,7 +45,7 @@ std::string concat_paths(std::vector<std::string> v) {
 std::string random_alphaNumerical(int length) {
     std::string s;
     for(int i = 0; i < length;i++) {
-        int r = rand() % 62; // 0-9 + A-Z + a-Z = 62
+        int r = rand() % 62; // 0-9 + A-Z + a-z = 62
         if(r <= 9) { 
             s.push_back(r+48); // 48 in ascii equals 0
         } else if(r <= 35) {

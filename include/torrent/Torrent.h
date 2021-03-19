@@ -22,9 +22,9 @@ class Torrent {
 
         void write_data(PieceData && pd);
         static Torrent read_torrent(std::string fp);
-        int size_of_piece(int piece);
+        long long size_of_piece(int piece);
 
     private:
         void create_files(const std::vector<FileData> &fds);
-        std::vector<FileData> match_file_data(int piece,int offset, int len);
+        std::vector<FileData> divide_by_files(int piece,long long offset, long long len);
 };

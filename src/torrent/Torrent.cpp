@@ -43,19 +43,26 @@ Torrent Torrent::read_torrent(std::string fp) {
 
 }
 
-std::vector<FileData> Torrent::match_file_data(int piece,int offset, int len) {
+std::vector<FileData> Torrent::divide_by_files(int piece,long long offset, long long len) {
     std::vector<FileData> fds;
 
     auto piece_length = m_mi.info.piece_length;
     auto bytes_begin = piece * piece_length + offset;
 
+    cout << "divide by files" << endl;
+    cout << "piece length: " << piece_length << endl;
+    cout << "bytes begin: " << bytes_begin << endl;
+    cout << "len: " << len << endl;
     auto files_bytes = 0;
     for(auto fi : m_files) {
-        int next_file_begin = files_bytes + fi.length;
+        cout << "file " << intercalate("/",fi.path) << endl;
+        cout << "file size: " << fi.length << endl;
+        auto next_file_begin = files_bytes + fi.length;
         //
+        cout << "cond " << bytes_begin << " " << next_file_begin << endl;
         if(bytes_begin < next_file_begin) { // start position is in current file and there is data to write
-            int cur_file_offset = bytes_begin - files_bytes; // start position in current file
-            int file_remaining = next_file_begin - bytes_begin; // bytes left in remainder of current file
+            auto cur_file_offset = bytes_begin - files_bytes; // start position in current file
+            auto file_remaining = next_file_begin - bytes_begin; // bytes left in remainder of current file
             
             // How much can we write/is there to write
             int to_write;
@@ -91,20 +98,34 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
     }
 
     for(auto fd : fds) {
-        cout << "creating file: "<< intercalate("/",fd.fi.path) << endl;
-        auto fp = concat_paths(fd.fi.path);
+        // prepend m_dir to file path
+        std::vector<std::string> full_path;
+        full_path.push_back(m_dir);
+        std::copy(fd.fi.path.begin(),fd.fi.path.end(),std::back_inserter(full_path));
+
+        // concat file path as single string
+        auto fp = concat_paths(full_path);
         std::filesystem::path p(fp);
-        std::filesystem::create_directories(p); //creates the (sub)directories if they don't exist already
+
+        
+        if(p.parent_path() != "") { // if parent path is empty then we're dealing with single file with no specified directory
+            //creates the (sub)directories if they don't exist already
+            std::filesystem::create_directories(p.parent_path()); 
+        }
+
         if(!std::filesystem::exists(p)) {
             std::fstream fstream;
             fstream.open(fp,std::fstream::out | std::fstream::binary);
-            fstream.seekp(fd.fi.length-1);
+            fstream.seekp(fd.fi.length-1); //create file of actual size
+            fstream.write("",1);
             fstream.close();
+        } else {
+            cout << "file or directory with same path already exists: " + fp << endl;
         }
     }
 }
 
-int Torrent::size_of_piece(int piece) {
+long long Torrent::size_of_piece(int piece) {
     auto info = m_mi.info;
     int piece_length = info.piece_length;
 
@@ -133,7 +154,8 @@ int Torrent::size_of_piece(int piece) {
 
 void Torrent::write_data(PieceData &&pd) {
     cout << "write data" << endl;
-    auto fds = match_file_data(pd.m_piece_index, 0, pd.m_length);
+    cout << "writing to piece " << pd.m_piece_index << endl;
+    auto fds = divide_by_files(pd.m_piece_index, 0, pd.m_length);
 
     create_files(fds);
 
@@ -143,10 +165,12 @@ void Torrent::write_data(PieceData &&pd) {
     }
 
     cout << "writing " << bytes.size() << " bytes" << endl;
+    cout << "file data pieces " << fds.size() << endl;
     int bytes_pos = 0;
     for(auto fd : fds) {
         std::fstream fstream;
 
+        cout << concat_paths(fd.fi.path) << endl << endl;
         fstream.open(concat_paths(fd.fi.path), std::fstream::in | std::fstream::out | std::fstream::binary);
 
         fstream.seekp(fd.begin); // set the correct offset to start write

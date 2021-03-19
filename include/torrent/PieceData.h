@@ -3,7 +3,7 @@
 #include <vector>
 
 struct Block {
-    int m_begin;
+    long long m_begin;
     std::vector<char> m_data;
 };
 
@@ -11,11 +11,11 @@ class PieceData {
 
     public:
         int m_piece_index;
-        int m_length;
+        long long m_length;
         std::vector<Block> m_blocks;
 
         bool is_complete();
         void add_block(const Block &b);
-        int remaining();
-        int next_block_begin();
+        long long remaining();
+        long long next_block_begin();
 };

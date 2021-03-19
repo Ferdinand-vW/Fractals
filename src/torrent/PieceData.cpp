@@ -27,13 +27,13 @@ void PieceData::add_block(const Block &incoming) {
     
 }
 
-int PieceData::remaining() {
+long long PieceData::remaining() {
     int sum = 0;
     for(auto &b : m_blocks) { sum += b.m_data.size(); }
     return m_length - sum;
 }
 
-int PieceData::next_block_begin() {
+long long PieceData::next_block_begin() {
     if(m_blocks.size() == 0) {
         return 0;
     }

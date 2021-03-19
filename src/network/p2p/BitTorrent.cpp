@@ -1,9 +1,12 @@
 #include "network/p2p/BitTorrent.h"
 #include "network/http/Tracker.h"
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/address.hpp>
+#include <boost/bind.hpp>
 #include <condition_variable>
+#include <cstdlib>
 #include <memory>
 #include <thread>
 
@@ -26,7 +29,9 @@ void BitTorrent::request_peers() {
 
 
 PeerId BitTorrent::choose_peer() {
+    int n = rand() % m_available_peers.size();
     auto it = m_available_peers.begin();
+    std::advance(it,n);
     PeerId p = *it;
     m_available_peers.erase(p);
     return p;
@@ -41,9 +46,10 @@ void BitTorrent::connect_to_peer(PeerId p) {
     socket.connect(endp);
     
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
+    auto shared_timer = std::make_shared<boost::asio::deadline_timer>(boost::asio::deadline_timer(m_io));
     cout << "created shared pointer to socket" << endl;
 
-    Client c(shared_socket,m_torrent);
+    Client c(shared_socket,shared_timer,m_torrent);
     m_client = std::make_shared<Client>(std::move(c));
     
 
@@ -77,10 +83,10 @@ void BitTorrent::run() {
     perform_handshake();
 
     m_peer->read_messages();
-    std::thread t(&Client::send_messages,m_client,p);
+    m_client->wait_for_unchoke(p);
 
+    std::thread t(boost::bind(&boost::asio::io_context::run, &m_io));
     m_io.run();
-
     t.join();
 
 }

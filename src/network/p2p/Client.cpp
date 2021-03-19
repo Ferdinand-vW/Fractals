@@ -7,6 +7,7 @@
 #include "torrent/PieceData.h"
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <memory>
@@ -14,10 +15,12 @@
 #include <string>
 
 Client::Client(std::shared_ptr<tcp::socket> socket
+              ,std::shared_ptr<deadline_timer> timer
               ,std::shared_ptr<Torrent> torrent)
               : m_request_cv(std::make_unique<std::condition_variable>())
               ,m_request_mutex(std::make_unique<std::mutex>())
               ,m_socket(socket)
+              ,m_timer(timer)
               ,m_torrent(torrent)
               ,cur_piece(std::make_unique<PieceStatus>(
                                 PieceStatus{PieceProgress::Nothing,
@@ -26,6 +29,7 @@ Client::Client(std::shared_ptr<tcp::socket> socket
                                 )
                 ) {
     m_client_id = generate_peerId();
+    m_timer->expires_at(boost::posix_time::pos_infin);
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.pieces.size();i++) {
         m_missing_pieces.insert(i);
@@ -52,7 +56,7 @@ void Client::received_choke(PeerId p) {
 
 void Client::received_unchoke(PeerId p) {
     m_peer_status[p].m_peer_choking = false;
-    m_request_cv->notify_one();
+    m_timer->cancel_one(); // triggers write call back handler
 }
 
 void Client::received_interested(PeerId p) {
@@ -69,7 +73,6 @@ void Client::received_have(PeerId p, int piece) {
 }
 
 void Client::received_bitfield(PeerId p, Bitfield &bf) {
-    cout << "Client received bitfield" << endl;
     int piece_index = 0;
     for(auto b : bf.m_bitfield) {
         if(b) { m_peer_status[p].m_available_pieces.insert(piece_index); }
@@ -108,8 +111,10 @@ void Client::received_piece(PeerId p, Piece pc) {
         m_existing_pieces.insert(piece.m_piece_index);
 
         cur_piece.reset();
-
-        m_request_cv->notify_one();
+    }
+    else {
+        cur_piece->m_progress = PieceProgress::Downloaded;
+        m_timer->cancel_one();
     }
 }
 
@@ -123,39 +128,32 @@ void Client::send_handshake(const HandShake &hs) {
 
 void doNothing(){}
 
+
+void Client::wait_for_unchoke(PeerId p) {
+    m_timer->async_wait(boost::bind(&Client::send_messages,shared_from_this(),p));
+}
+
 void Client::send_messages(PeerId p) {
-    std::unique_lock<std::mutex> lock(*m_request_mutex.get());
-    cout << "send messages" << endl;
-
-    m_request_cv->wait(lock,[this,p]() { 
-        return m_peer_status[p].m_available_pieces.size() > 0; });
-
     std::vector<bool> bf;
-    int tail = m_torrent->m_mi.info.pieces.size() % 8; // if num pieces is not multiple of 8 then add remaining bits
-    for(int i = 0; i < m_torrent->m_mi.info.pieces.size() + tail;i++) {
+    int tail = m_torrent->m_mi.info.pieces.size() % 4; // if num pieces is not multiple of 8 then add remaining bits
+    for(int i = 0; i < m_torrent->m_mi.info.pieces.size() / 4;i++) {
         bf.push_back(0);
     }
     auto msg = Bitfield(bf.size(),bf);
-    cout << "sent bitfield" << endl;
-    // boost::asio::async_write(*m_socket.get()
-    //                         ,boost::asio::buffer(msg.to_bytes_repr())
-    //                         ,boost::bind(doNothing));
 
-    m_request_cv->wait(lock,[this,p]() {
-        return !m_peer_status[p].m_peer_choking;
-    });
-    cout << "sent unchoke" << endl;
     auto unchoke_msg = UnChoke();
     boost::asio::async_write(*m_socket.get()
-                            ,boost::asio::buffer(unchoke_msg.to_bytes_repr())
-                            ,boost::bind(doNothing));
+                            ,boost::asio::buffer(UnChoke().to_bytes_repr())
+                            ,std::bind(doNothing));
+    cout << ">>> Unchoke " << p.m_ip << endl;
 
-    cout << "sent interested" << endl;
+    cout << bytes_to_hex(msg.to_bytes_repr()) << endl;
     boost::asio::async_write(*m_socket.get()
                             ,boost::asio::buffer(Interested().to_bytes_repr())
-                            ,boost::bind(&Client::sent_interested,shared_from_this(), p
-                                    ,boost::asio::placeholders::error,
+                            ,boost::bind(&Client::sent_interested,this,p,boost::asio::placeholders::error,
                                     boost::asio::placeholders::bytes_transferred));
+
+    cout << ">>> Interested " << p.m_ip << endl;
 }
 
 void Client::sent_interested(PeerId p,boost::system::error_code error, size_t size) {
@@ -164,17 +162,13 @@ void Client::sent_interested(PeerId p,boost::system::error_code error, size_t si
     send_piece_request(p,error,size);
 }
 
+void Client::wait_send_piece_request(PeerId p,boost::system::error_code error, size_t size) {
+    m_timer->async_wait(std::bind(&Client::send_piece_request,shared_from_this(),p,error,size));
+}
+
 void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t size) {
-    cout << "send piece request" << endl;
-    cout << error.message() << endl;
-    cout << "sent size: " << size << endl;
-    std::unique_lock<std::mutex> lock(*m_request_mutex.get());
-    //only continue if we're not being choked by the peer or if we've not yet requested a (new) piece
-    m_request_cv->wait(lock,[this,p]() { 
-        auto progress = cur_piece->m_progress;
-        auto choking = m_peer_status[p].m_peer_choking; 
-        return !choking && (progress != PieceProgress::Requested); });
-    cout << "notified by cv" << endl;
+    cout << "Error: " << error.message() << endl;
+    cout << "Size: " << size << endl;
 
     if(cur_piece->m_progress == PieceProgress::Downloaded) {
         int request_size = 1 << 14; // 16KB
@@ -187,35 +181,31 @@ void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t
         cur_piece->m_progress = PieceProgress::Requested;
         boost::asio::async_write(*m_socket.get()
                                 ,boost::asio::buffer(request.to_bytes_repr())
-                                ,boost::bind(&Client::send_piece_request,shared_from_this(),p
+                                ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
                                             ,boost::asio::placeholders::error,
                                             boost::asio::placeholders::bytes_transferred));
+        cout << ">>> Piece " + std::to_string(request.m_index) + " " + std::to_string(request.m_begin) + " " + std::to_string(request.m_length) << endl;
 
     } else if (cur_piece->m_progress == PieceProgress::Nothing) {
         // find new piece to download
         select_piece(p);
 
         //calculate size to request
-        int request_size = 15; // 16KB, standard request size 
+        int request_size = 1 << 14 ; // 16KB, standard request size 
         int remaining = cur_piece->m_data.remaining(); // remaining data of piece
         int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
 
         cur_piece->m_progress = PieceProgress::Requested;
-        Request request(cur_piece->m_data.m_piece_index + 1
+        Request request(cur_piece->m_data.m_piece_index
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
-        cout << bytes_to_hex(request.to_bytes_repr()) << endl;
-        cout << "request: " << std::min(request_size,std::min(remaining,piece_length)) << endl;
+        
         boost::asio::async_write(*m_socket.get()
                         ,boost::asio::buffer(request.to_bytes_repr())
-                        ,boost::bind(&Client::send_piece_request,shared_from_this(),p
+                        ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
                                     ,boost::asio::placeholders::error,
                                      boost::asio::placeholders::bytes_transferred));
-/* 0000000d
-06
-00000000
-00000000
-00004000 */
+        cout << ">>> Piece " + std::to_string(request.m_index) + " " + std::to_string(request.m_begin) + " " + std::to_string(request.m_length) << endl;
     } else {
         cout << "Completed downloading. Leaving thread.." << endl;
     }
