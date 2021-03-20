@@ -17,6 +17,7 @@ class IMessage {
         // length specified by BitTorrent specification
         virtual int get_length() = 0;
         virtual std::vector<char> to_bytes_repr() const = 0;
+        virtual std::string pprint() const = 0;
         virtual ~IMessage() {};
 };
 
@@ -30,6 +31,7 @@ class HandShake : public IMessage {
 
         HandShake(unsigned char pstrlen,std::string pstr,char (&reserved)[8],std::vector<char> info_hash,std::vector<char> peer_id);
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
         std::optional<MessageType> get_messageType();
         // Does not include size of char pstrlen
         int get_length();
@@ -42,6 +44,7 @@ class KeepAlive : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
 };
 
 class Choke : public IMessage {
@@ -51,6 +54,7 @@ class Choke : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
 };
 
 class UnChoke : public IMessage {
@@ -60,6 +64,7 @@ class UnChoke : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
 };
 
 class Interested : public IMessage {
@@ -69,6 +74,7 @@ class Interested : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
 };
 
 class NotInterested : public IMessage {
@@ -78,6 +84,7 @@ class NotInterested : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
 };
 
 class Have : public IMessage {
@@ -91,6 +98,7 @@ class Have : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
         static std::unique_ptr<Have> from_bytes_repr(std::deque<char> &bytes);
 };
 
@@ -106,6 +114,7 @@ class Bitfield : public IMessage {
         int get_length();
         std::vector<char> to_bytes_repr() const;
         static std::unique_ptr<Bitfield> from_bytes_repr(int len, std::deque<char> &bytes);
+        std::string pprint() const;
 };
 
 class Request : public IMessage {
@@ -121,6 +130,7 @@ class Request : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
         static std::unique_ptr<Request> from_bytes_repr(std::deque<char> &bytes);
 };
 
@@ -137,6 +147,7 @@ class Piece : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
         static std::unique_ptr<Piece> from_bytes_repr(int m_len,std::deque<char> &bytes);
 };
 
@@ -152,6 +163,7 @@ class Cancel : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
         static std::unique_ptr<Cancel> from_bytes_repr(std::deque<char> &bytes);
 };
 
@@ -165,5 +177,6 @@ class Port : public IMessage {
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;
+        std::string pprint() const;
         static std::unique_ptr<Port> from_bytes_repr(std::deque<char> &bytes);
 };

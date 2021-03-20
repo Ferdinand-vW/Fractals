@@ -45,7 +45,7 @@ TrackerRequest makeTrackerRequest(const MetaInfo &mi) {
     int uploaded = 0;
     int downloaded = 0;
     int left = 0;
-    int compact = 1;
+    int compact = 0;
     const TrackerRequest request = TrackerRequest { 
                                 mi.announce
                                 , info_hash, uri_info
@@ -84,7 +84,7 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
         if (!mpeer_dict.hasValue) { return neither::left("Could not coerce bdata to bdict for peer"s); }
         auto peer_dict = mpeer_dict.value;
 
-        auto mpeer_id = to_maybe(peer_dict.find("peer_id"))
+        auto mpeer_id = to_maybe(peer_dict.find("peer id"))
                        .flatMap(to_bstring)
                        .map(mem_fn(&bstring::to_string));
         auto mip      = to_maybe(peer_dict.find("ip"))
@@ -94,7 +94,7 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
                        .flatMap(to_bint)
                        .map(mem_fn(&bint::value));
         
-        if(!mpeer_id.hasValue) { return neither::left("Could not find field peer_id in peers dictionary"s); }
+        if(!mpeer_id.hasValue) { return neither::left("Could not find field peer id in peers dictionary"s); }
         if(!mip.hasValue)      { return neither::left("Could not find field ip in peers dictionary"s); }
         if(!mport.hasValue)    { return neither::left("Could not find field port in peers dictionary"s); }
 
@@ -106,6 +106,8 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
 
 neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
     if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
+    cout << (int)(unsigned char)(bytes.front()) << endl;
+    cout << bytes_to_hex(bytes) << endl;
     
     std::vector<Peer> peers;
     for(int i = 0; i < bytes.size() - 6; i+=6) {
@@ -223,11 +225,14 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
     }
 
     stringstream ss(readBuffer);
+    cout << ss.str() << endl;
+    cout << ss.str().size() << endl;
     auto mresp = bencode::decode<bencode::bdict>(ss);
 
     if (!mresp.has_value()) { return neither::left(mresp.error().message()); }
 
     auto resp = mresp.value();
+    cout << resp << endl;
 
     return parseTrackerReponse(resp);
 }

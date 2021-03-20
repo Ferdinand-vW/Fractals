@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <vector>
 
 
@@ -33,6 +34,15 @@ std::vector<char> HandShake::to_bytes_repr() const {
     v.insert(v.end(),m_peer_id.begin(),m_peer_id.end());
     return v;
 }
+
+std::string HandShake::pprint() const {
+    std::string base("HandShake");
+    auto pstrlen_str = std::to_string(m_pstrlen);
+    auto reserved_str = std::string(m_reserved);
+    
+    return base + " " + pstrlen_str + " " + reserved_str;
+}
+
 std::unique_ptr<HandShake> HandShake::from_bytes_repr(unsigned char len,std::deque<char> &bytes) {
     // -1 since pstrlen was already parsed
     if(len + 49 - 1 != bytes.size()) { 
@@ -54,6 +64,10 @@ std::vector<char> KeepAlive::to_bytes_repr() const {
     return int_to_bytes(m_len);
 }
 
+std::string KeepAlive::pprint() const {
+    return "KeepAlive";
+}
+
 std::optional<MessageType> KeepAlive::get_messageType() {
     return {};
 }
@@ -67,6 +81,10 @@ std::vector<char> Choke::to_bytes_repr() const {
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
     v.push_back(m_id);
     return v;
+}
+
+std::string Choke::pprint() const {
+    return "Choke";
 }
 
 std::optional<MessageType> Choke::get_messageType() {
@@ -84,6 +102,10 @@ std::vector<char> UnChoke::to_bytes_repr() const {
     return v;
 }
 
+std::string UnChoke::pprint() const {
+    return "UnChoke";
+}
+
 std::optional<MessageType> UnChoke::get_messageType() {
     return m_messageType;
 }
@@ -99,6 +121,10 @@ std::vector<char> Interested::to_bytes_repr() const {
     return v;
 }
 
+std::string Interested::pprint() const {
+    return "Interested";
+}
+
 std::optional<MessageType> Interested::get_messageType() {
     return m_messageType;
 }
@@ -112,6 +138,10 @@ std::vector<char> NotInterested::to_bytes_repr() const {
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
     v.push_back(m_id);
     return v;
+}
+
+std::string NotInterested::pprint() const {
+    return "NotInterested";
 }
 
 std::optional<MessageType> NotInterested::get_messageType() {
@@ -143,6 +173,10 @@ std::vector<char> Have::to_bytes_repr() const {
     return v;
 }
 
+std::string Have::pprint() const {
+    return "Have " + std::to_string(m_piece_index);
+}
+
 std::unique_ptr<Have> Have::from_bytes_repr(std::deque<char> &bytes) {
     int m_piece_index = bytes_to_int(bytes);
     return std::make_unique<Have>(Have(m_piece_index));
@@ -168,6 +202,10 @@ std::vector<char> Bitfield::to_bytes_repr() const {
     std::vector<char> bitfield_bytes(bitfield_to_bytes(m_bitfield));
     v.insert(v.end(),bitfield_bytes.begin(),bitfield_bytes.end());
     return v;
+}
+
+std::string Bitfield::pprint() const {
+    return "Bitfield " + std::to_string(m_bitfield.size());
 }
 
 std::unique_ptr<Bitfield> Bitfield::from_bytes_repr(int m_len,std::deque<char> &bytes) {
@@ -201,6 +239,14 @@ std::vector<char> Request::to_bytes_repr() const {
     v.insert(v.end(),begin_bytes.begin(),begin_bytes.end());
     v.insert(v.end(),length_bytes.begin(),length_bytes.end());
     return v;
+}
+
+std::string Request::pprint() const {
+    auto index_str = std::to_string(m_index);
+    auto begin_str = std::to_string(m_begin);
+    auto length_str = std::to_string(m_length);
+
+    return "Request " + index_str + " " + begin_str + " " + length_str;
 }
 
 std::unique_ptr<Request> Request::from_bytes_repr(std::deque<char> &bytes) {
@@ -239,6 +285,14 @@ std::vector<char> Piece::to_bytes_repr() const {
     return v;
 }
 
+std::string Piece::pprint() const {
+    auto index_str = std::to_string(m_index);
+    auto begin_str = std::to_string(m_begin);
+    auto length_str = std::to_string(m_block.size());
+    
+    return "Request " + index_str + " " + begin_str + " " + length_str;
+}
+
 std::unique_ptr<Piece> Piece::from_bytes_repr(int m_len,std::deque<char> &bytes) {
     int m_index = bytes_to_int(bytes);
     int m_begin = bytes_to_int(bytes);
@@ -274,6 +328,10 @@ std::vector<char> Cancel::to_bytes_repr() const {
     return v;
 }
 
+std::string Cancel::pprint() const {
+    return "Cancel";
+}
+
 std::unique_ptr<Cancel> Cancel::from_bytes_repr(std::deque<char> &bytes) {
     int m_index = bytes_to_int(bytes);
     int m_begin = bytes_to_int(bytes);
@@ -302,6 +360,10 @@ std::vector<char> Port::to_bytes_repr() const {
     v.insert(v.end(),port_bytes.begin(),port_bytes.end());
 
     return v;
+}
+
+std::string Port::pprint() const {
+    return "Port";
 }
 
 std::unique_ptr<Port> Port::from_bytes_repr(std::deque<char> &bytes) {

@@ -91,12 +91,13 @@ void Client::received_request(PeerId p, Request r) {
 }
 
 void Client::received_piece(PeerId p, Piece pc) {
-    cout << "client writing data.." << endl;
     Block b = Block { pc.m_begin, pc.m_block };
 
     cur_piece->m_data.add_block(b);
     if(cur_piece->m_data.is_complete()) {
         
+        cout << "[BitTorrent] received all data for " << pc.pprint() << endl;
+
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
             cur_piece->m_progress = PieceProgress::Completed;
         } else { //otherwise we can continue to request pieces
@@ -113,6 +114,8 @@ void Client::received_piece(PeerId p, Piece pc) {
         cur_piece.reset();
     }
     else {
+        cout << "[BitTorrent] added block to " << pc.pprint() << endl;
+
         cur_piece->m_progress = PieceProgress::Downloaded;
         m_timer->cancel_one();
     }
@@ -143,17 +146,17 @@ void Client::send_messages(PeerId p) {
 
     auto unchoke_msg = UnChoke();
     boost::asio::async_write(*m_socket.get()
-                            ,boost::asio::buffer(UnChoke().to_bytes_repr())
+                            ,boost::asio::buffer(unchoke_msg.to_bytes_repr())
                             ,std::bind(doNothing));
-    cout << ">>> Unchoke " << p.m_ip << endl;
+    cout << ">>> " + unchoke_msg.pprint() << endl;
 
-    cout << bytes_to_hex(msg.to_bytes_repr()) << endl;
+    auto interested_msg = Interested();
     boost::asio::async_write(*m_socket.get()
-                            ,boost::asio::buffer(Interested().to_bytes_repr())
+                            ,boost::asio::buffer(interested_msg.to_bytes_repr())
                             ,boost::bind(&Client::sent_interested,this,p,boost::asio::placeholders::error,
                                     boost::asio::placeholders::bytes_transferred));
 
-    cout << ">>> Interested " << p.m_ip << endl;
+    cout << ">>> " + interested_msg.pprint() << endl;
 }
 
 void Client::sent_interested(PeerId p,boost::system::error_code error, size_t size) {
@@ -167,8 +170,6 @@ void Client::wait_send_piece_request(PeerId p,boost::system::error_code error, s
 }
 
 void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t size) {
-    cout << "Error: " << error.message() << endl;
-    cout << "Size: " << size << endl;
 
     if(cur_piece->m_progress == PieceProgress::Downloaded) {
         int request_size = 1 << 14; // 16KB
@@ -184,7 +185,7 @@ void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t
                                 ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
                                             ,boost::asio::placeholders::error,
                                             boost::asio::placeholders::bytes_transferred));
-        cout << ">>> Piece " + std::to_string(request.m_index) + " " + std::to_string(request.m_begin) + " " + std::to_string(request.m_length) << endl;
+        cout << ">>>  " + request.pprint() << endl;
 
     } else if (cur_piece->m_progress == PieceProgress::Nothing) {
         // find new piece to download
@@ -205,9 +206,9 @@ void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t
                         ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
                                     ,boost::asio::placeholders::error,
                                      boost::asio::placeholders::bytes_transferred));
-        cout << ">>> Piece " + std::to_string(request.m_index) + " " + std::to_string(request.m_begin) + " " + std::to_string(request.m_length) << endl;
+        cout << ">>> " + request.pprint() << endl;
     } else {
-        cout << "Completed downloading. Leaving thread.." << endl;
+        cout << "[BitTorrent] Completed downloading. Leaving thread.." << endl;
     }
 }
 

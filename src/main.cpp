@@ -46,9 +46,12 @@ int main() {
     std::shared_ptr<std::mutex> mu = make_shared<std::mutex>();
     std::unique_lock<std::mutex> lock(*mu.get());
 
-    auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/ubuntu.torrent");
+    auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/gw2.torrent");
     auto torr_ptr = std::make_shared<Torrent>(torr);
 
+    cout << std::to_string(std::string("s") < std::string(" ")) << std::endl;
+
+    cout << bytes_to_hex(torr.m_info_hash) << endl;
     boost::asio::io_context io;
     auto bt = BitTorrent(torr_ptr,io);
 

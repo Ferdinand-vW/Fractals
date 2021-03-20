@@ -218,7 +218,7 @@ class BencodeConvert {
             const bstring key_l("length");
             const bint val_l(fi.length);
 
-            const bstring key_ps("paths");
+            const bstring key_ps("path");
             auto paths = map_vector<string,bdata>(fi.path,[](const auto &s) { return bdata(bstring(s)); });
             const blist val_ps(paths);
 
@@ -254,10 +254,15 @@ class BencodeConvert {
         static bencode::bdict to_bdict(const MultiFile &mf) {
             map<bstring, bdata> kv_map;
             const bstring key_fs("files");
-            // mf.name
             
             std::function<bdata(FileInfo)> fi_lam = [](const auto &fi) { return bdata(BencodeConvert::to_bdict(fi)); };
             blist val_fs(map_vector(mf.files, fi_lam));
+
+            if(mf.name.hasValue) {
+                const bstring key_name("name");
+                const bstring val_name(mf.name.value);
+                kv_map.insert({key_name,bdata(val_name)});
+            }
 
             kv_map.insert({key_fs,bdata(val_fs)});
             return bdict(kv_map);

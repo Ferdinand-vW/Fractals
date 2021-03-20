@@ -41,25 +41,25 @@ void PeerListener::parse_message(int length,MessageType mt,std::deque<char> &deq
             break;
         case MessageType::MT_Have: {
             auto h = Have::from_bytes_repr(deq_buf);
-            cout << "<<< Have " << h->m_piece_index << endl;
+            cout << "<<< " + h->pprint() << endl;
             m_client->received_have(m_peer, h->m_piece_index);
             break;
         }
         case MessageType::MT_Bitfield: {
             auto bf = Bitfield::from_bytes_repr(length, deq_buf);
-            cout << "<<< Bitfield " << bf->m_bitfield.size() << endl;
+            cout << "<<< " + bf->pprint() << endl;
             m_client->received_bitfield(m_peer, *bf.get());
             break;
         }
         case MessageType::MT_Request: {
             auto r = Request::from_bytes_repr(deq_buf);
-            cout << "<<< Request " + std::to_string(r->m_index) + " " + std::to_string(r->m_begin) + " " + std::to_string(r->m_length) << endl;
+            cout << "<<< " + r->pprint() << endl;
             m_client->received_request(m_peer, *r.get());
             break;
         }
         case MessageType::MT_Piece: {
             auto p = Piece::from_bytes_repr(length, deq_buf);
-            cout << "<<< Piece " + std::to_string(p->m_index) + " " + std::to_string(p->m_begin) + " " + std::to_string(p->m_block.size()) << endl;
+            cout << "<<< " + p->pprint() << endl;
             m_client->received_piece(m_peer, *p.get());
             break;
         }
@@ -106,7 +106,6 @@ std::unique_ptr<HandShake> PeerListener::receive_handshake() {
 }
 
 void PeerListener::read_messages() {
-    cout << m_streambuf->size() << endl;
     boost::asio::async_read(*m_socket.get()
                            ,*m_streambuf.get()
                            ,boost::asio::transfer_exactly(4)
@@ -115,8 +114,6 @@ void PeerListener::read_messages() {
 }
 
 void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
-    cout << "error: " << error.message() << endl;
-    cout << "size: " << size << endl; // should equal exactly 4
 
     // copy data over into deque
     std::deque<char> deq_buf;
@@ -140,9 +137,6 @@ void PeerListener::read_message_length(boost::system::error_code error, size_t s
 
 
 void PeerListener::read_message_body(boost::system::error_code error, size_t size, int length, int remaining) {
-    cout << "error: " << error.message() << endl;
-    cout << "size: " << size << endl;
-
     //if we haven't read everything requested then read some more
     if (size < remaining) {
         boost::asio::async_read(*m_socket.get()
@@ -156,7 +150,9 @@ void PeerListener::read_message_body(boost::system::error_code error, size_t siz
     } else {
 
         // This should be a KeepAlive message
-        if(length == 0) { read_messages(); return; /* m_client->received */}
+        if(length == 0) { 
+            cout << "<<< KeepAlive" << endl;
+            read_messages(); return; /* m_client->received */}
 
         std::deque<char> buff;
         std::copy(boost::asio::buffers_begin(m_streambuf->data())

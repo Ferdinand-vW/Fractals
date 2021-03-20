@@ -25,6 +25,7 @@ class Torrent {
         long long size_of_piece(int piece);
 
     private:
+        long long cumulative_size_of_pieces(int piece);
         void create_files(const std::vector<FileData> &fds);
-        std::vector<FileData> divide_by_files(int piece,long long offset, long long len);
+        std::vector<FileData> divide_over_files(int piece);
 };

@@ -38,20 +38,17 @@ PeerId BitTorrent::choose_peer() {
 }
 
 void BitTorrent::connect_to_peer(PeerId p) {
-    cout << "right before" << endl;
     tcp::socket socket(m_io);
-    cout << "after" << endl;
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port);
-    cout << "connecting.." << endl;
+    cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
     socket.connect(endp);
+    cout << "[BitTorrent] connected." << endl;
     
     auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
     auto shared_timer = std::make_shared<boost::asio::deadline_timer>(boost::asio::deadline_timer(m_io));
-    cout << "created shared pointer to socket" << endl;
 
     Client c(shared_socket,shared_timer,m_torrent);
     m_client = std::make_shared<Client>(std::move(c));
-    
 
     PeerListener pl(p,m_client,shared_socket);
 
@@ -62,23 +59,21 @@ void BitTorrent::perform_handshake() {
     std::string prot("BitTorrent protocol");
     char reserved[8] = {0,0,0,0,0,0,0,0};
     auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
-    cout << "sending handshake..." << endl;
+    cout << ">>> " + handshake.pprint() << endl;
     m_client->send_handshake(handshake);
-    cout << "receiving handshake..." << endl;
     auto peer_handshake = m_peer->receive_handshake();
-    cout << "received handshake" << endl;
+    cout << "<<< " + peer_handshake->pprint() << endl;
 
 }
 
 void BitTorrent::run() {
     request_peers();
-    cout << "num peers: " << m_available_peers.size() << endl;
+    cout << "[BitTorrent] num peers: " << m_available_peers.size() << endl;
 
     auto p = choose_peer();
-    cout << "Using peer: " << p.m_ip << ":" << p.m_port << endl;
+    cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
 
     connect_to_peer(p);
-    cout << "created client and peer" << endl;
     
     perform_handshake();
 
