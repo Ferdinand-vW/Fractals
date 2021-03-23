@@ -2,12 +2,14 @@
 #include "common/utils.h"
 #include "network/p2p/MessageType.h"
 #include <algorithm>
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/placeholders.hpp>
 #include <boost/bind.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/system/error_code.hpp>
 #include <deque>
 #include <iterator>
@@ -17,8 +19,13 @@
 
 PeerListener::PeerListener(PeerId p
                           ,std::shared_ptr<Client> client
-                          ,std::shared_ptr<tcp::socket> sock) : m_client(client),m_socket(sock),m_peer(p),m_streambuf(std::make_unique<boost::asio::streambuf>()) {
-
+                          ,std::shared_ptr<tcp::socket> sock
+                          ,boost::asio::deadline_timer &&timer) 
+                          : m_client(client)
+                          , m_socket(sock)
+                          , m_peer(p)
+                          , m_streambuf(std::make_unique<boost::asio::streambuf>())
+                          , m_timer(std::make_unique<boost::asio::deadline_timer>(timer)) {
 };
 
 void PeerListener::parse_message(int length,MessageType mt,std::deque<char> &deq_buf) {
@@ -80,11 +87,23 @@ void PeerListener::parse_message(int length,MessageType mt,std::deque<char> &deq
     }
 }
 
+void PeerListener::cancel_connection() {
+
+}
+
 std::unique_ptr<HandShake> PeerListener::receive_handshake() {
     boost::asio::streambuf buf;
     boost::system::error_code error;
-    boost::asio::read(*m_socket.get(),buf,boost::asio::transfer_exactly(1),error);
-    
+
+    m_timer->expires_from_now(boost::posix_time::seconds(10));
+
+    boost::asio::async_read(*m_socket.get(),buf,boost::asio::transfer_exactly(1)
+                            ,boost::bind(&PeerListener::read_handshake_body,shared_from_this()
+                            ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred);
+
+    m_timer->async_wait(std::bind(&PeerListener::cancel_connection,shared_from_this()));
+
+
     std::deque<char> deq_buf(boost::asio::buffers_begin(buf.data())
                             ,boost::asio::buffers_end(buf.data()));
     char pstrlen = deq_buf.front();

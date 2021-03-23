@@ -36,6 +36,8 @@ class BitTorrent {
     private:
         void request_peers();
         PeerId choose_peer();
-        void connect_to_peer(PeerId p);
-        void perform_handshake();
+        bool attempt_connect(PeerId p);
+        PeerId connect_to_a_peer();
+
+        bool perform_handshake();
 };

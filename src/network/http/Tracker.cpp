@@ -106,8 +106,6 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
 
 neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
     if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
-    cout << (int)(unsigned char)(bytes.front()) << endl;
-    cout << bytes_to_hex(bytes) << endl;
     
     std::vector<Peer> peers;
     for(int i = 0; i < bytes.size() - 6; i+=6) {
@@ -121,7 +119,6 @@ neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes
         ushort port = static_cast<unsigned char>(bytes[i+4]) * 256 + static_cast<unsigned char>(bytes[i+5]);
 
         auto peer_id = ip + ":" + std::to_string(port);
-        cout << peer_id << endl;
         peers.push_back(Peer { peer_id, ip, port});
     }
 
@@ -225,14 +222,11 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
     }
 
     stringstream ss(readBuffer);
-    cout << ss.str() << endl;
-    cout << ss.str().size() << endl;
     auto mresp = bencode::decode<bencode::bdict>(ss);
 
     if (!mresp.has_value()) { return neither::left(mresp.error().message()); }
 
     auto resp = mresp.value();
-    cout << resp << endl;
 
     return parseTrackerReponse(resp);
 }

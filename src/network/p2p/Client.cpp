@@ -97,12 +97,6 @@ void Client::received_piece(PeerId p, Piece pc) {
     if(cur_piece->m_data.is_complete()) {
         
         cout << "[BitTorrent] received all data for " << pc.pprint() << endl;
-
-        if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
-            cur_piece->m_progress = PieceProgress::Completed;
-        } else { //otherwise we can continue to request pieces
-            cur_piece->m_progress = PieceProgress::Nothing;
-        }
         
         PieceData piece = cur_piece->m_data;
         m_torrent->write_data(std::move(piece));
@@ -112,6 +106,15 @@ void Client::received_piece(PeerId p, Piece pc) {
         m_existing_pieces.insert(piece.m_piece_index);
 
         cur_piece.reset();
+
+        if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
+            cur_piece->m_progress = PieceProgress::Completed;
+            cout << "[BitTorrent] received all pieces" << endl;
+        } else { //otherwise we can continue to request pieces
+            cur_piece->m_progress = PieceProgress::Nothing;
+        }
+
+        m_timer->cancel();
     }
     else {
         cout << "[BitTorrent] added block to " << pc.pprint() << endl;
@@ -170,7 +173,6 @@ void Client::wait_send_piece_request(PeerId p,boost::system::error_code error, s
 }
 
 void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t size) {
-
     if(cur_piece->m_progress == PieceProgress::Downloaded) {
         int request_size = 1 << 14; // 16KB
         int remaining = cur_piece->m_data.remaining();

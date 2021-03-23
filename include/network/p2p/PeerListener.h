@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -25,11 +26,13 @@ class PeerListener : public enable_shared_from_this<PeerListener> {
     PeerId m_peer;
 
     std::unique_ptr<boost::asio::streambuf> m_streambuf;
+    std::unique_ptr<boost::asio::deadline_timer> m_timer;
 
     public:
         PeerListener(PeerId m_peer
                     ,std::shared_ptr<Client> client
-                    ,std::shared_ptr<tcp::socket> socket);
+                    ,std::shared_ptr<tcp::socket> socket
+                    ,boost::asio::deadline_timer &&timer);
 
         PeerId get_peerId();
 
@@ -37,6 +40,8 @@ class PeerListener : public enable_shared_from_this<PeerListener> {
         void read_messages();
         void read_message_length(boost::system::error_code error, size_t size);
         void read_message_body(boost::system::error_code error, size_t size, int length, int remaining);
+
+        void cancel_connection();
 
         std::unique_ptr<HandShake> receive_handshake();
 
