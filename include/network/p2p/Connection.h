@@ -23,9 +23,11 @@ class Connection : std::enable_shared_from_this<Connection> {
 
     private:
         void f_timed(std::function<void(std::optional<error_code>&)> f
-                    ,std::function<void(error_code)> callback);
+                    ,std::function<void(error_code)> callback
+                    ,boost::posix_time::seconds timeout = boost::posix_time::seconds(-1));
         void f_timed(std::function<void(std::optional<error_code>&,std::deque<char> &)> f
-                    ,std::function<void(error_code,std::deque<char>&&)> callback);
+                    ,std::function<void(error_code,std::deque<char>&&)> callback
+                    ,boost::posix_time::seconds timeout = boost::posix_time::seconds(-1));
 
         void read_message_internal(std::optional<boost::system::error_code> &read_result,std::deque<char> &deq_buf);
 

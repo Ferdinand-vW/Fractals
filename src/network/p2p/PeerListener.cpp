@@ -1,6 +1,5 @@
 #include "network/p2p/PeerListener.h"
 #include "common/utils.h"
-#include "network/p2p/MessageType.h"
 #include <algorithm>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/placeholders.hpp>
@@ -12,20 +11,19 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/system/error_code.hpp>
 #include <deque>
+#include <future>
 #include <iterator>
+#include <memory>
 #include <mutex>
 #include <streambuf>
 #include <string>
 
 PeerListener::PeerListener(PeerId p
-                          ,std::shared_ptr<Client> client
-                          ,std::shared_ptr<tcp::socket> sock
-                          ,boost::asio::deadline_timer &&timer) 
-                          : m_client(client)
-                          , m_socket(sock)
-                          , m_peer(p)
-                          , m_streambuf(std::make_unique<boost::asio::streambuf>())
-                          , m_timer(std::make_unique<boost::asio::deadline_timer>(timer)) {
+                          ,std::shared_ptr<Connection> conn
+                          ,std::shared_ptr<Client> client) 
+                          : m_peer(p)
+                          , m_connection(conn)
+                          , m_client(client) {
 };
 
 void PeerListener::parse_message(int length,MessageType mt,std::deque<char> &deq_buf) {
@@ -91,105 +89,45 @@ void PeerListener::cancel_connection() {
 
 }
 
-std::unique_ptr<HandShake> PeerListener::receive_handshake() {
-    boost::asio::streambuf buf;
-    boost::system::error_code error;
+Response PeerListener::receive_handshake() {
 
-    m_timer->expires_from_now(boost::posix_time::seconds(10));
+    std::promise<Response> promise;
 
-    boost::asio::async_read(*m_socket.get(),buf,boost::asio::transfer_exactly(1)
-                            ,boost::bind(&PeerListener::read_handshake_body,shared_from_this()
-                            ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred);
+    auto received_handshake = [&promise] (auto error,auto &&deq_buf) {
+        if(error == 0) {
+            auto msg = std::make_unique<HandShake>(HandShake::from_bytes_repr(deq_buf.size() - 48, deq_buf));
+            promise.set_value(Response { {msg}, error });
+        } else{
+            promise.set_value(Response { {}, error });
+        }
+    };
 
-    m_timer->async_wait(std::bind(&PeerListener::cancel_connection,shared_from_this()));
+    std::future<Response> future = promise.get_future();
+    std::async(m_connection->read_message_timed(boost::bind(&received_handshake,_1,_2)));
 
-
-    std::deque<char> deq_buf(boost::asio::buffers_begin(buf.data())
-                            ,boost::asio::buffers_end(buf.data()));
-    char pstrlen = deq_buf.front();
-    deq_buf.pop_front();
-    buf.consume(1);
-
-    // 8 reserved bytes, 20 info hash , 20 peer id
-    int n = (unsigned char)pstrlen + 48;
-
-    while(n > 0) {
-        int bytes_read = boost::asio::read(*m_socket.get(),buf,boost::asio::transfer_exactly(n),error);
-        std::copy(boost::asio::buffers_begin(buf.data())
-                 ,boost::asio::buffers_end(buf.data())
-                 ,back_inserter(deq_buf));
-        n -= bytes_read;
-    }
-
-    return HandShake::from_bytes_repr(pstrlen, deq_buf);
+    return future.get();
 }
 
 void PeerListener::read_messages() {
-    boost::asio::async_read(*m_socket.get()
-                           ,*m_streambuf.get()
-                           ,boost::asio::transfer_exactly(4)
-                           ,boost::bind(&PeerListener::read_message_length,shared_from_this()
-                           ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));
+    m_connection->read_message(boost::bind(&PeerListener::read_message_body,shared_from_this(),_1));
 }
 
-void PeerListener::read_message_length(boost::system::error_code error, size_t size) {
-
-    // copy data over into deque
-    std::deque<char> deq_buf;
-    std::copy(boost::asio::buffers_begin(m_streambuf->data())
-             ,boost::asio::buffers_end(m_streambuf->data())
-             ,std::back_inserter(deq_buf));
-
-    // read length of exactly 4 bytes
-    int m_length = bytes_to_int(deq_buf);
-    m_streambuf->consume(4);
-
-    // continue to read body using derived length
-    boost::asio::async_read(*m_socket.get()
-                           ,*m_streambuf.get()
-                           ,boost::asio::transfer_exactly(m_length)
-                           ,boost::bind(&PeerListener::read_message_body,shared_from_this()
-                           ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
-                           ,m_length
-                           ,m_length));
-}
-
-
-void PeerListener::read_message_body(boost::system::error_code error, size_t size, int length, int remaining) {
-    //if we haven't read everything requested then read some more
-    if (size < remaining) {
-        boost::asio::async_read(*m_socket.get()
-                           ,*m_streambuf.get()
-                           ,boost::asio::transfer_exactly(remaining - size)
-                           ,boost::bind(&PeerListener::read_message_body,shared_from_this()
-                           ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
-                           ,length
-                           ,remaining - size)); // compute how much more we have to read
-
-    } else {
-
-        // This should be a KeepAlive message
-        if(length == 0) { 
-            cout << "<<< KeepAlive" << endl;
-            read_messages(); return; /* m_client->received */}
-
-        std::deque<char> buff;
-        std::copy(boost::asio::buffers_begin(m_streambuf->data())
-                 ,boost::asio::buffers_end(m_streambuf->data())
-                 ,back_inserter(buff));
-
-        // first character is always a message id
-        unsigned char m_messageId = buff.front();
-        buff.pop_front();
-
-        // parse the payload
-        parse_message(length,messageType_from_id(m_messageId),buff);
-
-        m_streambuf->consume(length);
-
-        // continue to read more messages
-        read_messages();
+void PeerListener::read_message_body(boost::system::error_code error, std::deque<char> &&deq_buf) {
+    // This should be a KeepAlive message
+    if(deq_buf.size() == 0) { 
+        cout << "<<< KeepAlive" << endl;
+        read_messages(); return; /* m_client->received */
     }
+
+    // first character is always a message id
+    unsigned char m_messageId = deq_buf.front();
+    deq_buf.pop_front();
+
+    // parse the payload
+    parse_message(deq_buf.size(),messageType_from_id(m_messageId),deq_buf);
+
+    // continue to read more messages
+    read_messages();
 }
 
 PeerId PeerListener::get_peerId() {

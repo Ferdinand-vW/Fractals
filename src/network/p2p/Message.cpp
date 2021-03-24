@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-
 HandShake::HandShake(unsigned char pstrlen,std::string pstr,char (&reserved)[8],std::vector<char> info_hash,std::vector<char> peer_id) {
     m_pstrlen = pstrlen;
     m_pstr = pstr;

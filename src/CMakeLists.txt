@@ -7,6 +7,7 @@ set(SOURCES main.cpp
             common/encode.cpp 
             common/utils.cpp
             network/http/Tracker.cpp
+            network/p2p/Connection.cpp
             network/p2p/BitTorrent.cpp
             network/p2p/Client.cpp 
             network/p2p/Message.cpp 

@@ -8,7 +8,9 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/system/error_code.hpp>
 #include <deque>
 #include <exception>
@@ -19,7 +21,8 @@ Connection::Connection(boost::asio::io_context &io)
                       , m_socket(io) {};
 
 void Connection::f_timed(std::function<void(std::optional<error_code>&)> f
-                        ,std::function<void(error_code)> callback) {
+                        ,std::function<void(error_code)> callback
+                        ,boost::posix_time::seconds timeout) {
     std::function<void(std::optional<error_code>&,std::deque<char>&)> f2 = [f](auto err,auto &deq) {
         return f(err);
     };
@@ -28,17 +31,19 @@ void Connection::f_timed(std::function<void(std::optional<error_code>&)> f
         return callback(err);
     };
 
-    return f_timed(f2,callback2);
+    return f_timed(f2,callback2,timeout);
 }
 void Connection::f_timed(std::function<void(std::optional<error_code>&,std::deque<char>&)> f
-                        ,std::function<void(error_code,std::deque<char>&&)> callback) {
+                        ,std::function<void(error_code,std::deque<char>&&)> callback
+                        ,boost::posix_time::seconds timeout) {
     boost::asio::deadline_timer timer(m_io);
 
     std::optional<error_code> timer_result;
     std::optional<error_code> read_result;
 
-    // start deadline timer (timeout) of 10seconds
-    timer.expires_from_now(boost::posix_time::seconds(10));
+    // Assume negative timer means infinite timer
+    if(timeout.is_negative()) { timer.expires_from_now(boost::posix_time::pos_infin); }
+    else                     { timer.expires_from_now(timeout); }
     timer.async_wait([&timer_result](const error_code &error) { timer_result = error; });
 
     std::deque<char> deq;
@@ -76,7 +81,7 @@ void Connection::connect(PeerId p,std::function<void(boost::system::error_code)>
         }
     };
 
-    f_timed(connect_f, callback);
+    f_timed(connect_f, callback,boost::posix_time::seconds(10));
 
 }
 
@@ -128,11 +133,8 @@ void Connection::read_message_internal(std::optional<boost::system::error_code> 
 }
 
 void Connection::read_message(std::function<void (error_code, std::deque<char> &&)> callback) {
-    std::optional<error_code> read_result;
-    std::deque<char> deq_buf;
-    read_message_internal(read_result, deq_buf);
-    callback(read_result->value(),deq_buf);
+    f_timed(boost::bind(&Connection::read_message_internal,shared_from_this()),callback);
 }
 void Connection::read_message_timed(std::function<void(boost::system::error_code,std::deque<char>&&)> callback) {
-    f_timed(read_message_internal, callback);
+    f_timed(boost::bind(&Connection::read_message_internal,shared_from_this()),callback,boost::posix_time::seconds(10));
 }
