@@ -18,33 +18,37 @@
 
 Connection::Connection(boost::asio::io_context &io)
                       : m_io(io)
-                      , m_socket(io) {};
+                      , m_socket(tcp::socket(io)) {};
 
-void Connection::f_timed(std::function<void(std::optional<error_code>&)> f
-                        ,std::function<void(error_code)> callback
+Connection::Connection(Connection &&other)
+                      : m_io(other.m_io)
+                      , m_socket(std::move(other.m_socket)) {};
+
+void Connection::f_timed(std::function<void(std::optional<boost_error>&)> f
+                        ,std::function<void(boost_error)> callback
                         ,boost::posix_time::seconds timeout) {
-    std::function<void(std::optional<error_code>&,std::deque<char>&)> f2 = [f](auto err,auto &deq) {
+    std::function<void(std::optional<boost_error>&,std::deque<char>&)> f2 = [f](auto err,auto _deq) {
         return f(err);
     };
 
-    std::function<void(error_code,std::deque<char>&&)> callback2 = [callback](auto err, auto &&deq) {
+    std::function<void(boost_error,std::shared_ptr<std::deque<char>>)> callback2 = [callback](auto err, auto _deq) {
         return callback(err);
     };
 
     return f_timed(f2,callback2,timeout);
 }
-void Connection::f_timed(std::function<void(std::optional<error_code>&,std::deque<char>&)> f
-                        ,std::function<void(error_code,std::deque<char>&&)> callback
+void Connection::f_timed(std::function<void(std::optional<boost_error>&,std::deque<char>&)> f
+                        ,std::function<void(boost_error,std::shared_ptr<std::deque<char>>)> callback
                         ,boost::posix_time::seconds timeout) {
     boost::asio::deadline_timer timer(m_io);
 
-    std::optional<error_code> timer_result;
-    std::optional<error_code> read_result;
+    std::optional<boost_error> timer_result;
+    std::optional<boost_error> read_result;
 
     // Assume negative timer means infinite timer
     if(timeout.is_negative()) { timer.expires_from_now(boost::posix_time::pos_infin); }
     else                     { timer.expires_from_now(timeout); }
-    timer.async_wait([&timer_result](const error_code &error) { timer_result = error; });
+    timer.async_wait([&timer_result](const boost_error &error) { timer_result = error; });
 
     std::deque<char> deq;
     f(read_result,deq);
@@ -64,17 +68,19 @@ void Connection::f_timed(std::function<void(std::optional<error_code>&,std::dequ
         }
     }
 
-    if(timer_result) { callback(timer_result.value(),std::deque<char>()); }
-    if(read_result)  { callback(read_result.value(),std::move(deq)); }
+    auto deq_ptr = std::make_shared<std::deque<char>>(deq);
+
+    if(timer_result) { callback(timer_result.value(),std::move(deq_ptr)); }
+    if(read_result)  { callback(read_result.value(),std::move(deq_ptr)); }
 }
 
-void Connection::connect(PeerId p,std::function<void(boost::system::error_code)> callback) {
+void Connection::connect(PeerId p,std::function<void(boost_error)> callback) {
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port);
 
     auto connect_f = [this,endp,callback](auto &read_result) {
         // attempt to make a connection with peer
         try {
-            m_socket.async_connect(endp,[&read_result](const boost::system::error_code &error) { read_result = error; });
+            m_socket.async_connect(endp,[&read_result](const boost_error &error) { read_result = error; });
         }
         catch(std::exception &error) {
             read_result = boost::asio::error::connection_refused;
@@ -85,24 +91,24 @@ void Connection::connect(PeerId p,std::function<void(boost::system::error_code)>
 
 }
 
-void Connection::send_message(IMessage &&m,std::function<void(boost::system::error_code,size_t)> callback) {
+void Connection::send_message(IMessage &&m,std::function<void(boost_error,size_t)> callback) {
     boost::asio::async_write(m_socket,boost::asio::buffer(m.to_bytes_repr()),callback);
 }
 
-void Connection::read_message_internal(std::optional<boost::system::error_code> &read_result,std::deque<char> &deq_buf) {
+void Connection::read_message_internal(std::optional<boost_error> &read_result,std::deque<char> &deq_buf) {
     //Must prevent two reads to occur at the same time
     //Otherwise one read may read the length and the other part of the first messages payload
     std::unique_lock<std::mutex> lock(m_read_mutex);
     
     boost::asio::streambuf buf;
 
-    std::function<void(boost::system::error_code,size_t,int,int)> read_body_handler = 
+    std::function<void(boost_error,size_t,int,int)> read_body_handler = 
         [this,&read_result,&buf,&read_body_handler]
-        (boost::system::error_code error, size_t size,int length, int remaining) {
+        (boost_error error, size_t size,int length,int remaining) {
             if (size < remaining) {
                 boost::asio::async_read(m_socket,buf
                                        ,boost::asio::transfer_exactly(remaining - size)
-                                       ,std::bind(&read_body_handler,shared_from_this()
+                                       ,boost::bind(std::ref(read_body_handler)
                                        ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
                                        ,length,remaining - size));            
             } else {
@@ -110,7 +116,7 @@ void Connection::read_message_internal(std::optional<boost::system::error_code> 
             }
         };
 
-    auto read_length_handler = [this,&buf,&read_body_handler]() {
+    auto read_length_handler = [&buf,&read_body_handler](const boost_error &err, size_t size) {
 
         std::deque<char> deq_buf;
         std::copy(boost::asio::buffers_begin(buf.data())
@@ -124,7 +130,7 @@ void Connection::read_message_internal(std::optional<boost::system::error_code> 
 
     boost::asio::async_read(m_socket,buf
                             ,boost::asio::transfer_exactly(4)
-                            ,std::bind(&read_body_handler,shared_from_this()
+                            ,boost::bind<void>(read_length_handler
                             ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));  
 
     std::copy(boost::asio::buffers_begin(buf.data())
@@ -132,9 +138,19 @@ void Connection::read_message_internal(std::optional<boost::system::error_code> 
                 ,std::back_inserter(deq_buf));
 }
 
-void Connection::read_message(std::function<void (error_code, std::deque<char> &&)> callback) {
-    f_timed(boost::bind(&Connection::read_message_internal,shared_from_this()),callback);
+void Connection::read_message(std::function<void (boost_error, std::shared_ptr<std::deque<char>>)> callback) {
+    //f_timed(boost::bind(&Connection::read_message_internal,shared_from_this()),callback);
 }
-void Connection::read_message_timed(std::function<void(boost::system::error_code,std::deque<char>&&)> callback) {
-    f_timed(boost::bind(&Connection::read_message_internal,shared_from_this()),callback,boost::posix_time::seconds(10));
+void Connection::read_message_timed(std::function<void(boost_error,std::shared_ptr<std::deque<char>>)> callback) {
+    auto func = [this](std::optional<boost_error>& read_result,std::deque<char>& deq_buf) {
+        read_message_internal(read_result,deq_buf);
+    };
+
+    f_timed(func,callback,boost::posix_time::seconds(10));
+}
+
+void Connection::block_until(bool &cond) {
+    while(!cond) {
+        m_io.run_one();
+    }
 }

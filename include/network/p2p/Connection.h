@@ -14,31 +14,35 @@
 using namespace boost::asio;
 using ip::tcp;
 
-typedef boost::system::error_code error_code;
+typedef boost::system::error_code boost_error;
 
 class Connection : std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
-    boost::asio::ip::tcp::socket m_socket;
+    tcp::socket m_socket;
     std::mutex m_read_mutex;
 
     private:
-        void f_timed(std::function<void(std::optional<error_code>&)> f
-                    ,std::function<void(error_code)> callback
+        void f_timed(std::function<void(std::optional<boost_error>&)> f
+                    ,std::function<void(boost_error)> callback
                     ,boost::posix_time::seconds timeout = boost::posix_time::seconds(-1));
-        void f_timed(std::function<void(std::optional<error_code>&,std::deque<char> &)> f
-                    ,std::function<void(error_code,std::deque<char>&&)> callback
+
+        void f_timed(std::function<void(std::optional<boost_error>&,std::deque<char> &)> f
+                    ,std::function<void(boost_error,std::shared_ptr<std::deque<char>>)> callback
                     ,boost::posix_time::seconds timeout = boost::posix_time::seconds(-1));
 
         void read_message_internal(std::optional<boost::system::error_code> &read_result,std::deque<char> &deq_buf);
 
     public:
         Connection(boost::asio::io_context &io);
+        Connection(Connection &&conn);
 
-        void connect(PeerId p,std::function<void(error_code)> callback);
+        void connect(PeerId p,std::function<void(boost_error)> callback);
         
-        void send_message(IMessage &&m,std::function<void(error_code,size_t)> callback);
-        void send_message_timed(IMessage &&m,std::function<void(error_code,size_t)> callback);
+        void send_message(IMessage &&m,std::function<void(boost_error,size_t)> callback);
+        void send_message_timed(IMessage &&m,std::function<void(boost_error,size_t)> callback);
         
-        void read_message(std::function<void(error_code,std::deque<char> &&deq_buf)> callback);
-        void read_message_timed(std::function<void(error_code,std::deque<char> &&deq_buf)> callback);
+        void read_message(std::function<void(boost_error,std::shared_ptr<std::deque<char>> deq_buf)> callback);
+        void read_message_timed(std::function<void(boost_error,std::shared_ptr<std::deque<char>> deq_buf)> callback);
+
+        void block_until(bool &cond);
 };

@@ -4,6 +4,6 @@
 #include "network/p2p/Message.h"
 
 struct Response {
-    std::optional<std::unique_ptr<IMessage>> m_message;
+    std::unique_ptr<IMessage> m_message;
     boost::system::error_code error;
 };

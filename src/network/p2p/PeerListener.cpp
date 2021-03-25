@@ -15,6 +15,7 @@
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <streambuf>
 #include <string>
 
@@ -26,7 +27,8 @@ PeerListener::PeerListener(PeerId p
                           , m_client(client) {
 };
 
-void PeerListener::parse_message(int length,MessageType mt,std::deque<char> &deq_buf) {
+void PeerListener::parse_message(int length,MessageType mt,std::shared_ptr<std::deque<char>> deq_buf_ptr) {
+    auto deq_buf = *deq_buf_ptr.get();
     switch (mt) {
         case MessageType::MT_Choke:
             cout << "<<< Choke" << endl;
@@ -91,40 +93,43 @@ void PeerListener::cancel_connection() {
 
 Response PeerListener::receive_handshake() {
 
-    std::promise<Response> promise;
+    std::shared_ptr<std::promise<Response>> promise;
+    bool completed = false;
 
-    auto received_handshake = [&promise] (auto error,auto &&deq_buf) {
-        if(error == 0) {
-            auto msg = std::make_unique<HandShake>(HandShake::from_bytes_repr(deq_buf.size() - 48, deq_buf));
-            promise.set_value(Response { {msg}, error });
+    std::future<Response> future = promise->get_future();
+    m_connection->read_message_timed([&completed,&promise](auto error,auto deq_buf){
+        if(error) {
+            std::unique_ptr<IMessage> msg = HandShake::from_bytes_repr(deq_buf->size() - 48, *deq_buf.get());
+            promise->set_value(Response { std::move(msg), error });
+            completed = true;
         } else{
-            promise.set_value(Response { {}, error });
+            promise->set_value(Response { std::unique_ptr<IMessage>(), error });
+            completed = true;
         }
-    };
+    });
 
-    std::future<Response> future = promise.get_future();
-    std::async(m_connection->read_message_timed(boost::bind(&received_handshake,_1,_2)));
+    m_connection->block_until(completed);
 
     return future.get();
 }
 
 void PeerListener::read_messages() {
-    m_connection->read_message(boost::bind(&PeerListener::read_message_body,shared_from_this(),_1));
+    m_connection->read_message(boost::bind(&PeerListener::read_message_body,shared_from_this(),_1,_2));
 }
 
-void PeerListener::read_message_body(boost::system::error_code error, std::deque<char> &&deq_buf) {
+void PeerListener::read_message_body(boost::system::error_code error, std::shared_ptr<std::deque<char>> deq_buf) {
     // This should be a KeepAlive message
-    if(deq_buf.size() == 0) { 
+    if(deq_buf->size() == 0) { 
         cout << "<<< KeepAlive" << endl;
         read_messages(); return; /* m_client->received */
     }
 
     // first character is always a message id
-    unsigned char m_messageId = deq_buf.front();
-    deq_buf.pop_front();
+    unsigned char m_messageId = deq_buf->front();
+    deq_buf->pop_front();
 
     // parse the payload
-    parse_message(deq_buf.size(),messageType_from_id(m_messageId),deq_buf);
+    parse_message(deq_buf->size(),messageType_from_id(m_messageId),deq_buf);
 
     // continue to read more messages
     read_messages();

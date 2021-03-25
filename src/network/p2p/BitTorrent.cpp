@@ -66,7 +66,11 @@ bool BitTorrent::attempt_connect(PeerId p) {
     Client c(shared_socket,shared_timer,m_torrent);
     m_client = std::make_shared<Client>(std::move(c));
 
-    PeerListener pl(p,m_client,shared_socket);
+    // Connection conn(m_io);
+    auto conn_ptr = std::make_shared<Connection>(Connection(m_io));
+    PeerListener pl(p,conn_ptr,m_client);
+
+
 
     m_peer = std::make_shared<PeerListener>(std::move(pl));
 
@@ -80,7 +84,7 @@ bool BitTorrent::perform_handshake() {
     cout << ">>> " + handshake.pprint() << endl;
     m_client->send_handshake(handshake);
     auto peer_handshake = m_peer->receive_handshake();
-    cout << "<<< " + peer_handshake->pprint() << endl;
+    // cout << "<<< " + peer_handshake->pprint() << endl;
 
     return true;
 }
