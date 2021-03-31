@@ -1,5 +1,6 @@
 #include "network/p2p/PeerListener.h"
 #include "common/utils.h"
+#include "network/p2p/Connection.h"
 #include <algorithm>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/placeholders.hpp>
@@ -95,9 +96,11 @@ Response PeerListener::receive_handshake() {
 
     std::shared_ptr<std::promise<Response>> promise;
     bool completed = false;
+    cout << "huh" << endl;
 
-    std::future<Response> future = promise->get_future();
-    m_connection->read_message_timed([&completed,&promise](auto error,auto deq_buf){
+    cout << "here" << endl;
+    m_connection->read_message_timed([&completed,&promise](boost_error error,auto deq_buf){
+        cout << "in callback" << endl;
         if(error) {
             std::unique_ptr<IMessage> msg = HandShake::from_bytes_repr(deq_buf->size() - 48, *deq_buf.get());
             promise->set_value(Response { std::move(msg), error });
@@ -108,8 +111,10 @@ Response PeerListener::receive_handshake() {
         }
     });
 
+    cout << "then here" << endl;
     m_connection->block_until(completed);
 
+    std::future<Response> future = promise->get_future();
     return future.get();
 }
 
@@ -117,7 +122,7 @@ void PeerListener::read_messages() {
     m_connection->read_message(boost::bind(&PeerListener::read_message_body,shared_from_this(),_1,_2));
 }
 
-void PeerListener::read_message_body(boost::system::error_code error, std::shared_ptr<std::deque<char>> deq_buf) {
+void PeerListener::read_message_body(boost_error error, std::shared_ptr<std::deque<char>> deq_buf) {
     // This should be a KeepAlive message
     if(deq_buf->size() == 0) { 
         cout << "<<< KeepAlive" << endl;

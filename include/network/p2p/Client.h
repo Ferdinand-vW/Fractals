@@ -8,6 +8,7 @@
 #include <set>
 #include <boost/asio.hpp>
 
+#include "network/p2p/Connection.h"
 #include "network/p2p/PeerId.h"
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
@@ -39,9 +40,7 @@ class Client : public enable_shared_from_this<Client> {
     std::set<int> m_missing_pieces;
     std::set<int> m_existing_pieces;
 
-    std::shared_ptr<tcp::socket> m_socket;
-    std::shared_ptr<boost::asio::deadline_timer> m_timer;
-
+    std::shared_ptr<Connection> m_connection;
     // wrapped in unique pointers to make Client movable
     std::unique_ptr<std::mutex> m_request_mutex;
     std::unique_ptr<std::condition_variable> m_request_cv;
@@ -52,11 +51,9 @@ class Client : public enable_shared_from_this<Client> {
     public:
         std::vector<char> m_client_id;
         
-        Client(std::shared_ptr<tcp::socket> socket
-              ,std::shared_ptr<deadline_timer> timer
+        Client(std::shared_ptr<Connection> connection
               ,std::shared_ptr<Torrent> torrent);
 
-        bool connect_peer(PeerId p);
         bool has_all_pieces();
         bool is_choked_by(PeerId p);
 

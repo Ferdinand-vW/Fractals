@@ -14,13 +14,11 @@
 #include <mutex>
 #include <string>
 
-Client::Client(std::shared_ptr<tcp::socket> socket
-              ,std::shared_ptr<deadline_timer> timer
+Client::Client(std::shared_ptr<Connection> connection
               ,std::shared_ptr<Torrent> torrent)
               : m_request_cv(std::make_unique<std::condition_variable>())
               ,m_request_mutex(std::make_unique<std::mutex>())
-              ,m_socket(socket)
-              ,m_timer(timer)
+              ,m_connection(connection)
               ,m_torrent(torrent)
               ,cur_piece(std::make_unique<PieceStatus>(
                                 PieceStatus{PieceProgress::Nothing,
@@ -29,18 +27,11 @@ Client::Client(std::shared_ptr<tcp::socket> socket
                                 )
                 ) {
     m_client_id = generate_peerId();
-    m_timer->expires_at(boost::posix_time::pos_infin);
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.pieces.size();i++) {
         m_missing_pieces.insert(i);
     }
 };
-
-bool Client::connect_peer(PeerId p) {
-    m_socket->connect(tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port));
-
-    return true;
-}
 
 bool Client::has_all_pieces() {
     return m_missing_pieces.size() == 0;
@@ -56,7 +47,6 @@ void Client::received_choke(PeerId p) {
 
 void Client::received_unchoke(PeerId p) {
     m_peer_status[p].m_peer_choking = false;
-    m_timer->cancel_one(); // triggers write call back handler
 }
 
 void Client::received_interested(PeerId p) {
@@ -114,13 +104,11 @@ void Client::received_piece(PeerId p, Piece pc) {
             cur_piece->m_progress = PieceProgress::Nothing;
         }
 
-        m_timer->cancel();
     }
     else {
         cout << "[BitTorrent] added block to " << pc.pprint() << endl;
 
         cur_piece->m_progress = PieceProgress::Downloaded;
-        m_timer->cancel_one();
     }
 }
 
@@ -129,14 +117,14 @@ void Client::received_garbage(PeerId p) {
 }
 
 void Client::send_handshake(const HandShake &hs) {
-    boost::asio::write(*m_socket.get(),boost::asio::buffer(hs.to_bytes_repr()));
+    // boost::asio::write(*m_socket.get(),boost::asio::buffer(hs.to_bytes_repr()));
 }
 
 void doNothing(){}
 
 
 void Client::wait_for_unchoke(PeerId p) {
-    m_timer->async_wait(boost::bind(&Client::send_messages,shared_from_this(),p));
+    // m_timer->async_wait(boost::bind(&Client::send_messages,shared_from_this(),p));
 }
 
 void Client::send_messages(PeerId p) {
@@ -148,16 +136,16 @@ void Client::send_messages(PeerId p) {
     auto msg = Bitfield(bf.size(),bf);
 
     auto unchoke_msg = UnChoke();
-    boost::asio::async_write(*m_socket.get()
-                            ,boost::asio::buffer(unchoke_msg.to_bytes_repr())
-                            ,std::bind(doNothing));
+    // boost::asio::async_write(*m_socket.get()
+    //                         ,boost::asio::buffer(unchoke_msg.to_bytes_repr())
+    //                         ,std::bind(doNothing));
     cout << ">>> " + unchoke_msg.pprint() << endl;
 
     auto interested_msg = Interested();
-    boost::asio::async_write(*m_socket.get()
-                            ,boost::asio::buffer(interested_msg.to_bytes_repr())
-                            ,boost::bind(&Client::sent_interested,this,p,boost::asio::placeholders::error,
-                                    boost::asio::placeholders::bytes_transferred));
+    // boost::asio::async_write(*m_socket.get()
+    //                         ,boost::asio::buffer(interested_msg.to_bytes_repr())
+    //                         ,boost::bind(&Client::sent_interested,this,p,boost::asio::placeholders::error,
+    //                                 boost::asio::placeholders::bytes_transferred));
 
     cout << ">>> " + interested_msg.pprint() << endl;
 }
@@ -169,7 +157,7 @@ void Client::sent_interested(PeerId p,boost::system::error_code error, size_t si
 }
 
 void Client::wait_send_piece_request(PeerId p,boost::system::error_code error, size_t size) {
-    m_timer->async_wait(std::bind(&Client::send_piece_request,shared_from_this(),p,error,size));
+    // m_timer->async_wait(std::bind(&Client::send_piece_request,shared_from_this(),p,error,size));
 }
 
 void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t size) {
@@ -182,11 +170,11 @@ void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t
                        ,cur_piece->m_data.next_block_begin()
                        ,std::min(remaining,std::min(piece_length,request_size)));
         cur_piece->m_progress = PieceProgress::Requested;
-        boost::asio::async_write(*m_socket.get()
-                                ,boost::asio::buffer(request.to_bytes_repr())
-                                ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
-                                            ,boost::asio::placeholders::error,
-                                            boost::asio::placeholders::bytes_transferred));
+        // boost::asio::async_write(*m_socket.get()
+        //                         ,boost::asio::buffer(request.to_bytes_repr())
+        //                         ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
+        //                                     ,boost::asio::placeholders::error,
+        //                                     boost::asio::placeholders::bytes_transferred));
         cout << ">>>  " + request.pprint() << endl;
 
     } else if (cur_piece->m_progress == PieceProgress::Nothing) {
@@ -203,11 +191,11 @@ void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
         
-        boost::asio::async_write(*m_socket.get()
-                        ,boost::asio::buffer(request.to_bytes_repr())
-                        ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
-                                    ,boost::asio::placeholders::error,
-                                     boost::asio::placeholders::bytes_transferred));
+        // boost::asio::async_write(*m_socket.get()
+        //                 ,boost::asio::buffer(request.to_bytes_repr())
+        //                 ,boost::bind(&Client::wait_send_piece_request,shared_from_this(),p
+        //                             ,boost::asio::placeholders::error,
+        //                              boost::asio::placeholders::bytes_transferred));
         cout << ">>> " + request.pprint() << endl;
     } else {
         cout << "[BitTorrent] Completed downloading. Leaving thread.." << endl;

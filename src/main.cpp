@@ -5,7 +5,6 @@
 #include <boost/asio/completion_condition.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/streambuf.hpp>
-#include <c++/7/bits/c++config.h>
 #include <deque>
 #include <functional>
 #include <iterator>
@@ -46,7 +45,7 @@ int main() {
     std::shared_ptr<std::mutex> mu = make_shared<std::mutex>();
     std::unique_lock<std::mutex> lock(*mu.get());
 
-    auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/[HYSUB]Kaifuku Jutsushi no Yarinaoshi[10][GB_MP4][1920X1080].mp4.torrent");
+    auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/ubuntu.torrent");
     auto torr_ptr = std::make_shared<Torrent>(torr);
 
     boost::asio::io_context io;

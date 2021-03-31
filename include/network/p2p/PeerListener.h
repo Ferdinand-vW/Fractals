@@ -27,7 +27,7 @@ class PeerListener : public enable_shared_from_this<PeerListener> {
     std::shared_ptr<Client> m_client;
 
     private:
-        void read_message_body(boost::system::error_code error, std::shared_ptr<std::deque<char>> deq_buf);
+        void read_message_body(boost_error error, std::shared_ptr<std::deque<char>> deq_buf);
 
     public:
         PeerListener(PeerId m_peer

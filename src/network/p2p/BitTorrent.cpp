@@ -1,5 +1,6 @@
 #include "network/p2p/BitTorrent.h"
 #include "network/http/Tracker.h"
+#include "network/p2p/Connection.h"
 #include "network/p2p/PeerId.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
@@ -47,34 +48,30 @@ PeerId BitTorrent::choose_peer() {
     return p;
 }
 
-bool BitTorrent::attempt_connect(PeerId p) {
-    tcp::socket socket(m_io);
-    auto endp = tcp::endpoint(boost::asio::ip::address::from_string(p.m_ip),p.m_port);
-    cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
-    try {
-        socket.connect(endp);
-        cout << "[BitTorrent] connected." << endl;
-    }
-    catch (std::exception &error) {
-        cout << "[BitTorrent] failed to connect to peer " << p.m_ip << endl;
-        return false;
-    }
+boost_error BitTorrent::attempt_connect(PeerId p) {
+    auto conn_ptr = std::shared_ptr<Connection>(new Connection(m_io,p));
     
-    auto shared_socket = std::make_shared<tcp::socket>(std::move(socket));
-    auto shared_timer = std::make_shared<boost::asio::deadline_timer>(boost::asio::deadline_timer(m_io));
+    cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
+    shared_error read_result;
+    conn_ptr->connect([read_result](boost_error err) mutable { read_result = std::make_shared<boost_error>(err); } );
+   
+    cout << "before block" << endl;
+    conn_ptr->block_until(read_result);
 
-    Client c(shared_socket,shared_timer,m_torrent);
-    m_client = std::make_shared<Client>(std::move(c));
+    //set up client and peer
+    if(read_result) {
+        cout << "[BitTorrent] connected." << endl;
+        Client c(conn_ptr,m_torrent);
+        m_client = std::make_shared<Client>(std::move(c));
 
-    // Connection conn(m_io);
-    auto conn_ptr = std::make_shared<Connection>(Connection(m_io));
-    PeerListener pl(p,conn_ptr,m_client);
+        PeerListener pl(p,conn_ptr,m_client);
+        m_peer = std::make_shared<PeerListener>(std::move(pl));
+    } else {
+        cout << "[BitTorrent] failed to connect to peer " << p.m_ip << endl;
+    }
 
-
-
-    m_peer = std::make_shared<PeerListener>(std::move(pl));
-
-    return true;
+    return *read_result.get();
+    
 }
 
 bool BitTorrent::perform_handshake() {
@@ -82,9 +79,10 @@ bool BitTorrent::perform_handshake() {
     char reserved[8] = {0,0,0,0,0,0,0,0};
     auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
     cout << ">>> " + handshake.pprint() << endl;
-    m_client->send_handshake(handshake);
+    // m_client->send_handshake(handshake);
+    cout << "test" << endl;
     auto peer_handshake = m_peer->receive_handshake();
-    // cout << "<<< " + peer_handshake->pprint() << endl;
+    cout << "<<< " + peer_handshake.m_message->pprint() << endl;
 
     return true;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "network/p2p/Connection.h"
 #include "torrent/Torrent.h"
 #include "network/p2p/Client.h"
 #include "network/p2p/PeerListener.h"
@@ -36,7 +37,7 @@ class BitTorrent {
     private:
         void request_peers();
         PeerId choose_peer();
-        bool attempt_connect(PeerId p);
+        boost_error attempt_connect(PeerId p);
         PeerId connect_to_a_peer();
 
         bool perform_handshake();
