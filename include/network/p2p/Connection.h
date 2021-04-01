@@ -16,6 +16,7 @@ using ip::tcp;
 
 typedef boost::system::error_code boost_error;
 typedef std::shared_ptr<boost_error> shared_error;
+typedef std::function<void(boost_error,std::shared_ptr<std::deque<char>> deq_buf)> read_callback;
 
 class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
@@ -23,17 +24,11 @@ class Connection : public std::enable_shared_from_this<Connection> {
     std::mutex m_read_mutex;
     boost::asio::streambuf m_buf;
     PeerId m_peer;
+    std::vector<read_callback> listeners;
 
     private:
-        void f_timed(std::function<void(shared_error&)> f
-                    ,std::function<void(boost_error)> callback
-                    ,boost::posix_time::seconds timeout = boost::posix_time::seconds(-1));
-
-        void f_timed(std::function<void(shared_error&,std::deque<char> &)> f
-                    ,std::function<void(boost_error,std::shared_ptr<std::deque<char>>)> callback
-                    ,boost::posix_time::seconds timeout = boost::posix_time::seconds(-1));
-
         void read_message_internal(shared_error read_result,std::deque<char> &deq_buf);
+        void completed_reading(boost_error error,int length);
 
     public:
         Connection(boost::asio::io_context &io,PeerId p);
@@ -41,11 +36,10 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
         void connect(std::function<void(boost_error)> callback);
         
+        void read_messages();
         void send_message(IMessage &&m,std::function<void(boost_error,size_t)> callback);
-        void send_message_timed(IMessage &&m,std::function<void(boost_error,size_t)> callback);
         
-        void read_message(std::function<void(boost_error,std::shared_ptr<std::deque<char>> deq_buf)> callback);
-        void read_message_timed(std::function<void(boost_error,std::shared_ptr<std::deque<char>> deq_buf)> callback);
+        void on_receive(read_callback callback);
 
         void block_until(bool &cond);
         void block_until(shared_error opt);

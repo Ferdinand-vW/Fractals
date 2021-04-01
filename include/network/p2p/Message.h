@@ -14,6 +14,7 @@ class IMessage {
     public:
         // virtual int get_length();
         virtual std::optional<MessageType> get_messageType() = 0;
+        static std::unique_ptr<IMessage> parse_message (std::deque<char> &&deq);
         // length specified by BitTorrent specification
         virtual int get_length() = 0;
         virtual std::vector<char> to_bytes_repr() const = 0;
