@@ -13,7 +13,6 @@ set(SOURCES main.cpp
             network/p2p/Message.cpp 
             network/p2p/MessageType.cpp
             network/p2p/PeerId.cpp
-            network/p2p/PeerListener.cpp
             torrent/PieceData.cpp
             torrent/Torrent.cpp)
 

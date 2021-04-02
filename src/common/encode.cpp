@@ -1,5 +1,6 @@
 #include "common/encode.h"
 #include <cstring>
+#include <curl/easy.h>
 #include <memory>
 #include <iostream>
 #include <openssl/sha.h>
@@ -14,8 +15,11 @@ std::vector<char> sha1_encode(std::string bytes) {
 
 std::string url_encode (const std::vector<char> &ptr) {
     CURL *curl = curl_easy_init();
-    const char *output = curl_easy_escape(curl, (char const *)ptr.data(), SHA_DIGEST_LENGTH);
-    if(output) { curl_free(curl); return std::string(output); }
+    std::string output(curl_easy_escape(curl, (char const *)ptr.data(), SHA_DIGEST_LENGTH));
+    if(curl) { 
+        curl_easy_cleanup(curl);
+        return output; 
+    }
     else { return ""; }
 
 }

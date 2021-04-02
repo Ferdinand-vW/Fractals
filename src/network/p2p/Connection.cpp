@@ -1,6 +1,7 @@
 #include "network/p2p/Connection.h"
 #include "common/utils.h"
 #include "network/p2p/MessageType.h"
+#include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/error.hpp>
@@ -8,13 +9,17 @@
 #include <boost/asio/placeholders.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/asio/use_future.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/system/error_code.hpp>
+#include <chrono>
 #include <deque>
 #include <exception>
+#include <future>
+#include <iterator>
 #include <memory>
 #include <mutex>
 
@@ -24,15 +29,37 @@ Connection::Connection(boost::asio::io_context &io,PeerId p)
                       , m_peer(p) {};
 
 
-void Connection::connect(std::function<void(boost_error)> callback) {
-        auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
-        std::cout << "endp  " << std::endl;
-        // attempt to make a connection with peer
-        m_socket.async_connect(endp,callback);
+FutureResponse Connection::connect(std::chrono::seconds timeout) {
+    auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
+    std::cout << "endp  " << std::endl;
+    // attempt to make a connection with peer
+    auto fut = m_socket.async_connect(endp,boost::asio::use_future);
+    auto fut_status = fut.wait_for(timeout);
+    if(fut_status == std::future_status::deferred) {
+        std::cout << "deferred" << std::endl;
+    }
+    if(fut_status == std::future_status::timeout) {
+        std::cout << "timeout" << std::endl;
+    }
+
+    if(fut_status == std::future_status::ready) {
+        std::cout << "ready" << std::endl;
+    }
+    fut.get();
+
+    return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
 }
 
-void Connection::send_message(IMessage &&m,std::function<void(boost_error,size_t)> callback) {
-    boost::asio::async_write(m_socket,boost::asio::buffer(m.to_bytes_repr()),callback);
+bool Connection::is_open() {
+    return m_socket.is_open();
+}
+
+void Connection::cancel() {
+    m_socket.cancel();
+}
+
+void Connection::send_message(std::unique_ptr<IMessage> m,std::function<void(boost_error,size_t)> callback) {
+    boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 
 void Connection::read_messages() {
@@ -86,10 +113,50 @@ void Connection::completed_reading(boost_error error,int length) {
 
     auto deq_ptr = std::make_shared<std::deque<char>>(deq_buf);
     for(auto cb : listeners) {
-        cb(error,deq_ptr);
+        cb(error,length,deq_ptr);
     }
 
     read_messages(); //continue to read messages
+}
+
+FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) {
+    boost::asio::streambuf buf;
+    std::future<size_t> fut_length = boost::asio::async_read(m_socket,buf,boost::asio::transfer_exactly(1),boost::asio::use_future);
+    auto fut_status = fut_length.wait_for(timeout);
+    
+    if(fut_status != std::future_status::ready) {
+        std::cout << "sad" << std::endl;
+        return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
+    }
+
+    std::deque<char> deq_buf;
+    std::copy(boost::asio::buffers_begin(buf.data())
+             ,boost::asio::buffers_end(buf.data())
+             ,std::back_inserter(deq_buf));
+
+    int length = bytes_to_int(deq_buf);
+    buf.consume(4);
+
+    int remaining = length;
+    while(remaining > 0) {
+        auto fut_body = boost::asio::async_read(m_socket,buf,boost::asio::transfer_exactly(length),boost::asio::use_future);
+
+        auto fut_status = fut_body.wait_for(timeout);
+        if(fut_status != std::future_status::ready) {
+            return FutureResponse { std::make_unique<std::deque<char>>(deq_buf),fut_status};
+        } else {
+            size_t size = fut_body.get();
+            remaining -= size;
+        }
+    }
+
+    std::copy(boost::asio::buffers_begin(buf.data())
+             ,boost::asio::buffers_end(buf.data())
+             ,std::back_inserter(deq_buf));
+
+    buf.consume(length);
+
+    return FutureResponse { std::make_unique<std::deque<char>>(deq_buf), std::future_status::ready };
 }
 
 void Connection::on_receive(read_callback callback) {
@@ -104,6 +171,12 @@ void Connection::block_until(bool &cond) {
 
 void Connection::block_until(shared_error opt) {
     while (opt == nullptr) {
+        m_io.run_one();
+    }
+}
+
+void Connection::timed_block_until(std::optional<boost_error> &result, std::optional<boost_error> &timer) {
+    while (!result && !timer) {
         m_io.run_one();
     }
 }

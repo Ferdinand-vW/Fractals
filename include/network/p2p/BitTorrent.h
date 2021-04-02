@@ -5,6 +5,7 @@
 #include "network/p2p/Client.h"
 #include "network/p2p/PeerListener.h"
 #include "network/p2p/PeerId.h"
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
 /*
 
@@ -25,11 +26,12 @@ Protocol should accept torrent identifier, present pieces and a list of peers
 */
 class BitTorrent {
     std::shared_ptr<Client> m_client;
-    std::shared_ptr<PeerListener> m_peer;
     std::set<PeerId> m_available_peers;
     
     std::shared_ptr<Torrent> m_torrent;
     boost::asio::io_context &m_io;
+
+
     public:
         BitTorrent (std::shared_ptr<Torrent> t,boost::asio::io_context &io);
         void run();
@@ -37,7 +39,7 @@ class BitTorrent {
     private:
         void request_peers();
         PeerId choose_peer();
-        boost_error attempt_connect(PeerId p);
+        void attempt_connect(PeerId p);
         PeerId connect_to_a_peer();
 
         bool perform_handshake();

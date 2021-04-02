@@ -2,14 +2,22 @@
 #include "boost/bind.hpp"
 #include "app/Client.h"
 #include "common/utils.h"
+#include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
+#include "network/p2p/Response.h"
 #include "torrent/PieceData.h"
 #include <boost/asio/bind_executor.hpp>
+#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/system/error_code.hpp>
+#include <chrono>
 #include <condition_variable>
+#include <cstddef>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -39,6 +47,10 @@ bool Client::has_all_pieces() {
 
 bool Client::is_choked_by(PeerId p) {
     return m_peer_status[p].m_peer_choking;
+}
+
+bool Client::is_connected_to(PeerId p) {
+    return m_connection->is_open();
 }
 
 void Client::received_choke(PeerId p) {
@@ -112,15 +124,29 @@ void Client::received_piece(PeerId p, Piece pc) {
     }
 }
 
+void doNothing(){}
+
 void Client::received_garbage(PeerId p) {
     
 }
 
-void Client::send_handshake(const HandShake &hs) {
-    // boost::asio::write(*m_socket.get(),boost::asio::buffer(hs.to_bytes_repr()));
+void Client::send_handshake(HandShake &&hs) {
+    m_connection->send_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
 }
 
-void doNothing(){}
+void Client::receive_handshake() {
+    std::deque<char> deq_buf;
+    FutureResponse fr = m_connection->timed_blocking_receive(std::chrono::seconds(5));
+
+    if(fr.m_status == std::future_status::timeout) {
+        cout << "[BitTorrent] time out on handshake" << endl;
+    }
+    else {
+        cout << "[BitTorrent] received handshake" << endl;
+    }
+}
+
+
 
 
 void Client::wait_for_unchoke(PeerId p) {

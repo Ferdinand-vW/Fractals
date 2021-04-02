@@ -32,7 +32,6 @@ Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_mi(mi) {
         std::copy(fm.rightValue.files.begin(),fm.rightValue.files.end(),back_inserter(m_files));
     }
 
-    cout << bencode::encode(BencodeConvert::to_bdict(m_mi.info)) << endl;
     // Compute info hash and store
     m_info_hash = sha1_encode(bencode::encode(BencodeConvert::to_bdict(m_mi.info)));
 }

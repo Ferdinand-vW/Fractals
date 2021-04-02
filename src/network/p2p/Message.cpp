@@ -7,66 +7,6 @@
 #include <string>
 #include <vector>
 
-std::unique_ptr<IMessage> IMessage::parse_message(int length,Messagestd::deque<char> &deq_buf) {
-    switch (mt) {
-        case MessageType::MT_Choke:
-            cout << "<<< Choke" << endl;
-            m_client->received_choke(m_peer);
-            break;
-        case MessageType::MT_UnChoke: 
-            cout << "<<< Unchoke" << endl;
-            m_client->received_unchoke(m_peer);
-            break;
-        case MessageType::MT_Interested: 
-            cout << "<<< Interested" << endl;
-            m_client->received_interested(m_peer);
-            break;
-        case MessageType::MT_NotInterested:
-            cout << "<<< Not interested" << endl; 
-            m_client->received_not_interested(m_peer);
-            break;
-        case MessageType::MT_Have: {
-            auto h = Have::from_bytes_repr(deq_buf);
-            cout << "<<< " + h->pprint() << endl;
-            m_client->received_have(m_peer, h->m_piece_index);
-            break;
-        }
-        case MessageType::MT_Bitfield: {
-            auto bf = Bitfield::from_bytes_repr(length, deq_buf);
-            cout << "<<< " + bf->pprint() << endl;
-            m_client->received_bitfield(m_peer, *bf.get());
-            break;
-        }
-        case MessageType::MT_Request: {
-            auto r = Request::from_bytes_repr(deq_buf);
-            cout << "<<< " + r->pprint() << endl;
-            m_client->received_request(m_peer, *r.get());
-            break;
-        }
-        case MessageType::MT_Piece: {
-            auto p = Piece::from_bytes_repr(length, deq_buf);
-            cout << "<<< " + p->pprint() << endl;
-            m_client->received_piece(m_peer, *p.get());
-            break;
-        }
-        case MessageType::MT_Cancel: {
-            cout << "<<< Cancel" << endl;
-            auto c = Cancel::from_bytes_repr(deq_buf);
-            // m_client->received_cancel(m_peer, *c.get());
-            break;
-        }
-        case MessageType::MT_Port: {
-            cout << "<<< Port" << endl;
-            // auto p = Port::from_bytes_repr(deq_buf);
-            // m_client->receive
-            break;
-        }
-        default:
-            throw mt;
-    }
-}
-}
-
 HandShake::HandShake(unsigned char pstrlen,std::string pstr,char (&reserved)[8],std::vector<char> info_hash,std::vector<char> peer_id) {
     m_pstrlen = pstrlen;
     m_pstr = pstr;
@@ -429,4 +369,68 @@ std::unique_ptr<Port> Port::from_bytes_repr(std::deque<char> &bytes) {
     int m_port = bytes_to_int(bytes);
 
     return std::make_unique<Port>(Port(m_port));
+}
+
+std::unique_ptr<IMessage> IMessage::parse_message(int length,std::deque<char> &&deq_buf) {
+    if(length == 0) {return std::make_unique<KeepAlive>(); }
+
+    auto mt = messageType_from_id(deq_buf.front());
+    deq_buf.pop_front();
+    switch (mt) {
+        case MessageType::MT_Choke:
+            std::cout << "<<< Choke" << std::endl;
+            return std::make_unique<Choke>();
+            break;
+        case MessageType::MT_UnChoke: 
+            std::cout << "<<< Unchoke" << std::endl;
+            return std::make_unique<UnChoke>();
+            break;
+        case MessageType::MT_Interested: 
+            std::cout << "<<< Interested" << std::endl;
+            return std::make_unique<Interested>();
+            break;
+        case MessageType::MT_NotInterested:
+            std::cout << "<<< Not interested" << std::endl; 
+            return std::make_unique<NotInterested>();
+            break;
+        case MessageType::MT_Have: {
+            auto h = Have::from_bytes_repr(deq_buf);
+            std::cout << "<<< " + h->pprint() << std::endl;
+            return h;
+            break;
+        }
+        case MessageType::MT_Bitfield: {
+            auto bf = Bitfield::from_bytes_repr(length, deq_buf);
+            std::cout << "<<< " + bf->pprint() << std::endl;
+            return bf;
+            break;
+        }
+        case MessageType::MT_Request: {
+            auto r = Request::from_bytes_repr(deq_buf);
+            std::cout << "<<< " + r->pprint() << std::endl;
+            return r;
+            break;
+        }
+        case MessageType::MT_Piece: {
+            auto p = Piece::from_bytes_repr(length, deq_buf);
+            std::cout << "<<< " + p->pprint() << std::endl;
+            return p;
+            break;
+        }
+        case MessageType::MT_Cancel: {
+            std::cout << "<<< Cancel" << std::endl;
+            auto c = Cancel::from_bytes_repr(deq_buf);
+            return c;
+            break;
+        }
+        case MessageType::MT_Port: {
+            std::cout << "<<< Port" << std::endl;
+            // auto p = Port::from_bytes_repr(deq_buf);
+            // m_client->receive
+            throw mt;
+            break;
+        }
+        default:
+            throw mt;
+    }
 }
