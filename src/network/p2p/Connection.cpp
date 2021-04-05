@@ -63,15 +63,16 @@ void Connection::send_message(std::unique_ptr<IMessage> m,std::function<void(boo
 }
 
 void Connection::read_messages() {
-    //Must prevent two reads to occur at the same time
-    //Otherwise one read may read the length and the other part of the first messages payload
-    // std::unique_lock<std::mutex> lock(m_read_mutex);
     
     std::cout << "try to read" << std::endl;
     std::function<void(boost_error,size_t,int,int)> read_body_handler = 
         [this,&read_body_handler]
         (boost_error error, size_t size,int length,int remaining) {
             std::cout << "read body" << std::endl;
+            std::cout << size << std::endl;
+            std::cout << length << std::endl;
+            std::cout << remaining << std::endl;
+            std::cout << error.message() << std::endl;
             if (size < remaining && !error) {
                 boost::asio::async_read(m_socket,m_buf
                                        ,boost::asio::transfer_exactly(remaining - size)
@@ -88,11 +89,20 @@ void Connection::read_messages() {
         std::cout << err.message() << std::endl;
         std::cout << size << std::endl;
         std::deque<char> deq_buf;
+        std::cout << m_buf.size() << std::endl;
         std::copy(boost::asio::buffers_begin(m_buf.data())
                  ,boost::asio::buffers_end(m_buf.data())
                  ,std::back_inserter(deq_buf));
         std::cout << "here" << std::endl;
-        int length = bytes_to_int(deq_buf);
+
+        for(char c : deq_buf) {
+            std::cout << (int)(unsigned char) c << " ";
+        }
+        std::cout << std::endl;
+        std::cout << bytes_to_hex(deq_buf) << std::endl;
+        
+        long long length = bytes_to_long(deq_buf);
+        std::cout << "read length: " << length << std::endl;
         m_buf.consume(4);
         read_body_handler(boost::asio::error::in_progress,0,length,length);
     };
@@ -134,8 +144,11 @@ FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) 
              ,boost::asio::buffers_end(buf.data())
              ,std::back_inserter(deq_buf));
 
-    int length = bytes_to_int(deq_buf);
-    buf.consume(4);
+    std::cout << bytes_to_hex(deq_buf) << std::endl;
+    int length = bytes_to_long(deq_buf) + 49;
+    buf.consume(1);
+
+    std::cout << "hs length " << length << std::endl;
 
     int remaining = length;
     while(remaining > 0) {

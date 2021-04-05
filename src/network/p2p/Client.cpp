@@ -142,14 +142,24 @@ void Client::receive_handshake() {
         cout << "[BitTorrent] time out on handshake" << endl;
     }
     else {
+        std::cout << fr.m_data->size() << std::endl;
         cout << "[BitTorrent] received handshake" << endl;
     }
 }
 
 
+void Client::await_messages(PeerId p) {
+    auto f = [this,p](auto err,auto l,auto d) {
+        handle_peer_message(p, err, l, d);
+    };
+    m_connection->on_receive(f);
+
+    m_connection->read_messages();
+}
 
 
 void Client::wait_for_unchoke(PeerId p) {
+
     // m_timer->async_wait(boost::bind(&Client::send_messages,shared_from_this(),p));
 }
 
@@ -236,4 +246,12 @@ void Client::select_piece(PeerId p) {
     cur_piece->m_data.m_piece_index = piece;
     cur_piece->m_data.m_length = piece_size;
     cur_piece->m_progress = PieceProgress::Nothing;
+}
+
+void Client::handle_peer_message(PeerId p,boost_error error,int length,std::shared_ptr<std::deque<char>> deq_buf) {
+    std::cout << "handle message " << std::endl;
+    std::cout << error.message() << std::endl;
+
+    std::cout << length << std::endl;
+    std::cout << deq_buf->size() << std::endl;
 }

@@ -177,7 +177,7 @@ std::string Have::pprint() const {
 }
 
 std::unique_ptr<Have> Have::from_bytes_repr(std::deque<char> &bytes) {
-    int m_piece_index = bytes_to_int(bytes);
+    int m_piece_index = bytes_to_long(bytes);
     return std::make_unique<Have>(Have(m_piece_index));
 }
 
@@ -249,9 +249,9 @@ std::string Request::pprint() const {
 }
 
 std::unique_ptr<Request> Request::from_bytes_repr(std::deque<char> &bytes) {
-    int m_index  = bytes_to_int(bytes);
-    int m_begin  = bytes_to_int(bytes);
-    int m_length = bytes_to_int(bytes);
+    int m_index  = bytes_to_long(bytes);
+    int m_begin  = bytes_to_long(bytes);
+    int m_length = bytes_to_long(bytes);
 
     return std::make_unique<Request>(Request(m_index,m_begin,m_length));
 }
@@ -293,8 +293,8 @@ std::string Piece::pprint() const {
 }
 
 std::unique_ptr<Piece> Piece::from_bytes_repr(int m_len,std::deque<char> &bytes) {
-    int m_index = bytes_to_int(bytes);
-    int m_begin = bytes_to_int(bytes);
+    int m_index = bytes_to_long(bytes);
+    int m_begin = bytes_to_long(bytes);
     std::vector<char> m_block(bytes.begin(),bytes.begin() + m_len - 9); // 1 + 4 + 4
     return std::make_unique<Piece>(Piece(m_index,m_begin,std::move(m_block)));
 }
@@ -332,9 +332,9 @@ std::string Cancel::pprint() const {
 }
 
 std::unique_ptr<Cancel> Cancel::from_bytes_repr(std::deque<char> &bytes) {
-    int m_index = bytes_to_int(bytes);
-    int m_begin = bytes_to_int(bytes);
-    int m_length = bytes_to_int(bytes);
+    int m_index = bytes_to_long(bytes);
+    int m_begin = bytes_to_long(bytes);
+    int m_length = bytes_to_long(bytes);
 
     return std::make_unique<Cancel>(Cancel(m_index,m_begin,m_length));
 }
@@ -366,7 +366,7 @@ std::string Port::pprint() const {
 }
 
 std::unique_ptr<Port> Port::from_bytes_repr(std::deque<char> &bytes) {
-    int m_port = bytes_to_int(bytes);
+    int m_port = bytes_to_long(bytes);
 
     return std::make_unique<Port>(Port(m_port));
 }

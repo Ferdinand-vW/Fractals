@@ -89,12 +89,12 @@ std::vector<char> int_to_bytes(int n)  {
     return v;
 }
 
-int bytes_to_int(std::deque<char> &d) {
-    if (d.size() < 4) { return {}; }
+long long bytes_to_long(std::deque<char> &d) {
+    if (d.size() < 1) { return {}; }
 
     int n = 0;
-    for(int i = 0; i < 4; i++) {
-        n |= (unsigned char)d.front() << (24 - i * 8);
+    for(int i = 0; i < d.size(); i++) {
+        n |= (unsigned char)d.front() << (d.size()*8 - (i+1) * 8);
         d.pop_front();
     }
 

@@ -88,10 +88,7 @@ bool BitTorrent::perform_handshake() {
 void BitTorrent::run() {
     std::thread t([this](){
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work(m_io.get_executor());
-
-
         m_io.run();
-        std::cout << "t" << std::endl;
     });
 
     request_peers();
@@ -101,19 +98,11 @@ void BitTorrent::run() {
     bool established_p2p = false;
     while(!established_p2p) {
         established_p2p = perform_handshake();
-
-        // if(!established_p2p) { p = connect_to_a_peer(); }
     }
 
-    // cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
+    cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
 
-    // // m_peer->read_messages();
-    // m_client->wait_for_unchoke(p);
+    m_client->await_messages(p);
 
-    // std::thread t(boost::bind(&boost::asio::io_context::run, &m_io));
-    // m_io.run();
-    std::cout << "here" << std::endl;
     t.join();
-    std::cout << "there" << std::endl;
-
 }

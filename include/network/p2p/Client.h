@@ -58,6 +58,7 @@ class Client : public enable_shared_from_this<Client> {
         bool is_choked_by(PeerId p);
         bool is_connected_to(PeerId p);
 
+        void await_messages(PeerId p);
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);
@@ -81,6 +82,7 @@ class Client : public enable_shared_from_this<Client> {
         void add_peer(PeerId p);
 
     private:
+        void handle_peer_message(PeerId p,boost_error error,int length,std::shared_ptr<std::deque<char>> deq_buf);
         void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);
         void sent_interested(PeerId p,boost::system::error_code error, size_t size);
         void select_piece(PeerId p);
