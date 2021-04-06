@@ -63,10 +63,10 @@ class Client : public enable_shared_from_this<Client> {
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);
         void received_not_interested(PeerId p);
-        void received_have(PeerId p, int piece);
+        void received_have(PeerId p, Have &h);
         void received_bitfield(PeerId p,Bitfield &bf);
-        void received_request(PeerId p,Request r);
-        void received_piece(PeerId p,Piece pc);
+        void received_request(PeerId p,Request &r);
+        void received_piece(PeerId p,Piece &pc);
         void received_cancel(PeerId p, Cancel c);
         void received_garbage(PeerId p);
         // void received_port(PeerId p,Port port)
@@ -82,7 +82,7 @@ class Client : public enable_shared_from_this<Client> {
         void add_peer(PeerId p);
 
     private:
-        void handle_peer_message(PeerId p,boost_error error,int length,std::shared_ptr<std::deque<char>> deq_buf);
+        void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
         void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);
         void sent_interested(PeerId p,boost::system::error_code error, size_t size);
         void select_piece(PeerId p);

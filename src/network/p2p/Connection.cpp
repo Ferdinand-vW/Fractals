@@ -62,27 +62,27 @@ void Connection::send_message(std::unique_ptr<IMessage> m,std::function<void(boo
     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 
+void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
+    std::cout << "read body" << std::endl;
+    std::cout << size << std::endl;
+    std::cout << length << std::endl;
+    std::cout << remaining << std::endl;
+    std::cout << error.message() << std::endl;
+    if (size < remaining && !error) {
+        std::cout << "comes here" << std::endl;
+        boost::asio::async_read(m_socket,m_buf
+                                ,boost::asio::transfer_exactly(remaining - size)
+                                ,boost::bind(&Connection::read_message_body,this
+                                ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
+                                ,length,remaining - size));            
+    } else {
+        completed_reading(error,length);
+    }
+}
+
 void Connection::read_messages() {
     
-    std::cout << "try to read" << std::endl;
-    std::function<void(boost_error,size_t,int,int)> read_body_handler = 
-        [this,&read_body_handler]
-        (boost_error error, size_t size,int length,int remaining) {
-            std::cout << "read body" << std::endl;
-            std::cout << size << std::endl;
-            std::cout << length << std::endl;
-            std::cout << remaining << std::endl;
-            std::cout << error.message() << std::endl;
-            if (size < remaining && !error) {
-                boost::asio::async_read(m_socket,m_buf
-                                       ,boost::asio::transfer_exactly(remaining - size)
-                                       ,boost::bind(std::ref(read_body_handler)
-                                       ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
-                                       ,length,remaining - size));            
-            } else {
-                completed_reading(error,length);
-            }
-        };
+    std::cout << "[Connection] read message" << std::endl;
 
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         std::cout << "read length" << std::endl;
@@ -99,12 +99,12 @@ void Connection::read_messages() {
             std::cout << (int)(unsigned char) c << " ";
         }
         std::cout << std::endl;
-        std::cout << bytes_to_hex(deq_buf) << std::endl;
+        // std::cout << bytes_to_hex(deq_buf) << std::endl;
         
-        long long length = bytes_to_long(deq_buf);
+        int length = bytes_to_int(deq_buf);
         std::cout << "read length: " << length << std::endl;
         m_buf.consume(4);
-        read_body_handler(boost::asio::error::in_progress,0,length,length);
+        read_message_body(boost_error(),0,length,length);
     };
 
     boost::asio::async_read(m_socket,m_buf
@@ -121,9 +121,8 @@ void Connection::completed_reading(boost_error error,int length) {
              ,std::back_inserter(deq_buf));
     m_buf.consume(length);
 
-    auto deq_ptr = std::make_shared<std::deque<char>>(deq_buf);
     for(auto cb : listeners) {
-        cb(error,length,deq_ptr);
+        cb(error,length,std::move(deq_buf));
     }
 
     read_messages(); //continue to read messages
@@ -145,7 +144,7 @@ FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) 
              ,std::back_inserter(deq_buf));
 
     std::cout << bytes_to_hex(deq_buf) << std::endl;
-    int length = bytes_to_long(deq_buf) + 49;
+    int length = bytes_to_int(deq_buf) + 48;
     buf.consume(1);
 
     std::cout << "hs length " << length << std::endl;

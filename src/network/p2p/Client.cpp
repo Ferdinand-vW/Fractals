@@ -53,6 +53,16 @@ bool Client::is_connected_to(PeerId p) {
     return m_connection->is_open();
 }
 
+void Client::select_piece(PeerId p) {
+    int piece = *m_peer_status[p].m_available_pieces.begin();
+    m_peer_status[p].m_available_pieces.erase(piece);
+    int piece_size = m_torrent->size_of_piece(piece);
+
+    cur_piece->m_data.m_piece_index = piece;
+    cur_piece->m_data.m_length = piece_size;
+    cur_piece->m_progress = PieceProgress::Nothing;
+}
+
 void Client::received_choke(PeerId p) {
     m_peer_status[p].m_peer_choking = true;
 }
@@ -69,8 +79,8 @@ void Client::received_not_interested(PeerId p) {
     m_peer_status[p].m_peer_interested = false;
 }
 
-void Client::received_have(PeerId p, int piece) {
-    m_peer_status[p].m_available_pieces.insert(piece);
+void Client::received_have(PeerId p, Have &h) {
+    m_peer_status[p].m_available_pieces.insert(h.m_piece_index);
     // m_request_cv->notify_one();
 }
 
@@ -86,13 +96,13 @@ void Client::received_bitfield(PeerId p, Bitfield &bf) {
     }
 }
 
-void Client::received_request(PeerId p, Request r) {
-    cout << "Client received receive request from "+ p.m_ip + ":" + std::to_string(p.m_port) << endl;
+void Client::received_request(PeerId p, Request &r) {
+    cout << "[Client] received receive request from "+ p.m_ip + ":" + std::to_string(p.m_port) << endl;
     cout << r.m_index << " " << r.m_begin << " " << r.m_length << endl;
-    cout << "Client does not currently support receive request" << endl;
+    cout << "[Client] does not currently support receive request" << endl;
 }
 
-void Client::received_piece(PeerId p, Piece pc) {
+void Client::received_piece(PeerId p, Piece &pc) {
     Block b = Block { pc.m_begin, pc.m_block };
 
     cur_piece->m_data.add_block(b);
@@ -149,8 +159,8 @@ void Client::receive_handshake() {
 
 
 void Client::await_messages(PeerId p) {
-    auto f = [this,p](auto err,auto l,auto d) {
-        handle_peer_message(p, err, l, d);
+    auto f = [this,p](auto err,auto l,auto &&d) {
+        handle_peer_message(p, err, l, std::move(d));
     };
     m_connection->on_receive(f);
 
@@ -238,20 +248,40 @@ void Client::send_piece_request(PeerId p,boost::system::error_code error, size_t
     }
 }
 
-void Client::select_piece(PeerId p) {
-    int piece = *m_peer_status[p].m_available_pieces.begin();
-    m_peer_status[p].m_available_pieces.erase(piece);
-    int piece_size = m_torrent->size_of_piece(piece);
+void Client::handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf) {
+    if(error) {
+        std::cout << "[Client] Fatal error: " + error.message() << std::endl;
+        m_connection->cancel();
+        return;
+    }
 
-    cur_piece->m_data.m_piece_index = piece;
-    cur_piece->m_data.m_length = piece_size;
-    cur_piece->m_progress = PieceProgress::Nothing;
-}
-
-void Client::handle_peer_message(PeerId p,boost_error error,int length,std::shared_ptr<std::deque<char>> deq_buf) {
-    std::cout << "handle message " << std::endl;
-    std::cout << error.message() << std::endl;
-
-    std::cout << length << std::endl;
-    std::cout << deq_buf->size() << std::endl;
+    auto m = IMessage::parse_message(length, std::move(deq_buf));
+    switch(m->get_messageType().value()) {
+        case MessageType::MT_Choke: 
+            received_choke(p);
+            break;
+        case MessageType::MT_UnChoke: 
+            received_unchoke(p);
+            break;
+        case MessageType::MT_Interested: 
+            received_interested(p);
+            break;
+        case MessageType::MT_NotInterested: 
+            received_not_interested(p);
+            break;
+        case MessageType::MT_Have: 
+            received_have(p,*static_cast<Have*>(m.get()));
+            break;
+        case MessageType::MT_Bitfield: 
+            received_bitfield(p, *static_cast<Bitfield*>(m.get()));
+            break;
+        case MessageType::MT_Request: 
+            received_request(p, *static_cast<Request*>(m.get()));
+            break;
+        case MessageType::MT_Piece: 
+            received_piece(p, *static_cast<Piece*>(m.get()));
+            break;
+        case MessageType::MT_Cancel: break;
+        case MessageType::MT_Port: break;
+    }
 }

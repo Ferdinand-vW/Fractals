@@ -32,7 +32,7 @@ std::string bytes_to_hex(const std::deque<char> &bytes);
 
 std::vector<char> int_to_bytes(int n);
 
-long long bytes_to_long(std::deque<char> &d);
+int bytes_to_int(std::deque<char> &d);
 
 std::vector<char> bitfield_to_bytes(const std::vector<bool> &bitfields);
 std::vector<bool> bytes_to_bitfield(int len,std::deque<char> &bitfields);

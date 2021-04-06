@@ -6,6 +6,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/system/error_code.hpp>
+#include <cstddef>
 #include <deque>
 #include <memory>
 #include <future>
@@ -19,7 +20,7 @@ using ip::tcp;
 
 typedef boost::system::error_code boost_error;
 typedef std::shared_ptr<boost_error> shared_error;
-typedef std::function<void(boost_error,int length,std::shared_ptr<std::deque<char>> deq_buf)> read_callback;
+typedef std::function<void(boost_error,int length,std::deque<char> &&deq_buf)> read_callback;
 
 class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
@@ -30,6 +31,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
     std::vector<read_callback> listeners;
 
     private:
+        void read_message_body(const boost_error&error,size_t size,int length, int remaining);
         void read_message_internal(shared_error read_result,std::deque<char> &deq_buf);
         void completed_reading(boost_error error,int length);
 
