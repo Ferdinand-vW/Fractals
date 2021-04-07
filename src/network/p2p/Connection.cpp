@@ -58,7 +58,7 @@ void Connection::cancel() {
     m_socket.cancel();
 }
 
-void Connection::send_message(std::unique_ptr<IMessage> m,std::function<void(boost_error,size_t)> callback) {
+void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 

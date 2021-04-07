@@ -67,7 +67,7 @@ void BitTorrent::attempt_connect(PeerId p) {
     //set up client and peer
     if(fr.m_status == std::future_status::ready) {
         cout << "[BitTorrent] connected." << endl;
-        Client c(conn_ptr,m_torrent);
+        Client c(conn_ptr,m_torrent,m_io);
         m_client = std::make_shared<Client>(std::move(c));
     } else {
         cout << "[BitTorrent] failed to connect to peer " << p.m_ip << endl;

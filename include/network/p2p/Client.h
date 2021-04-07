@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <fstream>
@@ -40,7 +41,9 @@ class Client : public enable_shared_from_this<Client> {
     std::set<int> m_missing_pieces;
     std::set<int> m_existing_pieces;
 
+    boost::asio::io_context& m_io;
     std::shared_ptr<Connection> m_connection;
+    boost::asio::deadline_timer m_timer;
     // wrapped in unique pointers to make Client movable
     std::unique_ptr<std::mutex> m_request_mutex;
     std::unique_ptr<std::condition_variable> m_request_cv;
@@ -52,13 +55,15 @@ class Client : public enable_shared_from_this<Client> {
         std::vector<char> m_client_id;
         
         Client(std::shared_ptr<Connection> connection
-              ,std::shared_ptr<Torrent> torrent);
+              ,std::shared_ptr<Torrent> torrent
+              ,boost::asio::io_context &io);
 
         bool has_all_pieces();
         bool is_choked_by(PeerId p);
         bool is_connected_to(PeerId p);
 
         void await_messages(PeerId p);
+        void receive_handshake();
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);
@@ -71,17 +76,21 @@ class Client : public enable_shared_from_this<Client> {
         void received_garbage(PeerId p);
         // void received_port(PeerId p,Port port)
 
+        void write_messages(PeerId p);
         void send_handshake(HandShake &&hs);
-        void receive_handshake();
+        
         void wait_for_unchoke(PeerId p);
         void send_messages(PeerId p);
         void send_interested(PeerId p);
         void wait_send_piece_request(PeerId p,boost::system::error_code error, size_t size);
-        void send_piece_request(PeerId p,boost::system::error_code error, size_t size);
+        void send_piece_requests(PeerId p);
         void send_bitfield(PeerId p);
         void add_peer(PeerId p);
 
     private:
+        void unchoke_timeout(PeerId p);
+        void piece_response_timeout(PeerId p);
+        void sent_piece_request(PeerId p,const boost_error &error, size_t size);
         void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
         void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);
         void sent_interested(PeerId p,boost::system::error_code error, size_t size);

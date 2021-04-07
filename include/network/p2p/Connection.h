@@ -47,7 +47,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
         void cancel();
 
         void read_messages();
-        void send_message(std::unique_ptr<IMessage> m,std::function<void(boost_error,size_t)> callback);
+        void write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback);
         
         FutureResponse timed_blocking_receive(std::chrono::seconds timeout);
         void on_receive(read_callback callback);
