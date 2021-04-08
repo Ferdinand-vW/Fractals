@@ -15,6 +15,7 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/system/error_code.hpp>
+#include <c++/9/bits/c++config.h>
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
@@ -179,12 +180,18 @@ void Client::await_messages(PeerId p) {
 }
 
 void Client::write_messages(PeerId p) {
+    std::cout << "[Client] Write messages" << std::endl;
     auto ps = m_peer_status[p];
 
     if(ps.m_peer_choking) {
         send_bitfield(p);
         m_timer.expires_from_now(boost::posix_time::seconds(15));
-        m_timer.async_wait(boost::bind(&Client::unchoke_timeout,this,p));
+        m_timer.async_wait(
+            boost::bind(
+                &Client::unchoke_timeout,this,p
+                ,boost::asio::placeholders::error()
+                )
+            );
     }
     else {
         send_piece_requests(p);
@@ -192,12 +199,46 @@ void Client::write_messages(PeerId p) {
 }
 
 void Client::send_bitfield(PeerId p) {
-    
+    std::vector<bool> bf;
+    //pieces is a byte string consisting of consecutive 20length SHA1 hashes
+    //thus the number of pieces is the length of the byte string divided by 20
+    int num_pieces = m_torrent->m_mi.info.pieces.size() / 20;
+
+    // bitfield must be a multiple of 8
+    int mult8 = num_pieces % 8;
+    int tail = mult8 == 0 ? 0 : 8 - mult8; 
+    for(int i = 0; i < num_pieces + tail ;i++) {
+        bf.push_back(0);
+    }
+    std::cout << "pieces " << m_torrent->m_mi.info.pieces.size() << std::endl;
+    std::cout << "bitfield " << bf.size() << std::endl;
+    auto msg = Bitfield(bf.size(),bf);
+    auto msg_ptr = std::make_unique<Bitfield>(msg);
+
+    m_connection->write_message(
+          std::move(msg_ptr)
+        , boost::bind(&Client::sent_bitfield,this
+                    ,boost::asio::placeholders::error
+                    ,boost::asio::placeholders::bytes_transferred));
 }
 
-void Client::unchoke_timeout(PeerId p) {
-    m_connection->cancel();
-    m_timer.cancel();
+void Client::sent_bitfield(const boost_error &error,size_t size) {
+    if(error) {
+        std::cout << "[Client] " << error.message() << std::endl;
+        m_connection->cancel();
+        return;
+    }
+    std::cout << error.message() << std::endl;
+    std::cout << size << std::endl;
+    std::cout << ">>> Bitfield" << std::endl;
+}
+
+void Client::unchoke_timeout(PeerId p,const boost_error &error) {
+    if(error != boost::asio::error::operation_aborted) {
+        std::cout << "[Client] unchoke time out" << std::endl; 
+        m_connection->cancel();
+        m_timer.cancel();
+    }
 }
 
 void Client::send_piece_requests(PeerId p) {

@@ -88,9 +88,10 @@ class Client : public enable_shared_from_this<Client> {
         void add_peer(PeerId p);
 
     private:
-        void unchoke_timeout(PeerId p);
+        void unchoke_timeout(PeerId p,const boost_error & error);
         void piece_response_timeout(PeerId p);
         void sent_piece_request(PeerId p,const boost_error &error, size_t size);
+        void sent_bitfield(const boost_error &error,size_t size);
         void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
         void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);
         void sent_interested(PeerId p,boost::system::error_code error, size_t size);

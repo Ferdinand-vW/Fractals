@@ -102,6 +102,7 @@ void BitTorrent::run() {
 
     cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
 
+    m_client->write_messages(p);
     m_client->await_messages(p);
 
     t.join();

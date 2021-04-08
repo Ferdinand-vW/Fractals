@@ -59,17 +59,12 @@ void Connection::cancel() {
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
+    std::cout << bytes_to_hex(m->to_bytes_repr()) << std::endl;
     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 
 void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
-    std::cout << "read body" << std::endl;
-    std::cout << size << std::endl;
-    std::cout << length << std::endl;
-    std::cout << remaining << std::endl;
-    std::cout << error.message() << std::endl;
     if (size < remaining && !error) {
-        std::cout << "comes here" << std::endl;
         boost::asio::async_read(m_socket,m_buf
                                 ,boost::asio::transfer_exactly(remaining - size)
                                 ,boost::bind(&Connection::read_message_body,this
@@ -85,25 +80,21 @@ void Connection::read_messages() {
     std::cout << "[Connection] read message" << std::endl;
 
     auto read_length_handler = [&](const boost_error &err, size_t size) {
-        std::cout << "read length" << std::endl;
-        std::cout << err.message() << std::endl;
-        std::cout << size << std::endl;
+        // Abort on error
+        if (err) {
+            std::cout << "[Connection] " << err.message() << std::endl;
+            return;
+        }
+ 
         std::deque<char> deq_buf;
-        std::cout << m_buf.size() << std::endl;
         std::copy(boost::asio::buffers_begin(m_buf.data())
                  ,boost::asio::buffers_end(m_buf.data())
                  ,std::back_inserter(deq_buf));
-        std::cout << "here" << std::endl;
-
-        for(char c : deq_buf) {
-            std::cout << (int)(unsigned char) c << " ";
-        }
-        std::cout << std::endl;
-        // std::cout << bytes_to_hex(deq_buf) << std::endl;
         
         int length = bytes_to_int(deq_buf);
-        std::cout << "read length: " << length << std::endl;
-        m_buf.consume(4);
+        std::cout << "[Connection] read message length: " << length << std::endl;
+        m_buf.consume(4); //TODO: Don't assume we've already read 4 bytes
+
         read_message_body(boost_error(),0,length,length);
     };
 
@@ -115,6 +106,8 @@ void Connection::read_messages() {
 
 void Connection::completed_reading(boost_error error,int length) {
     std::deque<char> deq_buf;
+
+    std::cout << "[Connection] read message body" << std::endl;
 
     std::copy(boost::asio::buffers_begin(m_buf.data())
              ,boost::asio::buffers_end(m_buf.data())
