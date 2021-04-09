@@ -108,9 +108,9 @@ class Bitfield : public IMessage {
     MessageType m_messageType = MessageType::MT_Bitfield;
     
     public:
-        std::vector<bool> m_bitfield;
+        std::vector<char> m_bitfield;
 
-        Bitfield(int len,const std::vector<bool> &bitfield);
+        Bitfield(const std::vector<bool> &bitfield);
         std::optional<MessageType> get_messageType();
         int get_length();
         std::vector<char> to_bytes_repr() const;

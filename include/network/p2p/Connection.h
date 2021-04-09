@@ -24,7 +24,7 @@ typedef std::function<void(boost_error,int length,std::deque<char> &&deq_buf)> r
 
 class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
-    tcp::socket m_socket;
+    
     std::mutex m_read_mutex;
     boost::asio::streambuf m_buf;
     PeerId m_peer;
@@ -36,6 +36,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
         void completed_reading(boost_error error,int length);
 
     public:
+        tcp::socket m_socket;
         Connection(boost::asio::io_context &io,PeerId p);
         boost::asio::io_context& get_io() {
             return m_io;

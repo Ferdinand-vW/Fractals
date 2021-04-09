@@ -181,9 +181,9 @@ std::unique_ptr<Have> Have::from_bytes_repr(std::deque<char> &bytes) {
     return std::make_unique<Have>(Have(m_piece_index));
 }
 
-Bitfield::Bitfield(int len,const std::vector<bool> &bitfield) {
-    m_len = 1 + len;
-    m_bitfield = bitfield;
+Bitfield::Bitfield(const std::vector<bool> &bitfield) {
+    m_bitfield = bitfield_to_bytes(bitfield);
+    m_len = 1 + m_bitfield.size();
 }
 
 std::optional<MessageType> Bitfield::get_messageType() {
@@ -198,8 +198,7 @@ std::vector<char> Bitfield::to_bytes_repr() const {
     std::vector<char> v = int_to_bytes(m_len);
     auto m_id = static_cast<char>(messageType_to_id(m_messageType));
     v.push_back(m_id);
-    std::vector<char> bitfield_bytes(bitfield_to_bytes(m_bitfield));
-    v.insert(v.end(),bitfield_bytes.begin(),bitfield_bytes.end());
+    v.insert(v.end(),m_bitfield.begin(),m_bitfield.end());
     return v;
 }
 
@@ -210,7 +209,7 @@ std::string Bitfield::pprint() const {
 std::unique_ptr<Bitfield> Bitfield::from_bytes_repr(int m_len,std::deque<char> &bytes) {
     auto m_bitfield = bytes_to_bitfield(m_len - 1, bytes);
 
-    return std::make_unique<Bitfield>(Bitfield(m_len,m_bitfield));
+    return std::make_unique<Bitfield>(Bitfield(m_bitfield));
 }
 
 Request::Request(int index, int begin, int length) {

@@ -210,9 +210,7 @@ void Client::send_bitfield(PeerId p) {
     for(int i = 0; i < num_pieces + tail ;i++) {
         bf.push_back(0);
     }
-    std::cout << "pieces " << m_torrent->m_mi.info.pieces.size() << std::endl;
-    std::cout << "bitfield " << bf.size() << std::endl;
-    auto msg = Bitfield(bf.size(),bf);
+    auto msg = Bitfield(bf);
     auto msg_ptr = std::make_unique<Bitfield>(msg);
 
     m_connection->write_message(
@@ -228,6 +226,8 @@ void Client::sent_bitfield(const boost_error &error,size_t size) {
         m_connection->cancel();
         return;
     }
+    std::vector<char> vc('0');
+    boost::asio::write(m_connection->m_socket,boost::asio::buffer(vc));
     std::cout << error.message() << std::endl;
     std::cout << size << std::endl;
     std::cout << ">>> Bitfield" << std::endl;
