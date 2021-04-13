@@ -65,7 +65,7 @@ class Client : public enable_shared_from_this<Client> {
         FutureResponse connect_to_peer(PeerId p);
 
         void await_messages(PeerId p);
-        bool receive_handshake();
+        FutureResponse receive_handshake();
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);

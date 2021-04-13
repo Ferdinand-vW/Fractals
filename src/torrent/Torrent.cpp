@@ -189,14 +189,16 @@ void Torrent::write_data(PieceData &&pd) {
     for(auto fd : fds) {
         std::fstream fstream;
 
-        fstream.open(concat_paths(fd.fi.path), std::fstream::in | std::fstream::out | std::fstream::binary);
+        fstream.open(concat_paths(fd.fi.path), std::fstream::out | std::fstream::binary);
 
         fstream.seekp(fd.begin); // set the correct offset to start write
 
         std::vector<char> bytes_for_file(bytes.begin() + bytes_pos,bytes.begin() + bytes_pos + fd.end - fd.begin);
-        fstream.write(bytes_for_file.data(), bytes_for_file.size());
+        fstream.write((char*)(&bytes_for_file[0]), bytes_for_file.size());
         bytes_pos = fd.end - fd.begin;
 
+        auto s = bytes_to_hex(bytes_for_file);
+        std::cout << s << std::endl;
         cout << "[Torrent] Wrote " << bytes_for_file.size() << " bytes to " << concat_paths(fd.fi.path) << endl;
 
         fstream.close();

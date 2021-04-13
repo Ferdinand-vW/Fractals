@@ -172,7 +172,7 @@ void Client::send_handshake(HandShake &&hs) {
     m_connection->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
 }
 
-bool Client::receive_handshake() {
+FutureResponse Client::receive_handshake() {
     std::deque<char> deq_buf;
     FutureResponse fr = m_connection->timed_blocking_receive(std::chrono::seconds(5));
 
@@ -185,7 +185,7 @@ bool Client::receive_handshake() {
         cout << "[BitTorrent] received handshake" << endl;
     }
 
-    return m_connection->is_open();
+    return fr;
 }
 
 

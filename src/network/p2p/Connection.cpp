@@ -43,7 +43,9 @@ bool Connection::is_open() {
 }
 
 void Connection::cancel() {
+    std::cout << "cancel" << std::endl;
     m_socket.cancel();
+    std::cout << m_socket.is_open() << std::endl;
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {

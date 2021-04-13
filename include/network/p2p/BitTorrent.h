@@ -1,6 +1,7 @@
 #pragma once
 
 #include "network/p2p/Connection.h"
+#include "network/p2p/Response.h"
 #include "torrent/Torrent.h"
 #include "network/p2p/Client.h"
 #include "network/p2p/PeerListener.h"
@@ -43,5 +44,5 @@ class BitTorrent {
         void attempt_connect(PeerId p);
         PeerId connect_to_a_peer();
 
-        bool perform_handshake();
+        FutureResponse perform_handshake();
 };

@@ -3,6 +3,7 @@
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
+#include "network/p2p/Response.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
@@ -13,6 +14,7 @@
 #include <condition_variable>
 #include <cstdlib>
 #include <exception>
+#include <future>
 #include <memory>
 #include <thread>
 #include <unistd.h>
@@ -77,7 +79,7 @@ void BitTorrent::attempt_connect(PeerId p) {
     }
 }
 
-bool BitTorrent::perform_handshake() {
+FutureResponse BitTorrent::perform_handshake() {
     std::string prot("BitTorrent protocol");
     char reserved[8] = {0,0,0,0,0,0,0,0};
     auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
@@ -99,9 +101,13 @@ void BitTorrent::run() {
     setup_client();
 
     auto p = connect_to_a_peer();
-    bool established_p2p = false;
-    while(!established_p2p) {
-        established_p2p = perform_handshake();
+    bool success = false;
+    while(!success) {
+        auto fr = perform_handshake();
+        success = fr.m_status == std::future_status::ready;
+        if(!success){
+            p = connect_to_a_peer();
+        }
     }
 
     cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
