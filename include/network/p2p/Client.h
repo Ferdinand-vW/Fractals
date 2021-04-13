@@ -13,6 +13,7 @@
 #include "network/p2p/PeerId.h"
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
+#include "network/p2p/Response.h"
 #include "torrent/Torrent.h"
 #include "torrent/PieceData.h"
 
@@ -61,9 +62,10 @@ class Client : public enable_shared_from_this<Client> {
         bool has_all_pieces();
         bool is_choked_by(PeerId p);
         bool is_connected_to(PeerId p);
+        FutureResponse connect_to_peer(PeerId p);
 
         void await_messages(PeerId p);
-        void receive_handshake();
+        bool receive_handshake();
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);
@@ -89,11 +91,11 @@ class Client : public enable_shared_from_this<Client> {
 
     private:
         void unchoke_timeout(PeerId p,const boost_error & error);
-        void piece_response_timeout(PeerId p);
+        void piece_response_timeout(PeerId p,const boost_error &error);
         void sent_piece_request(PeerId p,const boost_error &error, size_t size);
         void sent_bitfield(const boost_error &error,size_t size);
+        void sent_interested(PeerId p,const boost_error &error,size_t size);
         void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
         void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);
-        void sent_interested(PeerId p,boost::system::error_code error, size_t size);
         void select_piece(PeerId p);
 };

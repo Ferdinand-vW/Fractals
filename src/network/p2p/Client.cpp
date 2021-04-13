@@ -55,7 +55,16 @@ bool Client::is_choked_by(PeerId p) {
 }
 
 bool Client::is_connected_to(PeerId p) {
-    return m_connection->is_open();
+    return m_connection != nullptr && m_connection->is_open();
+}
+
+FutureResponse Client::connect_to_peer(PeerId p) {
+    auto conn_ptr = std::shared_ptr<Connection>(new Connection(m_io,p));
+    auto fr = conn_ptr->connect(std::chrono::seconds(5));
+    if(fr.m_status == std::future_status::ready) {
+        m_connection = conn_ptr;
+    }
+    return fr;
 }
 
 void Client::select_piece(PeerId p) {
@@ -73,12 +82,13 @@ void Client::received_choke(PeerId p) {
 }
 
 void Client::received_unchoke(PeerId p) {
-    auto ps = m_peer_status[p];
+    auto& ps = m_peer_status[p];
     //Check condition to ensure we don't cancel timer if
     //client had already been unchoked by peer
     if(ps.m_peer_choking) {
         ps.m_peer_choking = false;
         m_timer.cancel();
+        write_messages(p); // start write message loop
     }
 }
 
@@ -92,7 +102,7 @@ void Client::received_not_interested(PeerId p) {
 
 void Client::received_have(PeerId p, Have &h) {
     m_peer_status[p].m_available_pieces.insert(h.m_piece_index);
-    // m_request_cv->notify_one();
+    send_interested(p); //only sends a message if not interested yet
 }
 
 void Client::received_bitfield(PeerId p, Bitfield &bf) {
@@ -105,6 +115,8 @@ void Client::received_bitfield(PeerId p, Bitfield &bf) {
     if(m_peer_status[p].m_available_pieces.size() > 0) {
         m_request_cv->notify_one();
     }
+
+    send_interested(p); //only sends a message if not interested yet
 }
 
 void Client::received_request(PeerId p, Request &r) {
@@ -114,6 +126,7 @@ void Client::received_request(PeerId p, Request &r) {
 }
 
 void Client::received_piece(PeerId p, Piece &pc) {
+    std::cout << "[Client] received piece " << pc.m_index << std::endl; 
     Block b = Block { pc.m_begin, pc.m_block };
     m_timer.cancel();
 
@@ -125,17 +138,19 @@ void Client::received_piece(PeerId p, Piece &pc) {
         PieceData piece = cur_piece->m_data;
         m_torrent->write_data(std::move(piece));
 
+        std::cout << "after write" << std::endl;
         // update internal state of required pieces
         m_missing_pieces.erase(piece.m_piece_index);
         m_existing_pieces.insert(piece.m_piece_index);
 
-        cur_piece.reset();
+        std::cout << "after insert" << std::endl;
 
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
             cur_piece->m_progress = PieceProgress::Completed;
             cout << "[BitTorrent] received all pieces" << endl;
         } else { //otherwise we can continue to request pieces
             cur_piece->m_progress = PieceProgress::Nothing;
+            std::cout << "after piece progress" << std::endl;
         }
 
     }
@@ -143,6 +158,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
         cout << "[BitTorrent] added block to " << pc.pprint() << endl;
 
         cur_piece->m_progress = PieceProgress::Downloaded;
+        write_messages(p);
     }
 }
 
@@ -156,17 +172,20 @@ void Client::send_handshake(HandShake &&hs) {
     m_connection->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
 }
 
-void Client::receive_handshake() {
+bool Client::receive_handshake() {
     std::deque<char> deq_buf;
     FutureResponse fr = m_connection->timed_blocking_receive(std::chrono::seconds(5));
 
     if(fr.m_status == std::future_status::timeout) {
         cout << "[BitTorrent] time out on handshake" << endl;
+        m_connection->cancel();
     }
     else {
         std::cout << fr.m_data->size() << std::endl;
         cout << "[BitTorrent] received handshake" << endl;
     }
+
+    return m_connection->is_open();
 }
 
 
@@ -182,7 +201,7 @@ void Client::await_messages(PeerId p) {
 void Client::write_messages(PeerId p) {
     std::cout << "[Client] Write messages" << std::endl;
     auto ps = m_peer_status[p];
-
+    
     if(ps.m_peer_choking) {
         send_bitfield(p);
         m_timer.expires_from_now(boost::posix_time::seconds(15));
@@ -226,11 +245,28 @@ void Client::sent_bitfield(const boost_error &error,size_t size) {
         m_connection->cancel();
         return;
     }
-    std::vector<char> vc('0');
-    boost::asio::write(m_connection->m_socket,boost::asio::buffer(vc));
-    std::cout << error.message() << std::endl;
-    std::cout << size << std::endl;
-    std::cout << ">>> Bitfield" << std::endl;
+    std::cout << ">>> Bitfield " << size << std::endl;
+}
+
+void Client::send_interested(PeerId p) {
+    if(!m_peer_status[p].m_am_interested && m_peer_status[p].m_available_pieces.size() > 0) {
+        auto msg_ptr = std::make_unique<Interested>(Interested());
+        m_connection->write_message(std::move(msg_ptr)
+            ,boost::bind(&Client::sent_interested,this,p
+                    ,boost::asio::placeholders::error
+                    ,boost::asio::placeholders::bytes_transferred));
+    }
+}
+
+void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
+    if(error) {
+        std::cout << "[Client] " << error.message() << std::endl;
+        m_connection->cancel();
+        return;
+    } else {
+        m_peer_status[p].m_am_interested = true;
+    }
+    std::cout << ">>> Interested " << size << std::endl;
 }
 
 void Client::unchoke_timeout(PeerId p,const boost_error &error) {
@@ -258,7 +294,10 @@ void Client::send_piece_requests(PeerId p) {
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
         auto req_ptr = std::make_unique<Request>(request);
-        m_connection->write_message(std::move(req_ptr),cb);
+        m_connection->write_message(std::move(req_ptr)
+            ,boost::bind(&Client::sent_piece_request,this,p
+                       ,boost::asio::placeholders::error
+                       ,boost::asio::placeholders::bytes_transferred));
 
     } else if (cur_piece->m_progress == PieceProgress::Downloaded) {
         int request_size = 1 << 14; // 16KB
@@ -270,7 +309,10 @@ void Client::send_piece_requests(PeerId p) {
                        ,std::min(remaining,std::min(piece_length,request_size)));
 
         auto req_ptr = std::make_unique<Request>(request);
-        m_connection->write_message(std::move(req_ptr),cb);
+        m_connection->write_message(std::move(req_ptr)
+            ,boost::bind(&Client::sent_piece_request,this,p
+                       ,boost::asio::placeholders::error
+                       ,boost::asio::placeholders::bytes_transferred));
     } else {
         cout << "[BitTorrent] Completed downloading. Leaving thread.." << endl;
     }
@@ -282,13 +324,18 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
     cur_piece->m_progress = PieceProgress::Requested;
 
     m_timer.expires_from_now(boost::posix_time::seconds(5));
-    m_timer.async_wait(boost::bind(&Client::piece_response_timeout,this,p));
+    m_timer.async_wait(
+        boost::bind(
+            &Client::piece_response_timeout,this,p
+            ,boost::asio::placeholders::error));
 }
 
-void Client::piece_response_timeout(PeerId p) {
-    std::cout << "[Client] Timeout on piece response from " << p.m_ip << std::endl;
-    m_timer.cancel();
-    m_connection->cancel();
+void Client::piece_response_timeout(PeerId p,const boost_error &error) {
+    if(error != boost::asio::error::operation_aborted) {
+        std::cout << "[Client] piece response time out" << std::endl; 
+        m_connection->cancel();
+        m_timer.cancel();
+    }
 }
 
 
@@ -299,6 +346,10 @@ void Client::handle_peer_message(PeerId p,boost_error error,int length,std::dequ
     if(error) {
         std::cout << "[Client] Fatal error: " + error.message() << std::endl;
         m_connection->cancel();
+        return;
+    }
+
+    if(deq_buf.size() == 0) { //Received a KeepAlive message which we ignore
         return;
     }
 

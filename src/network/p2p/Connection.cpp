@@ -31,21 +31,9 @@ Connection::Connection(boost::asio::io_context &io,PeerId p)
 
 FutureResponse Connection::connect(std::chrono::seconds timeout) {
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
-    std::cout << "endp  " << std::endl;
     // attempt to make a connection with peer
     auto fut = m_socket.async_connect(endp,boost::asio::use_future);
     auto fut_status = fut.wait_for(timeout);
-    if(fut_status == std::future_status::deferred) {
-        std::cout << "deferred" << std::endl;
-    }
-    if(fut_status == std::future_status::timeout) {
-        std::cout << "timeout" << std::endl;
-    }
-
-    if(fut_status == std::future_status::ready) {
-        std::cout << "ready" << std::endl;
-    }
-    fut.get();
 
     return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
 }
@@ -77,8 +65,6 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
 
 void Connection::read_messages() {
     
-    std::cout << "[Connection] read message" << std::endl;
-
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
@@ -92,7 +78,6 @@ void Connection::read_messages() {
                  ,std::back_inserter(deq_buf));
         
         int length = bytes_to_int(deq_buf);
-        std::cout << "[Connection] read message length: " << length << std::endl;
         m_buf.consume(4); //TODO: Don't assume we've already read 4 bytes
 
         read_message_body(boost_error(),0,length,length);
@@ -106,8 +91,6 @@ void Connection::read_messages() {
 
 void Connection::completed_reading(boost_error error,int length) {
     std::deque<char> deq_buf;
-
-    std::cout << "[Connection] read message body" << std::endl;
 
     std::copy(boost::asio::buffers_begin(m_buf.data())
              ,boost::asio::buffers_end(m_buf.data())
@@ -127,7 +110,6 @@ FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) 
     auto fut_status = fut_length.wait_for(timeout);
     
     if(fut_status != std::future_status::ready) {
-        std::cout << "sad" << std::endl;
         return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
     }
 
@@ -136,11 +118,8 @@ FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) 
              ,boost::asio::buffers_end(buf.data())
              ,std::back_inserter(deq_buf));
 
-    std::cout << bytes_to_hex(deq_buf) << std::endl;
     int length = bytes_to_int(deq_buf) + 48;
     buf.consume(1);
-
-    std::cout << "hs length " << length << std::endl;
 
     int remaining = length;
     while(remaining > 0) {

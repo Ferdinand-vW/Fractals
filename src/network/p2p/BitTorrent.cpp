@@ -27,7 +27,9 @@ void BitTorrent::request_peers() {
     auto resp = sendTrackerRequest(tr);
 
     if(resp.isLeft) {
-        cout << "Failed to receive tracker response with error " << resp.leftValue << endl;
+        cout << "[BitTorrent] tracker response error: " << resp.leftValue << endl;
+        if (resp.leftValue == "announcing too fast") { sleep(10); }
+        request_peers();
     }
     else {
         for(auto &p : resp.rightValue.peers) {
@@ -58,17 +60,18 @@ PeerId BitTorrent::choose_peer() {
     return p;
 }
 
+void BitTorrent::setup_client() {
+    Client c(nullptr,m_torrent,m_io);
+    m_client = std::make_shared<Client>(std::move(c));
+}
+
 void BitTorrent::attempt_connect(PeerId p) {
-    auto conn_ptr = std::shared_ptr<Connection>(new Connection(m_io,p));
-    
     cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
-    auto fr = conn_ptr->connect(std::chrono::seconds(5));
+    auto fr = m_client->connect_to_peer(p);
     
     //set up client and peer
     if(fr.m_status == std::future_status::ready) {
         cout << "[BitTorrent] connected." << endl;
-        Client c(conn_ptr,m_torrent,m_io);
-        m_client = std::make_shared<Client>(std::move(c));
     } else {
         cout << "[BitTorrent] failed to connect to peer " << p.m_ip << endl;
     }
@@ -81,8 +84,7 @@ bool BitTorrent::perform_handshake() {
     cout << ">>> " + handshake.pprint() << endl;
     m_client->send_handshake(std::move(handshake));
 
-    m_client->receive_handshake();
-    return true;
+    return m_client->receive_handshake();
 }
 
 void BitTorrent::run() {
@@ -93,6 +95,8 @@ void BitTorrent::run() {
 
     request_peers();
     cout << "[BitTorrent] num peers: " << m_available_peers.size() << endl;
+
+    setup_client();
 
     auto p = connect_to_a_peer();
     bool established_p2p = false;

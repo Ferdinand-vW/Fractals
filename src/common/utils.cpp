@@ -93,7 +93,7 @@ int bytes_to_int(std::deque<char> &d) {
     if (d.size() < 1) { return {}; }
 
     int n = 0;
-    int size = d.size();
+    int size = d.size() > 4 ? 4 : d.size(); //number of bytes in an int
     for(int i = 0; i < size; i++) {
         n |= (unsigned char)d.front() << (size*8 - (i+1) * 8);
         d.pop_front();
