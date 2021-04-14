@@ -82,7 +82,7 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
             }
 
             //Add FileData to result vector
-            auto fd = FileData { fi,files_bytes, files_bytes + to_write };
+            auto fd = FileData { fi,cur_file_offset, cur_file_offset + to_write };
             fds.push_back(fd);
             piece_len -= to_write; // update how many bytes are left
         }
@@ -98,7 +98,7 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
     return fds;
 }
 
-void Torrent::create_files(const std::vector<FileData> &fds) {
+void Torrent::create_files(std::vector<FileData> &fds) {
     cout << "[Torrent] creating files for file data" << endl;
     //create root directory if does not exist
     if(m_dir != "") {
@@ -106,7 +106,7 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
         std::filesystem::create_directory(m_dir);
     }
 
-    for(auto fd : fds) {
+    for(auto &fd : fds) {
         // prepend m_dir to file path
         std::vector<std::string> full_path;
         full_path.push_back(m_dir);
@@ -123,12 +123,13 @@ void Torrent::create_files(const std::vector<FileData> &fds) {
             cout << "[Torrent] creating (sub) directories" << endl;
         }
 
+        fd.full_path = fp; //assign file path to file data
+
         if(!std::filesystem::exists(p)) {
             std::fstream fstream;
             fstream.open(fp,std::fstream::out | std::fstream::binary);
-            fstream.seekp(fd.fi.length-1); //create file of actual size
-            fstream.write("",1);
             fstream.close();
+            
             cout << "[Torrent] created file " << p.stem() << endl;
         } else {
             cout << "file or directory with same path already exists: " + fp << endl;
@@ -189,17 +190,17 @@ void Torrent::write_data(PieceData &&pd) {
     for(auto fd : fds) {
         std::fstream fstream;
 
-        fstream.open(concat_paths(fd.fi.path), std::fstream::out | std::fstream::binary);
+        fstream.open(fd.full_path, std::fstream::out | std::fstream::binary);
 
+        std::cout << fd.begin << std::endl;
+        std::cout << fd.end << std::endl;
         fstream.seekp(fd.begin); // set the correct offset to start write
 
         std::vector<char> bytes_for_file(bytes.begin() + bytes_pos,bytes.begin() + bytes_pos + fd.end - fd.begin);
-        fstream.write((char*)(&bytes_for_file[0]), bytes_for_file.size());
+        fstream.write(bytes_for_file.data(), bytes_for_file.size());
         bytes_pos = fd.end - fd.begin;
 
-        auto s = bytes_to_hex(bytes_for_file);
-        std::cout << s << std::endl;
-        cout << "[Torrent] Wrote " << bytes_for_file.size() << " bytes to " << concat_paths(fd.fi.path) << endl;
+        cout << "[Torrent] Wrote " << bytes_for_file.size() << " bytes to " << fd.full_path << endl;
 
         fstream.close();
     }

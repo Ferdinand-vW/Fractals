@@ -6,8 +6,9 @@
 
 struct FileData {
     FileInfo fi;
-    int begin;
-    int end;
+    long long begin;
+    long long end;
+    std::string full_path;
 };
 
 class Torrent {
@@ -26,6 +27,6 @@ class Torrent {
 
     private:
         long long cumulative_size_of_pieces(int piece);
-        void create_files(const std::vector<FileData> &fds);
+        void create_files(std::vector<FileData> &fds);
         std::vector<FileData> divide_over_files(int piece);
 };
