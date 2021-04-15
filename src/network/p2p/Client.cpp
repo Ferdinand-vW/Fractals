@@ -24,15 +24,12 @@
 #include <mutex>
 #include <string>
 
-Client::Client(std::shared_ptr<Connection> connection
-              ,std::shared_ptr<Torrent> torrent
-              ,boost::asio::io_context &io)
+Client::Client(std::shared_ptr<Torrent> torrent
+              ,boost::asio::io_context &io
+              ,std::function<void(PeerId,PeerChange)> on_change_peers)
               : m_io(io)
-              , m_timer(boost::asio::deadline_timer(io))
-              , m_request_cv(std::make_unique<std::condition_variable>())
-              ,m_request_mutex(std::make_unique<std::mutex>())
-              ,m_connection(connection)
               ,m_torrent(torrent)
+              ,m_on_change_peers(on_change_peers)
               ,cur_piece(std::make_unique<PieceStatus>(
                                 PieceStatus{PieceProgress::Nothing,
                                     PieceData{0,0,std::vector<Block>()}
@@ -55,14 +52,15 @@ bool Client::is_choked_by(PeerId p) {
 }
 
 bool Client::is_connected_to(PeerId p) {
-    return m_connection != nullptr && m_connection->is_open();
+    return m_connections.find(p) != m_connections.end() && m_connections[p]->is_open();
 }
 
 FutureResponse Client::connect_to_peer(PeerId p) {
-    auto conn_ptr = std::shared_ptr<Connection>(new Connection(m_io,p));
+    auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
     auto fr = conn_ptr->connect(std::chrono::seconds(5));
     if(fr.m_status == std::future_status::ready) {
-        m_connection = conn_ptr;
+        m_connections.insert({ p, std::move(conn_ptr) });
+        m_on_change_peers(p,PeerChange::Added);
     }
     return fr;
 }
@@ -87,7 +85,7 @@ void Client::received_unchoke(PeerId p) {
     //client had already been unchoked by peer
     if(ps.m_peer_choking) {
         ps.m_peer_choking = false;
-        m_timer.cancel();
+        m_connections[p]->get_timer().cancel();
         write_messages(p); // start write message loop
     }
 }
@@ -112,10 +110,6 @@ void Client::received_bitfield(PeerId p, Bitfield &bf) {
         piece_index++;
     }
 
-    if(m_peer_status[p].m_available_pieces.size() > 0) {
-        m_request_cv->notify_one();
-    }
-
     send_interested(p); //only sends a message if not interested yet
 }
 
@@ -128,7 +122,7 @@ void Client::received_request(PeerId p, Request &r) {
 void Client::received_piece(PeerId p, Piece &pc) {
     std::cout << "[Client] received piece " << pc.m_index << std::endl; 
     Block b = Block { pc.m_begin, pc.m_block };
-    m_timer.cancel();
+    m_connections[p]->get_timer().cancel();
 
     cur_piece->m_data.add_block(b);
     if(cur_piece->m_data.is_complete()) {
@@ -168,17 +162,17 @@ void Client::received_garbage(PeerId p) {
     
 }
 
-void Client::send_handshake(HandShake &&hs) {
-    m_connection->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
+void Client::send_handshake(PeerId p,HandShake &&hs) {
+    m_connections[p]->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
 }
 
-FutureResponse Client::receive_handshake() {
+FutureResponse Client::receive_handshake(PeerId p) {
     std::deque<char> deq_buf;
-    FutureResponse fr = m_connection->timed_blocking_receive(std::chrono::seconds(5));
+    FutureResponse fr = m_connections[p]->timed_blocking_receive(std::chrono::seconds(5));
 
     if(fr.m_status == std::future_status::timeout) {
         cout << "[BitTorrent] time out on handshake" << endl;
-        m_connection->cancel();
+        m_connections[p]->cancel();
     }
     else {
         std::cout << fr.m_data->size() << std::endl;
@@ -193,9 +187,9 @@ void Client::await_messages(PeerId p) {
     auto f = [this,p](auto err,auto l,auto &&d) {
         handle_peer_message(p, err, l, std::move(d));
     };
-    m_connection->on_receive(f);
+    m_connections[p]->on_receive(f);
 
-    m_connection->read_messages();
+    m_connections[p]->read_messages();
 }
 
 void Client::write_messages(PeerId p) {
@@ -204,8 +198,9 @@ void Client::write_messages(PeerId p) {
     
     if(ps.m_peer_choking) {
         send_bitfield(p);
-        m_timer.expires_from_now(boost::posix_time::seconds(15));
-        m_timer.async_wait(
+        auto &timer = m_connections[p]->get_timer();
+        timer.expires_from_now(boost::posix_time::seconds(15));
+        timer.async_wait(
             boost::bind(
                 &Client::unchoke_timeout,this,p
                 ,boost::asio::placeholders::error()
@@ -232,17 +227,17 @@ void Client::send_bitfield(PeerId p) {
     auto msg = Bitfield(bf);
     auto msg_ptr = std::make_unique<Bitfield>(msg);
 
-    m_connection->write_message(
+    m_connections[p]->write_message(
           std::move(msg_ptr)
-        , boost::bind(&Client::sent_bitfield,this
+        , boost::bind(&Client::sent_bitfield,this,p
                     ,boost::asio::placeholders::error
                     ,boost::asio::placeholders::bytes_transferred));
 }
 
-void Client::sent_bitfield(const boost_error &error,size_t size) {
+void Client::sent_bitfield(PeerId p,const boost_error &error,size_t size) {
     if(error) {
         std::cout << "[Client] " << error.message() << std::endl;
-        m_connection->cancel();
+        m_connections[p]->cancel();
         return;
     }
     std::cout << ">>> Bitfield " << size << std::endl;
@@ -251,7 +246,7 @@ void Client::sent_bitfield(const boost_error &error,size_t size) {
 void Client::send_interested(PeerId p) {
     if(!m_peer_status[p].m_am_interested && m_peer_status[p].m_available_pieces.size() > 0) {
         auto msg_ptr = std::make_unique<Interested>(Interested());
-        m_connection->write_message(std::move(msg_ptr)
+        m_connections[p]->write_message(std::move(msg_ptr)
             ,boost::bind(&Client::sent_interested,this,p
                     ,boost::asio::placeholders::error
                     ,boost::asio::placeholders::bytes_transferred));
@@ -261,7 +256,7 @@ void Client::send_interested(PeerId p) {
 void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
     if(error) {
         std::cout << "[Client] " << error.message() << std::endl;
-        m_connection->cancel();
+        m_connections[p]->cancel();
         return;
     } else {
         m_peer_status[p].m_am_interested = true;
@@ -272,8 +267,8 @@ void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
 void Client::unchoke_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
         std::cout << "[Client] unchoke time out" << std::endl; 
-        m_connection->cancel();
-        m_timer.cancel();
+        m_connections[p]->cancel();
+        m_connections[p]->get_timer().cancel();
     }
 }
 
@@ -294,7 +289,7 @@ void Client::send_piece_requests(PeerId p) {
                        ,cur_piece->m_data.next_block_begin()
                        ,std::min(remaining,std::min(piece_length,request_size)));
         auto req_ptr = std::make_unique<Request>(request);
-        m_connection->write_message(std::move(req_ptr)
+        m_connections[p]->write_message(std::move(req_ptr)
             ,boost::bind(&Client::sent_piece_request,this,p
                        ,boost::asio::placeholders::error
                        ,boost::asio::placeholders::bytes_transferred));
@@ -309,7 +304,7 @@ void Client::send_piece_requests(PeerId p) {
                        ,std::min(remaining,std::min(piece_length,request_size)));
 
         auto req_ptr = std::make_unique<Request>(request);
-        m_connection->write_message(std::move(req_ptr)
+        m_connections[p]->write_message(std::move(req_ptr)
             ,boost::bind(&Client::sent_piece_request,this,p
                        ,boost::asio::placeholders::error
                        ,boost::asio::placeholders::bytes_transferred));
@@ -323,8 +318,9 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
 
     cur_piece->m_progress = PieceProgress::Requested;
 
-    m_timer.expires_from_now(boost::posix_time::seconds(5));
-    m_timer.async_wait(
+    auto &timer = m_connections[p]->get_timer();
+    timer.expires_from_now(boost::posix_time::seconds(5));
+    timer.async_wait(
         boost::bind(
             &Client::piece_response_timeout,this,p
             ,boost::asio::placeholders::error));
@@ -333,8 +329,8 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
 void Client::piece_response_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
         std::cout << "[Client] piece response time out" << std::endl; 
-        m_connection->cancel();
-        m_timer.cancel();
+        m_connections[p]->cancel();
+        m_connections[p]->get_timer().cancel();
     }
 }
 
@@ -345,7 +341,7 @@ void Client::piece_response_timeout(PeerId p,const boost_error &error) {
 void Client::handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf) {
     if(error) {
         std::cout << "[Client] Fatal error: " + error.message() << std::endl;
-        m_connection->cancel();
+        m_connections[p]->cancel();
         return;
     }
 

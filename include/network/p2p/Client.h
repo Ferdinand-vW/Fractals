@@ -5,6 +5,7 @@
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <set>
 #include <boost/asio.hpp>
@@ -29,6 +30,7 @@ struct P2PStatus {
 };
 
 enum class PieceProgress { Nothing, Requested, Downloaded, Completed };
+enum class PeerChange { Added, Removed };
 struct PieceStatus {
     PieceProgress m_progress;
     PieceData m_data;
@@ -43,21 +45,19 @@ class Client : public enable_shared_from_this<Client> {
     std::set<int> m_existing_pieces;
 
     boost::asio::io_context& m_io;
-    std::shared_ptr<Connection> m_connection;
-    boost::asio::deadline_timer m_timer;
-    // wrapped in unique pointers to make Client movable
-    std::unique_ptr<std::mutex> m_request_mutex;
-    std::unique_ptr<std::condition_variable> m_request_cv;
+    std::map<PeerId, std::unique_ptr<Connection>> m_connections;
 
     std::shared_ptr<Torrent> m_torrent;
     std::unique_ptr<PieceStatus> cur_piece;
     
+    std::function<void(PeerId,PeerChange)> m_on_change_peers;
+
     public:
         std::vector<char> m_client_id;
         
-        Client(std::shared_ptr<Connection> connection
-              ,std::shared_ptr<Torrent> torrent
-              ,boost::asio::io_context &io);
+        Client(std::shared_ptr<Torrent> torrent
+              ,boost::asio::io_context &io
+              ,std::function<void(PeerId,PeerChange)> on_change_peers);
 
         bool has_all_pieces();
         bool is_choked_by(PeerId p);
@@ -65,7 +65,7 @@ class Client : public enable_shared_from_this<Client> {
         FutureResponse connect_to_peer(PeerId p);
 
         void await_messages(PeerId p);
-        FutureResponse receive_handshake();
+        FutureResponse receive_handshake(PeerId p);
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);
@@ -79,7 +79,7 @@ class Client : public enable_shared_from_this<Client> {
         // void received_port(PeerId p,Port port)
 
         void write_messages(PeerId p);
-        void send_handshake(HandShake &&hs);
+        void send_handshake(PeerId p,HandShake &&hs);
         
         void wait_for_unchoke(PeerId p);
         void send_messages(PeerId p);
@@ -93,7 +93,7 @@ class Client : public enable_shared_from_this<Client> {
         void unchoke_timeout(PeerId p,const boost_error & error);
         void piece_response_timeout(PeerId p,const boost_error &error);
         void sent_piece_request(PeerId p,const boost_error &error, size_t size);
-        void sent_bitfield(const boost_error &error,size_t size);
+        void sent_bitfield(PeerId p,const boost_error &error,size_t size);
         void sent_interested(PeerId p,const boost_error &error,size_t size);
         void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
         void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);

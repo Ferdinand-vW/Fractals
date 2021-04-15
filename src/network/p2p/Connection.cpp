@@ -25,6 +25,7 @@
 
 Connection::Connection(boost::asio::io_context &io,PeerId p)
                       : m_io(io)
+                      , m_timer(boost::asio::deadline_timer(io))
                       , m_socket(tcp::socket(io))
                       , m_peer(p) {};
 
@@ -43,9 +44,9 @@ bool Connection::is_open() {
 }
 
 void Connection::cancel() {
-    std::cout << "cancel" << std::endl;
-    m_socket.cancel();
-    std::cout << m_socket.is_open() << std::endl;
+    // gracefully cancel outstanding operations before closing socket
+    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+    m_socket.close();
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {

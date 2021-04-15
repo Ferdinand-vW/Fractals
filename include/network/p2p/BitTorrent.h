@@ -42,7 +42,8 @@ class BitTorrent {
         PeerId choose_peer();
         void setup_client();
         void attempt_connect(PeerId p);
+        void peer_change(PeerId p,PeerChange pc);
         PeerId connect_to_a_peer();
 
-        FutureResponse perform_handshake();
+        FutureResponse perform_handshake(PeerId p);
 };
