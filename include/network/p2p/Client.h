@@ -63,6 +63,7 @@ class Client : public enable_shared_from_this<Client> {
         bool is_choked_by(PeerId p);
         bool is_connected_to(PeerId p);
         FutureResponse connect_to_peer(PeerId p);
+        void drop_connection(PeerId p);
 
         void await_messages(PeerId p);
         FutureResponse receive_handshake(PeerId p);
@@ -80,22 +81,25 @@ class Client : public enable_shared_from_this<Client> {
 
         void write_messages(PeerId p);
         void send_handshake(PeerId p,HandShake &&hs);
-        
-        void wait_for_unchoke(PeerId p);
+    
         void send_messages(PeerId p);
-        void send_interested(PeerId p);
-        void wait_send_piece_request(PeerId p,boost::system::error_code error, size_t size);
-        void send_piece_requests(PeerId p);
-        void send_bitfield(PeerId p);
+        
         void add_peer(PeerId p);
 
     private:
-        void unchoke_timeout(PeerId p,const boost_error & error);
-        void piece_response_timeout(PeerId p,const boost_error &error);
+        void send_piece_requests(PeerId p);
         void sent_piece_request(PeerId p,const boost_error &error, size_t size);
+        void piece_response_timeout(PeerId p,const boost_error &error);
+        
+        void send_bitfield(PeerId p);
         void sent_bitfield(PeerId p,const boost_error &error,size_t size);
+        
+        void send_interested(PeerId p);
         void sent_interested(PeerId p,const boost_error &error,size_t size);
+
+        void wait_for_unchoke(PeerId p);
+        void unchoke_timeout(PeerId p,const boost_error & error);
+
         void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
-        void read_message(boost_error error,size_t size, std::optional<boost_error> &result,std::optional<boost_error> &timeout);
         void select_piece(PeerId p);
 };

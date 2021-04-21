@@ -57,12 +57,18 @@ bool Client::is_connected_to(PeerId p) {
 
 FutureResponse Client::connect_to_peer(PeerId p) {
     auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
-    auto fr = conn_ptr->connect(std::chrono::seconds(5));
+    auto fr = conn_ptr->connect(std::chrono::seconds(2));
     if(fr.m_status == std::future_status::ready) {
         m_connections.insert({ p, std::move(conn_ptr) });
         m_on_change_peers(p,PeerChange::Added);
     }
     return fr;
+}
+
+void Client::drop_connection(PeerId p) {
+    m_connections[p]->cancel(); //ensure connection is closed
+    m_connections.erase(p); //remove the connection
+    m_on_change_peers(p,PeerChange::Removed); //notify observer that we've dropped a peer
 }
 
 void Client::select_piece(PeerId p) {
@@ -72,11 +78,16 @@ void Client::select_piece(PeerId p) {
 
     cur_piece->m_data.m_piece_index = piece;
     cur_piece->m_data.m_length = piece_size;
+    cur_piece->m_data.m_blocks.clear(); // empty existing data if present
     cur_piece->m_progress = PieceProgress::Nothing;
+    std::cout << "[Client] selected piece: " << cur_piece->m_data.m_piece_index << std::endl;
+    std::cout << "[Client] selected piece size: " << cur_piece->m_data.m_length << std::endl;
 }
 
 void Client::received_choke(PeerId p) {
     m_peer_status[p].m_peer_choking = true;
+    //if we get choked then we can just stop the connection
+    drop_connection(p);
 }
 
 void Client::received_unchoke(PeerId p) {
@@ -105,7 +116,8 @@ void Client::received_have(PeerId p, Have &h) {
 
 void Client::received_bitfield(PeerId p, Bitfield &bf) {
     int piece_index = 0;
-    for(auto b : bf.m_bitfield) {
+    std::vector<bool> vec_bools = bytes_to_bitfield(bf.m_bitfield.size(),bf.m_bitfield);
+    for(auto b : vec_bools) {
         if(b) { m_peer_status[p].m_available_pieces.insert(piece_index); }
         piece_index++;
     }
@@ -144,7 +156,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
             cout << "[BitTorrent] received all pieces" << endl;
         } else { //otherwise we can continue to request pieces
             cur_piece->m_progress = PieceProgress::Nothing;
-            std::cout << "after piece progress" << std::endl;
+            write_messages(p);
         }
 
     }
@@ -267,8 +279,7 @@ void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
 void Client::unchoke_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
         std::cout << "[Client] unchoke time out" << std::endl; 
-        m_connections[p]->cancel();
-        m_connections[p]->get_timer().cancel();
+        drop_connection(p);
     }
 }
 
@@ -285,8 +296,9 @@ void Client::send_piece_requests(PeerId p) {
         int remaining = cur_piece->m_data.remaining(); // remaining data of piece
         int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
 
+        std::cout << "cur piece index: " << cur_piece->m_data.m_piece_index << std::endl;
         Request request(cur_piece->m_data.m_piece_index
-                       ,cur_piece->m_data.next_block_begin()
+                       ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
         auto req_ptr = std::make_unique<Request>(request);
         m_connections[p]->write_message(std::move(req_ptr)
@@ -300,7 +312,7 @@ void Client::send_piece_requests(PeerId p) {
         int piece_length = m_torrent->m_mi.info.piece_length;
 
         Request request(cur_piece->m_data.m_piece_index
-                       ,0
+                       ,cur_piece->m_data.next_block_begin()
                        ,std::min(remaining,std::min(piece_length,request_size)));
 
         auto req_ptr = std::make_unique<Request>(request);
@@ -315,7 +327,7 @@ void Client::send_piece_requests(PeerId p) {
 
 void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) {
     std::cout << "[Client] sent piece request to " << p.m_ip << std::endl;
-
+    std::cout << error.message() << std::endl;
     cur_piece->m_progress = PieceProgress::Requested;
 
     auto &timer = m_connections[p]->get_timer();
@@ -329,8 +341,7 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
 void Client::piece_response_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
         std::cout << "[Client] piece response time out" << std::endl; 
-        m_connections[p]->cancel();
-        m_connections[p]->get_timer().cancel();
+        drop_connection(p);
     }
 }
 

@@ -53,7 +53,34 @@ PeerId BitTorrent::connect_to_a_peer() {
     return p;
 }
 
+FutureResponse BitTorrent::perform_handshake(PeerId p) {
+    std::string prot("BitTorrent protocol");
+    char reserved[8] = {0,0,0,0,0,0,0,0};
+    auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
+    cout << ">>> " + handshake.pprint() << endl;
+    m_client->send_handshake(p,std::move(handshake));
+
+    return m_client->receive_handshake(p);
+}
+
+PeerId BitTorrent::connect_and_handshake() {
+    auto p = connect_to_a_peer();
+    bool success = false;
+    while(!success) {
+        auto fr = perform_handshake(p);
+        success = fr.m_status == std::future_status::ready;
+        if(!success){
+            p = connect_to_a_peer();
+        }
+    }
+
+    return p;
+}
+
 PeerId BitTorrent::choose_peer() {
+    if(m_available_peers.size() == 0) {
+        request_peers(); //request additional peers if we tried all
+    }
     int n = rand() % m_available_peers.size();
     auto it = m_available_peers.begin();
     std::advance(it,n);
@@ -82,21 +109,22 @@ void BitTorrent::attempt_connect(PeerId p) {
     }
 }
 
-FutureResponse BitTorrent::perform_handshake(PeerId p) {
-    std::string prot("BitTorrent protocol");
-    char reserved[8] = {0,0,0,0,0,0,0,0};
-    auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
-    cout << ">>> " + handshake.pprint() << endl;
-    m_client->send_handshake(p,std::move(handshake));
 
-    return m_client->receive_handshake(p);
-}
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
     if (pc == PeerChange::Added) {
         std::cout << "added" << std::endl;
+        m_connected++;
+        if(m_connected < m_max_peers) {
+            connect_and_handshake();
+        }
     } else {
         std::cout << "removed" << std::endl;
+        m_connected--;
+        std::cout << "[BitTorrent]" << m_connected << std::endl;
+        if(m_connected < m_max_peers) {
+            connect_and_handshake();
+        }
     }
 }
 
@@ -111,15 +139,7 @@ void BitTorrent::run() {
     request_peers();
     cout << "[BitTorrent] num peers: " << m_available_peers.size() << endl;
 
-    auto p = connect_to_a_peer();
-    bool success = false;
-    while(!success) {
-        auto fr = perform_handshake(p);
-        success = fr.m_status == std::future_status::ready;
-        if(!success){
-            p = connect_to_a_peer();
-        }
-    }
+    auto p = connect_and_handshake();
 
     cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
 

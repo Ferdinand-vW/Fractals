@@ -45,8 +45,14 @@ bool Connection::is_open() {
 
 void Connection::cancel() {
     // gracefully cancel outstanding operations before closing socket
-    m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-    m_socket.close();
+    try {
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+        m_timer.cancel();
+        m_socket.close();
+    }
+    catch(std::exception e) {
+        std::cout << "[Connection] " << e.what() << std::endl;
+    }
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {

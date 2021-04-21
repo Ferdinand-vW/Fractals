@@ -36,3 +36,4 @@ int bytes_to_int(std::deque<char> &d);
 
 std::vector<char> bitfield_to_bytes(const std::vector<bool> &bitfields);
 std::vector<bool> bytes_to_bitfield(int len,std::deque<char> &bitfields);
+std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bitfields);

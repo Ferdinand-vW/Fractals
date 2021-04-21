@@ -136,6 +136,17 @@ std::vector<bool> bytes_to_bitfield(int len,std::deque<char> &bytes) {
     return v;
 }
 
+std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bytes) {
+    std::vector<bool> v;
+    for(int i = 0; i < len; i++) {
+        char c = bytes[i];
+
+        for(int j = 0; j < 8; j++) { v.push_back(c >> (7 - j)); }
+    }
+
+    return v;
+}
+
 /*
 s = 7 i = 0
 s = 6 i = 1

@@ -28,6 +28,9 @@ Protocol should accept torrent identifier, present pieces and a list of peers
 class BitTorrent {
     std::shared_ptr<Client> m_client;
     std::set<PeerId> m_available_peers;
+
+    int m_max_peers = 1;
+    int m_connected = 0;
     
     std::shared_ptr<Torrent> m_torrent;
     boost::asio::io_context &m_io;
@@ -44,6 +47,7 @@ class BitTorrent {
         void attempt_connect(PeerId p);
         void peer_change(PeerId p,PeerChange pc);
         PeerId connect_to_a_peer();
+        PeerId connect_and_handshake();
 
         FutureResponse perform_handshake(PeerId p);
 };
