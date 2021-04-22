@@ -16,6 +16,7 @@
 #include <exception>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <unistd.h>
 
@@ -70,6 +71,8 @@ PeerId BitTorrent::connect_and_handshake() {
         auto fr = perform_handshake(p);
         success = fr.m_status == std::future_status::ready;
         if(!success){
+            //drop the connection with peer since handshake was unsuccessfull
+            m_client->drop_connection(p);
             p = connect_to_a_peer();
         }
     }
@@ -112,6 +115,9 @@ void BitTorrent::attempt_connect(PeerId p) {
 
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
+    //ensure only one thread can at a time add or remove a connection
+    std::unique_lock<std::mutex> lock(m_mutex);
+
     if (pc == PeerChange::Added) {
         std::cout << "added" << std::endl;
         m_connected++;
