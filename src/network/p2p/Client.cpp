@@ -117,6 +117,7 @@ void Client::received_have(PeerId p, Have &h) {
 void Client::received_bitfield(PeerId p, Bitfield &bf) {
     int piece_index = 0;
     std::vector<bool> vec_bools = bytes_to_bitfield(bf.m_bitfield.size(),bf.m_bitfield);
+    
     for(auto b : vec_bools) {
         if(b) { m_peer_status[p].m_available_pieces.insert(piece_index); }
         piece_index++;

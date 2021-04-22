@@ -107,13 +107,13 @@ std::vector<char> bitfield_to_bytes(const std::vector<bool> &bits) {
     char c = 0;
     int i = 0;
     while(i < bits.size()) {
+        c |= bits[i] << (7 - (i % 8));
+        i++;
+
         if(i % 8 == 0) {
             v.push_back(c);
             c = 0;
         }
-
-        c |= bits[i] << (7 - (i % 8));
-        i++;
     }
 
     //If we did not get a multiple of 8 as input then

@@ -207,7 +207,7 @@ std::string Bitfield::pprint() const {
 }
 
 std::unique_ptr<Bitfield> Bitfield::from_bytes_repr(int m_len,std::deque<char> &bytes) {
-    auto m_bitfield = bytes_to_bitfield(m_len - 1, bytes);
+    auto m_bitfield = bytes_to_bitfield(m_len, bytes);
 
     return std::make_unique<Bitfield>(Bitfield(m_bitfield));
 }
@@ -294,7 +294,7 @@ std::string Piece::pprint() const {
 std::unique_ptr<Piece> Piece::from_bytes_repr(int m_len,std::deque<char> &bytes) {
     int m_index = bytes_to_int(bytes);
     int m_begin = bytes_to_int(bytes);
-    std::vector<char> m_block(bytes.begin(),bytes.begin() + m_len - 9); // 1 + 4 + 4
+    std::vector<char> m_block(bytes.begin(),bytes.begin() + m_len - 8); // 4 + 4
     return std::make_unique<Piece>(Piece(m_index,m_begin,std::move(m_block)));
 }
 
@@ -372,7 +372,8 @@ std::unique_ptr<Port> Port::from_bytes_repr(std::deque<char> &bytes) {
 
 std::unique_ptr<IMessage> IMessage::parse_message(int length,std::deque<char> &&deq_buf) {
     if(length == 0) {return std::make_unique<KeepAlive>(); }
-
+    
+    length--;
     auto mt = messageType_from_id(deq_buf.front());
     deq_buf.pop_front();
     switch (mt) {
