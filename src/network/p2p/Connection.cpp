@@ -30,13 +30,12 @@ Connection::Connection(boost::asio::io_context &io,PeerId p)
                       , m_peer(p) {};
 
 
-FutureResponse Connection::connect(std::chrono::seconds timeout) {
+void Connection::connect(std::chrono::seconds timeout,std::function<void(const boost_error&)> callback) {
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
+    std::cout << "connect: " << endp.address() << std::endl;
+    std::cout << "connect: " << endp.port() << std::endl;
     // attempt to make a connection with peer
-    auto fut = m_socket.async_connect(endp,boost::asio::use_future);
-    auto fut_status = fut.wait_for(timeout);
-
-    return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
+    m_socket.async_connect(endp,callback);
 }
 
 bool Connection::is_open() {
@@ -73,7 +72,7 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
 }
 
 void Connection::read_messages() {
-    
+    std::cout << "read messages" << std::endl;
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
@@ -121,6 +120,8 @@ FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) 
     if(fut_status != std::future_status::ready) {
         return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
     }
+
+    std::cout << "here" << std::endl;
 
     std::deque<char> deq_buf;
     std::copy(boost::asio::buffers_begin(buf.data())

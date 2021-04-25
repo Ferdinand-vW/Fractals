@@ -102,35 +102,28 @@ void BitTorrent::setup_client() {
 
 void BitTorrent::attempt_connect(PeerId p) {
     cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
-    auto fr = m_client->connect_to_peer(p);
-    
-    //set up client and peer
-    if(fr.m_status == std::future_status::ready) {
-        cout << "[BitTorrent] connected." << endl;
-    } else {
-        cout << "[BitTorrent] failed to connect to peer " << p.m_ip << endl;
-    }
+    m_client->connect_to_peer(p);
 }
-
-
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
     //ensure only one thread can at a time add or remove a connection
-    std::unique_lock<std::mutex> lock(m_mutex);
-
     if (pc == PeerChange::Added) {
         std::cout << "added" << std::endl;
+        // m_mutex.lock();
         m_connected++;
-        if(m_connected < m_max_peers) {
-            connect_and_handshake();
-        }
+        // m_mutex.unlock();
+
+        perform_handshake(p);
     } else {
         std::cout << "removed" << std::endl;
+        // m_mutex.lock();
         m_connected--;
+        // m_mutex.unlock();
         std::cout << "[BitTorrent]" << m_connected << std::endl;
-        if(m_connected < m_max_peers) {
-            connect_and_handshake();
-        }
+    }
+
+    if(m_connected < m_max_peers) {
+        PeerId p = connect_to_a_peer();
     }
 }
 
@@ -145,12 +138,7 @@ void BitTorrent::run() {
     request_peers();
     cout << "[BitTorrent] num peers: " << m_available_peers.size() << endl;
 
-    auto p = connect_and_handshake();
-
-    cout << "[BitTorrent] Using peer: " << p.m_ip << ":" << p.m_port << endl;
-
-    m_client->write_messages(p);
-    m_client->await_messages(p);
+    auto p = connect_to_a_peer();
 
     t.join();
 }

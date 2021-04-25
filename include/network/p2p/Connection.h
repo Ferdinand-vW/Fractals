@@ -10,6 +10,7 @@
 #include <deque>
 #include <memory>
 #include <future>
+#include <iostream>
 
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
@@ -26,7 +27,6 @@ class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
     boost::asio::deadline_timer m_timer;
 
-    std::mutex m_read_mutex;
     boost::asio::streambuf m_buf;
     PeerId m_peer;
     std::vector<read_callback> listeners;
@@ -39,6 +39,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
     public:
         tcp::socket m_socket;
         Connection(boost::asio::io_context &io,PeerId p);
+
         boost::asio::io_context& get_io() {
             return m_io;
         }
@@ -48,7 +49,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
         }
         // Connection(Connection &&conn);
 
-        FutureResponse connect(std::chrono::seconds timeout);
+        void connect(std::chrono::seconds timeout,std::function<void(const boost_error&)>);
         bool is_open();
         void cancel();
 

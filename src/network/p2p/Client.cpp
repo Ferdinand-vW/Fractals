@@ -55,14 +55,22 @@ bool Client::is_connected_to(PeerId p) {
     return m_connections.find(p) != m_connections.end() && m_connections[p]->is_open();
 }
 
-FutureResponse Client::connect_to_peer(PeerId p) {
+void Client::connect_to_peer(PeerId p) {
     auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
-    auto fr = conn_ptr->connect(std::chrono::seconds(2));
-    if(fr.m_status == std::future_status::ready) {
-        m_connections.insert({ p, std::move(conn_ptr) });
+    conn_ptr->connect(std::chrono::seconds(2),
+                      boost::bind(&Client::connected,this,p,boost::asio::placeholders::error()));
+    m_connections.insert({ p, std::move(conn_ptr) });
+}
+
+void Client::connected(PeerId p,const boost_error &error) {
+    if(!error) {
+        std::cout << "[Client] connected to " << p.m_ip << std::endl;
         m_on_change_peers(p,PeerChange::Added);
+    } else {
+        m_connections[p]->cancel();
+        m_connections.erase(p);
+        std::cout << "[Client] " << error.message() << std::endl;
     }
-    return fr;
 }
 
 void Client::drop_connection(PeerId p) {
@@ -190,6 +198,9 @@ FutureResponse Client::receive_handshake(PeerId p) {
     else {
         std::cout << fr.m_data->size() << std::endl;
         cout << "[BitTorrent] received handshake" << endl;
+
+        await_messages(p);
+        write_messages(p);
     }
 
     return fr;
@@ -212,7 +223,7 @@ void Client::write_messages(PeerId p) {
     if(ps.m_peer_choking) {
         send_bitfield(p);
         auto &timer = m_connections[p]->get_timer();
-        timer.expires_from_now(boost::posix_time::seconds(15));
+        timer.expires_from_now(boost::posix_time::millisec(1));
         timer.async_wait(
             boost::bind(
                 &Client::unchoke_timeout,this,p

@@ -34,7 +34,7 @@ class BitTorrent {
     
     std::shared_ptr<Torrent> m_torrent;
     boost::asio::io_context &m_io;
-    std::mutex m_mutex;
+    // std::mutex m_mutex;
 
 
     public:
