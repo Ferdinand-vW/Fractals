@@ -21,7 +21,7 @@ using ip::tcp;
 
 typedef boost::system::error_code boost_error;
 typedef std::shared_ptr<boost_error> shared_error;
-typedef std::function<void(boost_error,int length,std::deque<char> &&deq_buf)> read_callback;
+typedef std::function<void(const boost_error&,int length,std::deque<char> &&deq_buf)> read_callback;
 
 class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
@@ -30,11 +30,11 @@ class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::streambuf m_buf;
     PeerId m_peer;
     std::vector<read_callback> listeners;
+    read_callback m_handshake_callback; 
 
     private:
         void read_message_body(const boost_error&error,size_t size,int length, int remaining);
-        void read_message_internal(shared_error read_result,std::deque<char> &deq_buf);
-        void completed_reading(boost_error error,int length);
+        void read_handshake_body(const boost_error&error,size_t size,unsigned char pstrlen,int length, int remaining);
 
     public:
         tcp::socket m_socket;
@@ -54,10 +54,11 @@ class Connection : public std::enable_shared_from_this<Connection> {
         void cancel();
 
         void read_messages();
+        void read_handshake();
         void write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback);
-        
-        FutureResponse timed_blocking_receive(std::chrono::seconds timeout);
+    
         void on_receive(read_callback callback);
+        void on_handshake(read_callback callback);
 
         void block_until(bool &cond);
         void block_until(shared_error opt);

@@ -50,5 +50,5 @@ class BitTorrent {
         PeerId connect_to_a_peer();
         PeerId connect_and_handshake();
 
-        FutureResponse perform_handshake(PeerId p);
+        void perform_handshake(PeerId p);
 };

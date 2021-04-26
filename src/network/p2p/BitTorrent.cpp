@@ -54,28 +54,28 @@ PeerId BitTorrent::connect_to_a_peer() {
     return p;
 }
 
-FutureResponse BitTorrent::perform_handshake(PeerId p) {
+void BitTorrent::perform_handshake(PeerId p) {
     std::string prot("BitTorrent protocol");
     char reserved[8] = {0,0,0,0,0,0,0,0};
     auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
     cout << ">>> " + handshake.pprint() << endl;
     m_client->send_handshake(p,std::move(handshake));
 
-    return m_client->receive_handshake(p);
+    std::cout << "await" << std::endl;
+    m_client->await_handshake(p);
 }
 
 PeerId BitTorrent::connect_and_handshake() {
     auto p = connect_to_a_peer();
     bool success = false;
-    while(!success) {
-        auto fr = perform_handshake(p);
-        success = fr.m_status == std::future_status::ready;
-        if(!success){
-            //drop the connection with peer since handshake was unsuccessfull
-            m_client->drop_connection(p);
-            p = connect_to_a_peer();
-        }
-    }
+    // while(!success) {
+    //     perform_handshake(p);
+    //     if(false){
+    //         //drop the connection with peer since handshake was unsuccessfull
+    //         m_client->drop_connection(p);
+    //         p = connect_to_a_peer();
+    //     }
+    // }
 
     return p;
 }

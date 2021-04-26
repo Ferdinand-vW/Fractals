@@ -1,6 +1,7 @@
 #include "network/p2p/Connection.h"
 #include "common/utils.h"
 #include "network/p2p/MessageType.h"
+#include <bits/c++config.h>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>
 #include <boost/asio/deadline_timer.hpp>
@@ -67,7 +68,18 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
                                 ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
                                 ,length,remaining - size));            
     } else {
-        completed_reading(error,length);
+        std::deque<char> deq_buf;
+
+        std::copy(boost::asio::buffers_begin(m_buf.data())
+                ,boost::asio::buffers_end(m_buf.data())
+                ,std::back_inserter(deq_buf));
+        m_buf.consume(length);
+
+        for(auto cb : listeners) {
+            cb(error,length,std::move(deq_buf));
+        }
+
+        read_messages(); //continue to read messages
     }
 }
 
@@ -97,64 +109,61 @@ void Connection::read_messages() {
                             ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));  
 }
 
-void Connection::completed_reading(boost_error error,int length) {
-    std::deque<char> deq_buf;
+void Connection::read_handshake_body(const boost_error& error,size_t size,unsigned char pstrlen,int length,int remaining) {
+    if (size < remaining && !error) {
+        boost::asio::async_read(m_socket,m_buf
+                                ,boost::asio::transfer_exactly(remaining - size)
+                                ,boost::bind(&Connection::read_handshake_body,this
+                                ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
+                                ,pstrlen,length,remaining - size));            
+    } else {
+        std::deque<char> deq_buf;
 
-    std::copy(boost::asio::buffers_begin(m_buf.data())
-             ,boost::asio::buffers_end(m_buf.data())
-             ,std::back_inserter(deq_buf));
-    m_buf.consume(length);
-
-    for(auto cb : listeners) {
-        cb(error,length,std::move(deq_buf));
+        std::copy(boost::asio::buffers_begin(m_buf.data())
+                ,boost::asio::buffers_end(m_buf.data())
+                ,std::back_inserter(deq_buf));
+        m_buf.consume(length);
+        //pass the pstrlen which is necessary to construct a handshake message
+        m_handshake_callback(error,pstrlen,std::move(deq_buf));
     }
-
-    read_messages(); //continue to read messages
 }
 
-FutureResponse Connection::timed_blocking_receive(std::chrono::seconds timeout) {
-    boost::asio::streambuf buf;
-    std::future<size_t> fut_length = boost::asio::async_read(m_socket,buf,boost::asio::transfer_exactly(1),boost::asio::use_future);
-    auto fut_status = fut_length.wait_for(timeout);
-    
-    if(fut_status != std::future_status::ready) {
-        return FutureResponse { std::make_unique<std::deque<char>>(), fut_status };
-    }
-
-    std::cout << "here" << std::endl;
-
-    std::deque<char> deq_buf;
-    std::copy(boost::asio::buffers_begin(buf.data())
-             ,boost::asio::buffers_end(buf.data())
-             ,std::back_inserter(deq_buf));
-
-    int length = bytes_to_int(deq_buf) + 48;
-    buf.consume(1);
-
-    int remaining = length;
-    while(remaining > 0) {
-        auto fut_body = boost::asio::async_read(m_socket,buf,boost::asio::transfer_exactly(length),boost::asio::use_future);
-
-        auto fut_status = fut_body.wait_for(timeout);
-        if(fut_status != std::future_status::ready) {
-            return FutureResponse { std::make_unique<std::deque<char>>(deq_buf),fut_status};
-        } else {
-            size_t size = fut_body.get();
-            remaining -= size;
+void Connection::read_handshake() {
+    auto read_length_handler = [&](const boost_error &err, size_t size) {
+        // Abort on error
+        std::cout << "handshake handler" << std::endl;
+        if (err) {
+            std::cout << "[Connection] " << err.message() << std::endl;
+            return;
         }
-    }
 
-    std::copy(boost::asio::buffers_begin(buf.data())
-             ,boost::asio::buffers_end(buf.data())
-             ,std::back_inserter(deq_buf));
 
-    buf.consume(length);
+        std::deque<char> deq_buf;
+        std::copy(boost::asio::buffers_begin(m_buf.data())
+                 ,boost::asio::buffers_end(m_buf.data())
+                 ,std::back_inserter(deq_buf));
+        
+        unsigned char pstrlen = bytes_to_int(deq_buf);
+        int length = pstrlen + 48;
+        std::cout << pstrlen << std::endl;
+        std::cout << length << std::endl;
+        m_buf.consume(1);
 
-    return FutureResponse { std::make_unique<std::deque<char>>(deq_buf), std::future_status::ready };
+        read_handshake_body(boost_error(),0,pstrlen,length,length);
+    };
+
+    boost::asio::async_read(m_socket,m_buf,boost::asio::transfer_exactly(1),
+                                         boost::bind<void>(read_length_handler
+                                         ,boost::asio::placeholders::error
+                                         ,boost::asio::placeholders::bytes_transferred));
 }
 
 void Connection::on_receive(read_callback callback) {
     listeners.push_back(callback);
+}
+
+void Connection::on_handshake(read_callback callback) {
+    m_handshake_callback = callback;
 }
 
 void Connection::block_until(bool &cond) {

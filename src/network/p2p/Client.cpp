@@ -19,6 +19,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
+#include <deque>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -187,23 +188,28 @@ void Client::send_handshake(PeerId p,HandShake &&hs) {
     m_connections[p]->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
 }
 
-FutureResponse Client::receive_handshake(PeerId p) {
-    std::deque<char> deq_buf;
-    FutureResponse fr = m_connections[p]->timed_blocking_receive(std::chrono::seconds(5));
-
-    if(fr.m_status == std::future_status::timeout) {
-        cout << "[BitTorrent] time out on handshake" << endl;
-        m_connections[p]->cancel();
+void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length, std::deque<char> &&deq_buf) {
+    if(error) {
+        std::cout << "[Client] handshake failure: " << error.message() << std::endl;
+        drop_connection(p);
+        return;
     }
-    else {
-        std::cout << fr.m_data->size() << std::endl;
-        cout << "[BitTorrent] received handshake" << endl;
+    
+    auto hs = HandShake::from_bytes_repr(length, deq_buf);
+    //TODO : check integrity of hs
+    std::cout << "<<< " + hs->pprint() << std::endl;
 
-        await_messages(p);
-        write_messages(p);
-    }
+    //Successful handshake so now we can start communicating with client
+    await_messages(p);
+    write_messages(p);
+}
 
-    return fr;
+void Client::await_handshake(PeerId p) {
+    auto f = [this,p](auto err,auto l, auto &&d) {
+        handle_peer_handshake(p, err, l, std::move(d));
+    };
+    m_connections[p]->on_handshake(f);
+    m_connections[p]->read_handshake();
 }
 
 
@@ -212,7 +218,7 @@ void Client::await_messages(PeerId p) {
         handle_peer_message(p, err, l, std::move(d));
     };
     m_connections[p]->on_receive(f);
-
+    std::cout << "here" << std::endl;
     m_connections[p]->read_messages();
 }
 
@@ -223,7 +229,7 @@ void Client::write_messages(PeerId p) {
     if(ps.m_peer_choking) {
         send_bitfield(p);
         auto &timer = m_connections[p]->get_timer();
-        timer.expires_from_now(boost::posix_time::millisec(1));
+        timer.expires_from_now(boost::posix_time::millisec(5000));
         timer.async_wait(
             boost::bind(
                 &Client::unchoke_timeout,this,p
@@ -361,7 +367,7 @@ void Client::piece_response_timeout(PeerId p,const boost_error &error) {
 
 
 
-void Client::handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf) {
+void Client::handle_peer_message(PeerId p,const boost_error &error,int length,std::deque<char> &&deq_buf) {
     if(error) {
         std::cout << "[Client] Fatal error: " + error.message() << std::endl;
         m_connections[p]->cancel();

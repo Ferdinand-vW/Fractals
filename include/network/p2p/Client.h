@@ -66,8 +66,9 @@ class Client : public enable_shared_from_this<Client> {
         void connected(PeerId,const boost_error &error);
         void drop_connection(PeerId p);
 
+        void await_handshake(PeerId p);
         void await_messages(PeerId p);
-        FutureResponse receive_handshake(PeerId p);
+
         void received_choke(PeerId p);
         void received_unchoke(PeerId p);
         void received_interested(PeerId p);
@@ -101,6 +102,7 @@ class Client : public enable_shared_from_this<Client> {
         void wait_for_unchoke(PeerId p);
         void unchoke_timeout(PeerId p,const boost_error & error);
 
-        void handle_peer_message(PeerId p,boost_error error,int length,std::deque<char> &&deq_buf);
+        void handle_peer_message(PeerId p,const boost_error &error,int length,std::deque<char> &&deq_buf);
+        void handle_peer_handshake(PeerId p,const boost_error &error,int lenght,std::deque<char> &&deq_buf);
         void select_piece(PeerId p);
 };
