@@ -41,14 +41,16 @@ struct PieceStatus {
 class Client : public enable_shared_from_this<Client> {
     std::map<PeerId,P2PStatus> m_peer_status;
 
+    //a piece must always be present in at least one of these 3 containers
     std::set<int> m_missing_pieces;
     std::set<int> m_existing_pieces;
+    std::map<PeerId, std::unique_ptr<PieceStatus>> m_progress;
 
     boost::asio::io_context& m_io;
     std::map<PeerId, std::unique_ptr<Connection>> m_connections;
 
     std::shared_ptr<Torrent> m_torrent;
-    std::unique_ptr<PieceStatus> cur_piece;
+    std::unique_ptr<std::mutex> m_piece_lock;
     
     std::function<void(PeerId,PeerChange)> m_on_change_peers;
 

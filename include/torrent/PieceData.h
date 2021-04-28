@@ -10,7 +10,7 @@ struct Block {
 class PieceData {
 
     public:
-        int m_piece_index;
+        int m_piece_index = -1;
         long long m_length;
         std::vector<Block> m_blocks;
 

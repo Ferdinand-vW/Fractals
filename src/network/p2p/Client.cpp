@@ -7,6 +7,7 @@
 #include "network/p2p/PeerId.h"
 #include "network/p2p/Response.h"
 #include "torrent/PieceData.h"
+#include <algorithm>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/error.hpp>
@@ -31,12 +32,7 @@ Client::Client(std::shared_ptr<Torrent> torrent
               : m_io(io)
               ,m_torrent(torrent)
               ,m_on_change_peers(on_change_peers)
-              ,cur_piece(std::make_unique<PieceStatus>(
-                                PieceStatus{PieceProgress::Nothing,
-                                    PieceData{0,0,std::vector<Block>()}
-                                    }
-                                )
-                ) {
+              ,m_piece_lock(std::make_unique<std::mutex>()) {
     m_client_id = generate_peerId();
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.pieces.size();i++) {
@@ -77,20 +73,53 @@ void Client::connected(PeerId p,const boost_error &error) {
 void Client::drop_connection(PeerId p) {
     m_connections[p]->cancel(); //ensure connection is closed
     m_connections.erase(p); //remove the connection
+
+    int piece = m_progress[p]->m_data.m_piece_index; 
+    { //ensure that a piece is not lost when we drop the peer
+        std::unique_lock<std::mutex> lock(*m_piece_lock.get());
+        if(piece != -1 && m_existing_pieces.find(piece) != m_existing_pieces.end() && m_missing_pieces.find(piece) != m_missing_pieces.end()) {
+            m_missing_pieces.insert(piece);
+        }
+    }
+    m_progress.erase(p); // remove held piece progress of peer
     m_on_change_peers(p,PeerChange::Removed); //notify observer that we've dropped a peer
 }
 
 void Client::select_piece(PeerId p) {
-    int piece = *m_peer_status[p].m_available_pieces.begin();
-    m_peer_status[p].m_available_pieces.erase(piece);
+    int piece = -1;
+    { //lock to ensure peers don't choose the same piece
+        std::unique_lock<std::mutex> lock(*m_piece_lock.get());
+        
+        auto &available = m_peer_status[p].m_available_pieces;
+        std::set<int> interesting_pieces;
+
+        std::set_intersection(available.begin(),available.end()
+                            ,m_missing_pieces.begin(),m_missing_pieces.end()
+                            ,std::inserter(interesting_pieces,interesting_pieces.begin()));
+
+
+        //if the peer has no pieces we are interested in then we can drop the peer
+        if(interesting_pieces.empty()) {
+            drop_connection(p);
+            return;
+        }
+
+        //assume that peer has at least one piece that we are interested in...
+        piece = *interesting_pieces.begin(); //select the first piece
+        m_missing_pieces.erase(piece); //make sure we don't download the same piece from other peers
+    }
+
+    // m_peer_status[p].m_available_pieces.erase(piece); // too early?
     int piece_size = m_torrent->size_of_piece(piece);
 
-    cur_piece->m_data.m_piece_index = piece;
-    cur_piece->m_data.m_length = piece_size;
-    cur_piece->m_data.m_blocks.clear(); // empty existing data if present
-    cur_piece->m_progress = PieceProgress::Nothing;
-    std::cout << "[Client] selected piece: " << cur_piece->m_data.m_piece_index << std::endl;
-    std::cout << "[Client] selected piece size: " << cur_piece->m_data.m_length << std::endl;
+    auto piece_ptr = std::make_unique<PieceStatus>();
+    piece_ptr->m_data.m_piece_index = piece;
+    piece_ptr->m_data.m_length = piece_size;
+    piece_ptr->m_data.m_blocks.clear(); // empty existing data if present
+    piece_ptr->m_progress = PieceProgress::Nothing;
+    std::cout << "[Client] selected piece: " << piece_ptr->m_data.m_piece_index << std::endl;
+    std::cout << "[Client] selected piece size: " << piece_ptr->m_data.m_length << std::endl;
+    m_progress.insert({p,std::move(piece_ptr)});
 }
 
 void Client::received_choke(PeerId p) {
@@ -146,12 +175,14 @@ void Client::received_piece(PeerId p, Piece &pc) {
     Block b = Block { pc.m_begin, pc.m_block };
     m_connections[p]->get_timer().cancel();
 
-    cur_piece->m_data.add_block(b);
-    if(cur_piece->m_data.is_complete()) {
+    auto &piece_ptr = m_progress[p];
+
+    piece_ptr->m_data.add_block(b);
+    if(piece_ptr->m_data.is_complete()) {
         
         cout << "[BitTorrent] received all data for " << pc.pprint() << endl;
         
-        PieceData piece = cur_piece->m_data;
+        PieceData piece = piece_ptr->m_data;
         m_torrent->write_data(std::move(piece));
 
         std::cout << "after write" << std::endl;
@@ -162,10 +193,10 @@ void Client::received_piece(PeerId p, Piece &pc) {
         std::cout << "after insert" << std::endl;
 
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
-            cur_piece->m_progress = PieceProgress::Completed;
+            piece_ptr->m_progress = PieceProgress::Completed;
             cout << "[BitTorrent] received all pieces" << endl;
         } else { //otherwise we can continue to request pieces
-            cur_piece->m_progress = PieceProgress::Nothing;
+            piece_ptr->m_progress = PieceProgress::Nothing;
             write_messages(p);
         }
 
@@ -173,7 +204,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
     else {
         cout << "[BitTorrent] added block to " << pc.pprint() << endl;
 
-        cur_piece->m_progress = PieceProgress::Downloaded;
+        piece_ptr->m_progress = PieceProgress::Downloaded;
         write_messages(p);
     }
 }
@@ -223,7 +254,7 @@ void Client::await_messages(PeerId p) {
 }
 
 void Client::write_messages(PeerId p) {
-    std::cout << "[Client] Write messages" << std::endl;
+    std::cout << "[Client] Write messages " << p.m_ip << std::endl;
     auto ps = m_peer_status[p];
     
     if(ps.m_peer_choking) {
@@ -306,16 +337,17 @@ void Client::send_piece_requests(PeerId p) {
         sent_piece_request(p, error, size);
     };
 
-    if (cur_piece->m_progress == PieceProgress::Nothing) {
+    auto &piece_ptr = m_progress[p];
+    if (piece_ptr->m_progress == PieceProgress::Nothing) {
         select_piece(p);
 
         //calculate size to request
         int request_size = 1 << 14 ; // 16KB, standard request size 
-        int remaining = cur_piece->m_data.remaining(); // remaining data of piece
+        int remaining = piece_ptr->m_data.remaining(); // remaining data of piece
         int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
 
-        std::cout << "cur piece index: " << cur_piece->m_data.m_piece_index << std::endl;
-        Request request(cur_piece->m_data.m_piece_index
+        std::cout << "cur piece index: " << piece_ptr->m_data.m_piece_index << std::endl;
+        Request request(piece_ptr->m_data.m_piece_index
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
         auto req_ptr = std::make_unique<Request>(request);
@@ -324,13 +356,13 @@ void Client::send_piece_requests(PeerId p) {
                        ,boost::asio::placeholders::error
                        ,boost::asio::placeholders::bytes_transferred));
 
-    } else if (cur_piece->m_progress == PieceProgress::Downloaded) {
+    } else if (piece_ptr->m_progress == PieceProgress::Downloaded) {
         int request_size = 1 << 14; // 16KB
-        int remaining = cur_piece->m_data.remaining();
+        int remaining = piece_ptr->m_data.remaining();
         int piece_length = m_torrent->m_mi.info.piece_length;
 
-        Request request(cur_piece->m_data.m_piece_index
-                       ,cur_piece->m_data.next_block_begin()
+        Request request(piece_ptr->m_data.m_piece_index
+                       ,piece_ptr->m_data.next_block_begin()
                        ,std::min(remaining,std::min(piece_length,request_size)));
 
         auto req_ptr = std::make_unique<Request>(request);
@@ -346,7 +378,7 @@ void Client::send_piece_requests(PeerId p) {
 void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) {
     std::cout << "[Client] sent piece request to " << p.m_ip << std::endl;
     std::cout << error.message() << std::endl;
-    cur_piece->m_progress = PieceProgress::Requested;
+    m_progress[p]->m_progress = PieceProgress::Requested;
 
     auto &timer = m_connections[p]->get_timer();
     timer.expires_from_now(boost::posix_time::seconds(5));
