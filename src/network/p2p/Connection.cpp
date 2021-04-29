@@ -51,7 +51,7 @@ void Connection::cancel() {
         m_socket.close();
     }
     catch(std::exception e) {
-        std::cout << "[Connection] " << e.what() << std::endl;
+        std::cout << "[Connection] exception: " << e.what() << std::endl;
     }
 }
 
@@ -68,6 +68,10 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
                                 ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
                                 ,length,remaining - size));            
     } else {
+        if(error) {
+            std::cout << "[Connection] body handler " << error.message() << std::endl; 
+        }
+
         std::deque<char> deq_buf;
 
         std::copy(boost::asio::buffers_begin(m_buf.data())
@@ -84,11 +88,10 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
 }
 
 void Connection::read_messages() {
-    std::cout << "read messages" << std::endl;
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
-            std::cout << "[Connection] " << err.message() << std::endl;
+            std::cout << "[Connection] length handler: " << err.message() << std::endl;
             return;
         }
  

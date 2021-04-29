@@ -91,6 +91,8 @@ class Client : public enable_shared_from_this<Client> {
         void add_peer(PeerId p);
 
     private:
+        void add_peer_progress(PeerId p);
+
         void send_piece_requests(PeerId p);
         void sent_piece_request(PeerId p,const boost_error &error, size_t size);
         void piece_response_timeout(PeerId p,const boost_error &error);

@@ -111,14 +111,21 @@ void Client::select_piece(PeerId p) {
 
     // m_peer_status[p].m_available_pieces.erase(piece); // too early?
     int piece_size = m_torrent->size_of_piece(piece);
-
-    auto piece_ptr = std::make_unique<PieceStatus>();
+    auto &piece_ptr = m_progress[p];
     piece_ptr->m_data.m_piece_index = piece;
     piece_ptr->m_data.m_length = piece_size;
-    piece_ptr->m_data.m_blocks.clear(); // empty existing data if present
     piece_ptr->m_progress = PieceProgress::Nothing;
+    piece_ptr->m_data.m_blocks.clear();
     std::cout << "[Client] selected piece: " << piece_ptr->m_data.m_piece_index << std::endl;
     std::cout << "[Client] selected piece size: " << piece_ptr->m_data.m_length << std::endl;
+}
+
+void Client::add_peer_progress(PeerId p) {
+    auto piece_ptr = std::make_unique<PieceStatus>();
+    piece_ptr->m_data.m_piece_index = -1;
+    piece_ptr->m_data.m_length = -1;
+    piece_ptr->m_data.m_blocks.clear(); // empty existing data if present
+    piece_ptr->m_progress = PieceProgress::Nothing;
     m_progress.insert({p,std::move(piece_ptr)});
 }
 
@@ -230,6 +237,7 @@ void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length,
     //TODO : check integrity of hs
     std::cout << "<<< " + hs->pprint() << std::endl;
 
+    add_peer_progress(p);
     //Successful handshake so now we can start communicating with client
     await_messages(p);
     write_messages(p);
@@ -336,17 +344,23 @@ void Client::send_piece_requests(PeerId p) {
     auto cb = [&](const boost_error &error,size_t size) {
         sent_piece_request(p, error, size);
     };
+    if(m_progress.find(p) == m_progress.end()) {
+        select_piece(p);
+    }
 
     auto &piece_ptr = m_progress[p];
     if (piece_ptr->m_progress == PieceProgress::Nothing) {
         select_piece(p);
-
+        
         //calculate size to request
         int request_size = 1 << 14 ; // 16KB, standard request size 
         int remaining = piece_ptr->m_data.remaining(); // remaining data of piece
         int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
 
         std::cout << "cur piece index: " << piece_ptr->m_data.m_piece_index << std::endl;
+        std::cout << "remaining: " << remaining << std::endl;
+        std::cout << "piece length: " << piece_length << std::endl;
+        std::cout << std::min(remaining,std::min(piece_length,request_size)) << std::endl;
         Request request(piece_ptr->m_data.m_piece_index
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
@@ -356,6 +370,7 @@ void Client::send_piece_requests(PeerId p) {
                        ,boost::asio::placeholders::error
                        ,boost::asio::placeholders::bytes_transferred));
 
+        return;
     } else if (piece_ptr->m_progress == PieceProgress::Downloaded) {
         int request_size = 1 << 14; // 16KB
         int remaining = piece_ptr->m_data.remaining();
