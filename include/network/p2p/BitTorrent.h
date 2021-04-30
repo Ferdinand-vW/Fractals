@@ -29,7 +29,7 @@ class BitTorrent {
     std::shared_ptr<Client> m_client;
     std::set<PeerId> m_available_peers;
 
-    int m_max_peers = 2;
+    int m_max_peers = 1;
     int m_connected = 0;
     
     std::shared_ptr<Torrent> m_torrent;

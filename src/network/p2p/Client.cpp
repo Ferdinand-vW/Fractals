@@ -13,6 +13,7 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/placeholders.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/system/error_code.hpp>
@@ -54,34 +55,55 @@ bool Client::is_connected_to(PeerId p) {
 
 void Client::connect_to_peer(PeerId p) {
     auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
-    conn_ptr->connect(std::chrono::seconds(2),
-                      boost::bind(&Client::connected,this,p,boost::asio::placeholders::error()));
     m_connections.insert({ p, std::move(conn_ptr) });
+    auto &conn = m_connections[p];
+    conn->connect(std::chrono::seconds(2),
+                      boost::bind(&Client::connected,this,p,boost::asio::placeholders::error));
+    
+    std::cout << "here" << std::endl;
+    auto &timer = conn->get_timer();
+    timer.expires_from_now(boost::posix_time::seconds(5));
+    timer.async_wait(boost::bind(&Client::connect_timeout,this,p,boost::asio::placeholders::error));
+    std::cout << "here2" << std::endl;
+    
 }
 
 void Client::connected(PeerId p,const boost_error &error) {
     if(!error) {
         std::cout << "[Client] connected to " << p.m_ip << std::endl;
+        m_connections[p]->get_timer().cancel();
         m_on_change_peers(p,PeerChange::Added);
-    } else {
-        m_connections[p]->cancel();
-        m_connections.erase(p);
+    }
+}
+
+void Client::connect_timeout(PeerId p, const boost_error &error) {
+    if (error != boost::asio::error::operation_aborted) {
         std::cout << "[Client] " << error.message() << std::endl;
+        drop_connection(p);
     }
 }
 
 void Client::drop_connection(PeerId p) {
+    std::cout << "do drop" << std::endl;
     m_connections[p]->cancel(); //ensure connection is closed
+    std::cout << "1" << std::endl;
     m_connections.erase(p); //remove the connection
+    std::cout << "2" << std::endl;
 
-    int piece = m_progress[p]->m_data.m_piece_index; 
-    { //ensure that a piece is not lost when we drop the peer
-        std::unique_lock<std::mutex> lock(*m_piece_lock.get());
-        if(piece != -1 && m_existing_pieces.find(piece) != m_existing_pieces.end() && m_missing_pieces.find(piece) != m_missing_pieces.end()) {
-            m_missing_pieces.insert(piece);
+    if(m_progress.find(p) != m_progress.end()) {
+        int piece = m_progress[p]->m_data.m_piece_index; 
+        std::cout << "3" << std::endl;
+        { //ensure that a piece is not lost when we drop the peer
+            std::unique_lock<std::mutex> lock(*m_piece_lock.get());
+            if(piece != -1 && m_existing_pieces.find(piece) != m_existing_pieces.end() && m_missing_pieces.find(piece) != m_missing_pieces.end()) {
+                m_missing_pieces.insert(piece);
+            }
         }
     }
+    
+    std::cout << "4" << std::endl;
     m_progress.erase(p); // remove held piece progress of peer
+    std::cout << "5" << std::endl;
     m_on_change_peers(p,PeerChange::Removed); //notify observer that we've dropped a peer
 }
 
@@ -227,28 +249,38 @@ void Client::send_handshake(PeerId p,HandShake &&hs) {
 }
 
 void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length, std::deque<char> &&deq_buf) {
-    if(error) {
+    std::cout << "handle peer " << error.message() << std::endl;
+    if(!error) {
+        m_connections[p]->get_timer().cancel();
+        auto hs = HandShake::from_bytes_repr(length, deq_buf);
+        //TODO : check integrity of hs
+        std::cout << "<<< " + hs->pprint() << std::endl;
+
+        add_peer_progress(p);
+        //Successful handshake so now we can start communicating with client
+        await_messages(p);
+        write_messages(p);
+    }
+}
+
+void Client::handshake_timeout(PeerId p, const boost_error& error) {
+    if(error != boost::asio::error::operation_aborted) {
         std::cout << "[Client] handshake failure: " << error.message() << std::endl;
         drop_connection(p);
         return;
     }
-    
-    auto hs = HandShake::from_bytes_repr(length, deq_buf);
-    //TODO : check integrity of hs
-    std::cout << "<<< " + hs->pprint() << std::endl;
-
-    add_peer_progress(p);
-    //Successful handshake so now we can start communicating with client
-    await_messages(p);
-    write_messages(p);
 }
 
 void Client::await_handshake(PeerId p) {
     auto f = [this,p](auto err,auto l, auto &&d) {
         handle_peer_handshake(p, err, l, std::move(d));
     };
+
     m_connections[p]->on_handshake(f);
     m_connections[p]->read_handshake();
+    auto &timer = m_connections[p]->get_timer();
+    timer.expires_from_now(boost::posix_time::seconds(5));
+    timer.async_wait(boost::bind(&Client::handshake_timeout,this,p,boost::asio::placeholders::error));
 }
 
 
@@ -396,6 +428,7 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
     m_progress[p]->m_progress = PieceProgress::Requested;
 
     auto &timer = m_connections[p]->get_timer();
+    std::cout << "timer" << std::endl;
     timer.expires_from_now(boost::posix_time::seconds(5));
     timer.async_wait(
         boost::bind(

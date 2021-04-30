@@ -132,6 +132,7 @@ void Connection::read_handshake_body(const boost_error& error,size_t size,unsign
 }
 
 void Connection::read_handshake() {
+    std::cout << "get here" << std::endl;
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         std::cout << "handshake handler" << std::endl;

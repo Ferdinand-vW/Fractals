@@ -103,6 +103,7 @@ void BitTorrent::setup_client() {
 void BitTorrent::attempt_connect(PeerId p) {
     cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
     m_client->connect_to_peer(p);
+    m_connected++;
 }
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
@@ -110,10 +111,11 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
     if (pc == PeerChange::Added) {
         std::cout << "added" << std::endl;
         // m_mutex.lock();
-        m_connected++;
+        
         // m_mutex.unlock();
 
         perform_handshake(p);
+        std::cout << "after perform" << std::endl;
     } else {
         std::cout << "removed" << std::endl;
         // m_mutex.lock();

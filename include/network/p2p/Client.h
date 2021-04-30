@@ -108,5 +108,7 @@ class Client : public enable_shared_from_this<Client> {
 
         void handle_peer_message(PeerId p,const boost_error &error,int length,std::deque<char> &&deq_buf);
         void handle_peer_handshake(PeerId p,const boost_error &error,int lenght,std::deque<char> &&deq_buf);
+        void handshake_timeout(PeerId,const boost_error &error);
+        void connect_timeout(PeerId,const boost_error &error);
         void select_piece(PeerId p);
 };
