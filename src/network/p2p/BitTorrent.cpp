@@ -102,8 +102,8 @@ void BitTorrent::setup_client() {
 
 void BitTorrent::attempt_connect(PeerId p) {
     cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
-    m_client->connect_to_peer(p);
     m_connected++;
+    m_client->connect_to_peer(p);
 }
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
