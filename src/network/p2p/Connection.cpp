@@ -55,7 +55,6 @@ void Connection::cancel() {
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
-    std::cout << bytes_to_hex(m->to_bytes_repr()) << std::endl;
     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 
@@ -146,8 +145,6 @@ void Connection::read_handshake() {
         
         unsigned char pstrlen = bytes_to_int(deq_buf);
         int length = pstrlen + 48;
-        std::cout << pstrlen << std::endl;
-        std::cout << length << std::endl;
         m_buf.consume(1);
 
         read_handshake_body(boost_error(),0,pstrlen,length,length);

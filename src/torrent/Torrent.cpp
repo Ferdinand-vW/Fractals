@@ -11,7 +11,7 @@
 #include "torrent/BencodeConvert.h"
 
 
-Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_mi(mi) {
+Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_mi(mi),m_lg(logger::get()) {
     auto info = m_mi.info;
     auto fm = info.file_mode;
     std::filesystem::path p(fileName);
@@ -61,11 +61,11 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
     auto bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
     auto piece_len = size_of_piece(piece);
 
-    cout << "[Torrent] bytes begin: " << bytes_begin << endl;
+    BOOST_LOG(m_lg) << "[Torrent] bytes begin: " << bytes_begin;
     
     auto files_bytes = 0;
     for(auto fi : m_files) {
-        cout << "[Torrent] looking at file " << concat_paths(fi.path) << endl;
+        BOOST_LOG(m_lg) << "[Torrent] looking at file " << concat_paths(fi.path);
 
         auto next_file_begin = files_bytes + fi.length;
         
@@ -99,10 +99,10 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
 }
 
 void Torrent::create_files(std::vector<FileData> &fds) {
-    cout << "[Torrent] creating files for file data" << endl;
+    BOOST_LOG(m_lg) << "[Torrent] creating files for file data";
     //create root directory if does not exist
     if(m_dir != "") {
-        cout << "[Torrent] Creating dir: " << m_dir << endl;
+        BOOST_LOG(m_lg) << "[Torrent] Creating dir: " << m_dir;
         std::filesystem::create_directory(m_dir);
     }
 
@@ -120,7 +120,7 @@ void Torrent::create_files(std::vector<FileData> &fds) {
         if(p.parent_path() != "") { // if parent path is empty then we're dealing with single file with no specified directory
             //creates the (sub)directories if they don't exist already
             std::filesystem::create_directories(p.parent_path());
-            cout << "[Torrent] creating (sub) directories" << endl;
+            BOOST_LOG(m_lg) << "[Torrent] creating (sub) directories";
         }
 
         fd.full_path = fp; //assign file path to file data
@@ -130,9 +130,9 @@ void Torrent::create_files(std::vector<FileData> &fds) {
             fstream.open(fp,std::fstream::out | std::fstream::binary);
             fstream.close();
             
-            cout << "[Torrent] created file " << p.stem() << endl;
+            BOOST_LOG(m_lg) << "[Torrent] created file " << p.stem();
         } else {
-            cout << "file or directory with same path already exists: " + fp << endl;
+            BOOST_LOG(m_lg) << "file or directory with same path already exists: " + fp;
         }
     }
 }
@@ -148,7 +148,7 @@ long long Torrent::size_of_piece(int piece) {
     if(info.file_mode.isLeft) {
         //if single file mode then it's simple
         int file_length = info.file_mode.leftValue.length;
-        cout << "[Torrent] file length" << file_length << endl;
+        BOOST_LOG(m_lg) << "[Torrent] file length" << file_length;
         //last piece has size of remainder of file
         return file_length - (info.pieces.size() - 1) * info.piece_length;
     } else {
@@ -158,7 +158,7 @@ long long Torrent::size_of_piece(int piece) {
             sum_file_lengths += f.length;
         }
 
-        cout << "[Torrent] sum of files" << sum_file_lengths << endl;
+        BOOST_LOG(m_lg) << "[Torrent] sum of files" << sum_file_lengths;
 
         return sum_file_lengths - (info.pieces.size() - 1) * info.piece_length;
     }
@@ -174,7 +174,7 @@ long long Torrent::cumulative_size_of_pieces(int piece) {
 }
 
 void Torrent::write_data(PieceData &&pd) {
-    cout << "[Torrent] writing to piece " << pd.m_piece_index << endl;
+    BOOST_LOG(m_lg) << "[Torrent] writing to piece " << pd.m_piece_index;
     auto fds = divide_over_files(pd.m_piece_index);
 
     create_files(fds);
@@ -184,23 +184,21 @@ void Torrent::write_data(PieceData &&pd) {
         std::move(b.m_data.begin(),b.m_data.end(),back_inserter(bytes));
     }
 
-    cout << "[Torrent] To write " << bytes.size() << " number of bytes" << endl;
-    cout << "[Torrent] Spanning over " << fds.size() << " file(s)" << endl;
+    BOOST_LOG(m_lg) << "[Torrent] To write " << bytes.size() << " number of bytes";
+    BOOST_LOG(m_lg) << "[Torrent] Spanning over " << fds.size() << " file(s)";
     int bytes_pos = 0;
     for(auto fd : fds) {
         std::fstream fstream;
 
         fstream.open(fd.full_path, std::fstream::out | std::fstream::binary);
 
-        std::cout << fd.begin << std::endl;
-        std::cout << fd.end << std::endl;
         fstream.seekp(fd.begin); // set the correct offset to start write
 
         std::vector<char> bytes_for_file(bytes.begin() + bytes_pos,bytes.begin() + bytes_pos + fd.end - fd.begin);
         fstream.write(bytes_for_file.data(), bytes_for_file.size());
         bytes_pos = fd.end - fd.begin;
 
-        cout << "[Torrent] Wrote " << bytes_for_file.size() << " bytes to " << fd.full_path << endl;
+        BOOST_LOG(m_lg) << "[Torrent] Wrote " << bytes_for_file.size() << " bytes to " << fd.full_path;
 
         fstream.close();
     }

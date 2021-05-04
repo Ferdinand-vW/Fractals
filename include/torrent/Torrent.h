@@ -2,6 +2,8 @@
 
 #include "torrent/MetaInfo.h"
 #include "torrent/PieceData.h"
+#include "common/logger.h"
+#include <boost/log/sources/logger.hpp>
 #include <string>
 
 struct FileData {
@@ -18,6 +20,7 @@ class Torrent {
         MetaInfo m_mi;
         std::vector<char> m_info_hash;
         std::vector<FileInfo> m_files;
+        boost::log::sources::logger_mt &m_lg;
 
         Torrent(MetaInfo &mi,std::string fileName);
 

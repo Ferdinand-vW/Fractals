@@ -138,8 +138,8 @@ void Client::select_piece(PeerId p) {
     piece_ptr->m_data.m_length = piece_size;
     piece_ptr->m_progress = PieceProgress::Nothing;
     piece_ptr->m_data.m_blocks.clear();
-    BOOST_LOG(m_lg) << "[Client] selected piece: " << piece_ptr->m_data.m_piece_index;
-    BOOST_LOG(m_lg) << "[Client] selected piece size: " << piece_ptr->m_data.m_length;
+    BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece: " << piece_ptr->m_data.m_piece_index;
+    BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece size: " << piece_ptr->m_data.m_length;
 }
 
 void Client::add_peer_progress(PeerId p) {
@@ -209,7 +209,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
     piece_ptr->m_data.add_block(b);
     if(piece_ptr->m_data.is_complete()) {
         
-        BOOST_LOG(m_lg) << "[BitTorrent] received all data from " << p.m_ip << " for " << pc.pprint() << endl;
+        BOOST_LOG(m_lg) << "[BitTorrent] received all data from " << p.m_ip << " for " << pc.pprint();
         
         PieceData piece = piece_ptr->m_data;
         m_torrent->write_data(std::move(piece));
@@ -220,7 +220,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
 
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
             piece_ptr->m_progress = PieceProgress::Completed;
-            BOOST_LOG(m_lg) << "[BitTorrent] received all pieces" << endl;
+            BOOST_LOG(m_lg) << "[BitTorrent] received all pieces";
         } else { //otherwise we can continue to request pieces
             piece_ptr->m_progress = PieceProgress::Nothing;
             write_messages(p);
@@ -228,7 +228,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
 
     }
     else {
-        BOOST_LOG(m_lg) << "[BitTorrent] added block to " << pc.pprint() << endl;
+        BOOST_LOG(m_lg) << "[BitTorrent] added block to " << pc.pprint();
 
         piece_ptr->m_progress = PieceProgress::Downloaded;
         write_messages(p);
@@ -443,7 +443,7 @@ void Client::piece_response_timeout(PeerId p,const boost_error &error) {
 
 void Client::handle_peer_message(PeerId p,const boost_error &error,int length,std::deque<char> &&deq_buf) {
     if(error) {
-        std::cout << "[Client] Fatal error: " + error.message() << std::endl;
+        BOOST_LOG(m_lg) << "[Client] Fatal error: " + error.message();
         m_connections[p]->cancel();
         return;
     }
