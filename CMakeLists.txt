@@ -14,6 +14,7 @@ foreach (H ${NEITHER_HEADERS})
     file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR})
 endforeach()
 
+ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 find_package(Boost 1.74.0 COMPONENTS system thread log REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
