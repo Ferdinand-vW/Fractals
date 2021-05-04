@@ -33,7 +33,8 @@ Client::Client(std::shared_ptr<Torrent> torrent
               : m_io(io)
               ,m_torrent(torrent)
               ,m_on_change_peers(on_change_peers)
-              ,m_piece_lock(std::make_unique<std::mutex>()) {
+              ,m_piece_lock(std::make_unique<std::mutex>())
+              ,m_lg(logger::get()) {
     m_client_id = generate_peerId();
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.pieces.size();i++) {
@@ -54,45 +55,46 @@ bool Client::is_connected_to(PeerId p) {
 }
 
 void Client::connect_to_peer(PeerId p) {
+    //Construct the connection object
     auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
+    //From now on the connection must be fetched by reference
     m_connections.insert({ p, std::move(conn_ptr) });
+
+    //Start connecting to the peer
     auto &conn = m_connections[p];
-    conn->connect(std::chrono::seconds(2),
-                      boost::bind(&Client::connected,this,p,boost::asio::placeholders::error));
+    conn->connect(boost::bind(&Client::connected,this,p,boost::asio::placeholders::error));
     
-    std::cout << "here" << std::endl;
+    //set up timeout of 5 seconds
     auto &timer = conn->get_timer();
     timer.expires_from_now(boost::posix_time::seconds(5));
     timer.async_wait(boost::bind(&Client::connect_timeout,this,p,boost::asio::placeholders::error));
-    std::cout << "here2" << std::endl;
     
 }
 
 void Client::connected(PeerId p,const boost_error &error) {
     if(!error) {
-        std::cout << "[Client] connected to " << p.m_ip << std::endl;
+        BOOST_LOG(m_lg) << "[Client] connected to " << p.m_ip;
         m_connections[p]->get_timer().cancel();
+        //report that we've successfully connected to a peer
         m_on_change_peers(p,PeerChange::Added);
     }
 }
 
 void Client::connect_timeout(PeerId p, const boost_error &error) {
     if (error != boost::asio::error::operation_aborted) {
-        std::cout << "[Client] " << error.message() << std::endl;
+        BOOST_LOG(m_lg) << "[Client] connection timeout with " << p.m_ip;
         drop_connection(p);
     }
 }
 
 void Client::drop_connection(PeerId p) {
-    std::cout << "do drop" << std::endl;
     m_connections[p]->cancel(); //ensure connection is closed
-    std::cout << "1" << std::endl;
     m_connections.erase(p); //remove the connection
-    std::cout << "2" << std::endl;
 
+    //if we were exchanging data with peer then
+    //we may need to correct some book keeping
     if(m_progress.find(p) != m_progress.end()) {
         int piece = m_progress[p]->m_data.m_piece_index; 
-        std::cout << "3" << std::endl;
         { //ensure that a piece is not lost when we drop the peer
             std::unique_lock<std::mutex> lock(*m_piece_lock.get());
             if(piece != -1 && m_existing_pieces.find(piece) != m_existing_pieces.end() && m_missing_pieces.find(piece) != m_missing_pieces.end()) {
@@ -101,9 +103,7 @@ void Client::drop_connection(PeerId p) {
         }
     }
     
-    std::cout << "4" << std::endl;
     m_progress.erase(p); // remove held piece progress of peer
-    std::cout << "5" << std::endl;
     m_on_change_peers(p,PeerChange::Removed); //notify observer that we've dropped a peer
 }
 
@@ -138,8 +138,8 @@ void Client::select_piece(PeerId p) {
     piece_ptr->m_data.m_length = piece_size;
     piece_ptr->m_progress = PieceProgress::Nothing;
     piece_ptr->m_data.m_blocks.clear();
-    std::cout << "[Client] selected piece: " << piece_ptr->m_data.m_piece_index << std::endl;
-    std::cout << "[Client] selected piece size: " << piece_ptr->m_data.m_length << std::endl;
+    BOOST_LOG(m_lg) << "[Client] selected piece: " << piece_ptr->m_data.m_piece_index;
+    BOOST_LOG(m_lg) << "[Client] selected piece size: " << piece_ptr->m_data.m_length;
 }
 
 void Client::add_peer_progress(PeerId p) {
@@ -194,13 +194,13 @@ void Client::received_bitfield(PeerId p, Bitfield &bf) {
 }
 
 void Client::received_request(PeerId p, Request &r) {
-    cout << "[Client] received receive request from "+ p.m_ip + ":" + std::to_string(p.m_port) << endl;
-    cout << r.m_index << " " << r.m_begin << " " << r.m_length << endl;
-    cout << "[Client] does not currently support receive request" << endl;
+    BOOST_LOG(m_lg) << "[Client] received receive request from "+ p.m_ip + ":" + std::to_string(p.m_port);
+    BOOST_LOG(m_lg) << r.m_index << " " << r.m_begin << " " << r.m_length;
+    BOOST_LOG(m_lg) << "[Client] does not currently support receive request";
 }
 
 void Client::received_piece(PeerId p, Piece &pc) {
-    std::cout << "[Client] received piece " << pc.m_index << std::endl; 
+    BOOST_LOG(m_lg) << "[Client] received piece " << pc.m_index << " from " << p.m_ip;
     Block b = Block { pc.m_begin, pc.m_block };
     m_connections[p]->get_timer().cancel();
 
@@ -209,21 +209,18 @@ void Client::received_piece(PeerId p, Piece &pc) {
     piece_ptr->m_data.add_block(b);
     if(piece_ptr->m_data.is_complete()) {
         
-        cout << "[BitTorrent] received all data for " << pc.pprint() << endl;
+        BOOST_LOG(m_lg) << "[BitTorrent] received all data from " << p.m_ip << " for " << pc.pprint() << endl;
         
         PieceData piece = piece_ptr->m_data;
         m_torrent->write_data(std::move(piece));
 
-        std::cout << "after write" << std::endl;
         // update internal state of required pieces
         m_missing_pieces.erase(piece.m_piece_index);
         m_existing_pieces.insert(piece.m_piece_index);
 
-        std::cout << "after insert" << std::endl;
-
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
             piece_ptr->m_progress = PieceProgress::Completed;
-            cout << "[BitTorrent] received all pieces" << endl;
+            BOOST_LOG(m_lg) << "[BitTorrent] received all pieces" << endl;
         } else { //otherwise we can continue to request pieces
             piece_ptr->m_progress = PieceProgress::Nothing;
             write_messages(p);
@@ -231,7 +228,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
 
     }
     else {
-        cout << "[BitTorrent] added block to " << pc.pprint() << endl;
+        BOOST_LOG(m_lg) << "[BitTorrent] added block to " << pc.pprint() << endl;
 
         piece_ptr->m_progress = PieceProgress::Downloaded;
         write_messages(p);
@@ -249,13 +246,13 @@ void Client::send_handshake(PeerId p,HandShake &&hs) {
 }
 
 void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length, std::deque<char> &&deq_buf) {
-    std::cout << "handle peer " << error.message() << std::endl;
     if(!error) {
         m_connections[p]->get_timer().cancel();
         auto hs = HandShake::from_bytes_repr(length, deq_buf);
         //TODO : check integrity of hs
-        std::cout << "<<< " + hs->pprint() << std::endl;
+        BOOST_LOG(m_lg) << hs->pprint() << " <<< " << p.m_ip;
 
+        //indicate that there's data exchange occurring with this peer
         add_peer_progress(p);
         //Successful handshake so now we can start communicating with client
         await_messages(p);
@@ -265,7 +262,7 @@ void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length,
 
 void Client::handshake_timeout(PeerId p, const boost_error& error) {
     if(error != boost::asio::error::operation_aborted) {
-        std::cout << "[Client] handshake failure: " << error.message() << std::endl;
+        BOOST_LOG(m_lg) << "[Client] handshake timeout with " << p.m_ip;
         drop_connection(p);
         return;
     }
@@ -289,12 +286,10 @@ void Client::await_messages(PeerId p) {
         handle_peer_message(p, err, l, std::move(d));
     };
     m_connections[p]->on_receive(f);
-    std::cout << "here" << std::endl;
     m_connections[p]->read_messages();
 }
 
 void Client::write_messages(PeerId p) {
-    std::cout << "[Client] Write messages " << p.m_ip << std::endl;
     auto ps = m_peer_status[p];
     
     if(ps.m_peer_choking) {
@@ -328,6 +323,8 @@ void Client::send_bitfield(PeerId p) {
     auto msg = Bitfield(bf);
     auto msg_ptr = std::make_unique<Bitfield>(msg);
 
+    BOOST_LOG(m_lg) << p.m_ip << " >>> " << msg.pprint();
+
     m_connections[p]->write_message(
           std::move(msg_ptr)
         , boost::bind(&Client::sent_bitfield,this,p
@@ -337,16 +334,16 @@ void Client::send_bitfield(PeerId p) {
 
 void Client::sent_bitfield(PeerId p,const boost_error &error,size_t size) {
     if(error) {
-        std::cout << "[Client] " << error.message() << std::endl;
+        BOOST_LOG(m_lg) << "[Client] sending bitfield to " << p.m_ip << " failed with " << error.message();
         m_connections[p]->cancel();
         return;
     }
-    std::cout << ">>> Bitfield " << size << std::endl;
 }
 
 void Client::send_interested(PeerId p) {
     if(!m_peer_status[p].m_am_interested && m_peer_status[p].m_available_pieces.size() > 0) {
         auto msg_ptr = std::make_unique<Interested>(Interested());
+        BOOST_LOG(m_lg) << p.m_ip << " >>> " << msg_ptr->pprint();
         m_connections[p]->write_message(std::move(msg_ptr)
             ,boost::bind(&Client::sent_interested,this,p
                     ,boost::asio::placeholders::error
@@ -356,18 +353,17 @@ void Client::send_interested(PeerId p) {
 
 void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
     if(error) {
-        std::cout << "[Client] " << error.message() << std::endl;
+        BOOST_LOG(m_lg) << "[Client] sending interested to " << p.m_ip << " failed with " << error.message();
         m_connections[p]->cancel();
         return;
     } else {
         m_peer_status[p].m_am_interested = true;
     }
-    std::cout << ">>> Interested " << size << std::endl;
 }
 
 void Client::unchoke_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
-        std::cout << "[Client] unchoke time out" << std::endl; 
+        BOOST_LOG(m_lg) << "[Client] unchoke time out"; 
         drop_connection(p);
     }
 }
@@ -389,13 +385,10 @@ void Client::send_piece_requests(PeerId p) {
         int remaining = piece_ptr->m_data.remaining(); // remaining data of piece
         int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
 
-        std::cout << "cur piece index: " << piece_ptr->m_data.m_piece_index << std::endl;
-        std::cout << "remaining: " << remaining << std::endl;
-        std::cout << "piece length: " << piece_length << std::endl;
-        std::cout << std::min(remaining,std::min(piece_length,request_size)) << std::endl;
         Request request(piece_ptr->m_data.m_piece_index
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
+        BOOST_LOG(m_lg) << p.m_ip << request.pprint();
         auto req_ptr = std::make_unique<Request>(request);
         m_connections[p]->write_message(std::move(req_ptr)
             ,boost::bind(&Client::sent_piece_request,this,p
@@ -411,24 +404,25 @@ void Client::send_piece_requests(PeerId p) {
         Request request(piece_ptr->m_data.m_piece_index
                        ,piece_ptr->m_data.next_block_begin()
                        ,std::min(remaining,std::min(piece_length,request_size)));
-
+        BOOST_LOG(m_lg) << p.m_ip << " >>> " << request.pprint();
         auto req_ptr = std::make_unique<Request>(request);
         m_connections[p]->write_message(std::move(req_ptr)
             ,boost::bind(&Client::sent_piece_request,this,p
                        ,boost::asio::placeholders::error
                        ,boost::asio::placeholders::bytes_transferred));
     } else {
-        cout << "[BitTorrent] Completed downloading. Leaving thread.." << endl;
+        BOOST_LOG(m_lg) << "[BitTorrent] Completed downloading. Leaving thread..";
     }
 }
 
 void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) {
-    std::cout << "[Client] sent piece request to " << p.m_ip << std::endl;
-    std::cout << error.message() << std::endl;
+    if(error) {
+        BOOST_LOG(m_lg) << "[Client] sending piece request to " << p.m_ip << " failed with " << error.message();
+    }
+        
     m_progress[p]->m_progress = PieceProgress::Requested;
 
     auto &timer = m_connections[p]->get_timer();
-    std::cout << "timer" << std::endl;
     timer.expires_from_now(boost::posix_time::seconds(5));
     timer.async_wait(
         boost::bind(
@@ -438,7 +432,7 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
 
 void Client::piece_response_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
-        std::cout << "[Client] piece response time out" << std::endl; 
+        BOOST_LOG(m_lg) << "[Client] piece response time out"; 
         drop_connection(p);
     }
 }

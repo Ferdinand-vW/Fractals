@@ -8,6 +8,7 @@
 #include "network/p2p/PeerId.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/log/sources/logger.hpp>
 /*
 
 One Client class per Torrent
@@ -36,6 +37,8 @@ class BitTorrent {
     boost::asio::io_context &m_io;
     // std::mutex m_mutex;
 
+    boost::log::sources::logger_mt &m_lg;
+
 
     public:
         BitTorrent (std::shared_ptr<Torrent> t,boost::asio::io_context &io);
@@ -48,7 +51,6 @@ class BitTorrent {
         void attempt_connect(PeerId p);
         void peer_change(PeerId p,PeerChange pc);
         PeerId connect_to_a_peer();
-        PeerId connect_and_handshake();
 
         void perform_handshake(PeerId p);
 };

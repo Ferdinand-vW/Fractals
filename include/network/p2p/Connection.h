@@ -6,6 +6,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/log/sources/logger.hpp>
 #include <cstddef>
 #include <deque>
 #include <memory>
@@ -15,6 +16,7 @@
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
 #include "network/p2p/Response.h"
+#include "common/logger.h"
 
 using namespace boost::asio;
 using ip::tcp;
@@ -31,6 +33,8 @@ class Connection : public std::enable_shared_from_this<Connection> {
     PeerId m_peer;
     std::vector<read_callback> listeners;
     read_callback m_handshake_callback; 
+
+    boost::log::sources::logger_mt &m_lg;
 
     private:
         void read_message_body(const boost_error&error,size_t size,int length, int remaining);
@@ -49,7 +53,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
         }
         // Connection(Connection &&conn);
 
-        void connect(std::chrono::seconds timeout,std::function<void(const boost_error&)>);
+        void connect(std::function<void(const boost_error&)>);
         bool is_open();
         void cancel();
 

@@ -3,6 +3,7 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/log/sources/logger.hpp>
 #include <condition_variable>
 #include <fstream>
 #include <map>
@@ -15,11 +16,11 @@
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
 #include "network/p2p/Response.h"
+#include "common/logger.h"
 #include "torrent/Torrent.h"
 #include "torrent/PieceData.h"
 
 using namespace boost::asio;
-using ip::tcp;
 
 struct P2PStatus {
     bool m_am_choking = true;
@@ -53,6 +54,8 @@ class Client : public enable_shared_from_this<Client> {
     std::unique_ptr<std::mutex> m_piece_lock;
     
     std::function<void(PeerId,PeerChange)> m_on_change_peers;
+
+    boost::log::sources::logger_mt &m_lg;
 
     public:
         std::vector<char> m_client_id;

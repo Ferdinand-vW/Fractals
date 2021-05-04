@@ -28,13 +28,12 @@ Connection::Connection(boost::asio::io_context &io,PeerId p)
                       : m_io(io)
                       , m_timer(boost::asio::deadline_timer(io))
                       , m_socket(tcp::socket(io))
-                      , m_peer(p) {};
+                      , m_peer(p)
+                      , m_lg(logger::get()) {};
 
 
-void Connection::connect(std::chrono::seconds timeout,std::function<void(const boost_error&)> callback) {
+void Connection::connect(std::function<void(const boost_error&)> callback) {
     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
-    std::cout << "connect: " << endp.address() << std::endl;
-    std::cout << "connect: " << endp.port() << std::endl;
     // attempt to make a connection with peer
     m_socket.async_connect(endp,callback);
 }
@@ -51,7 +50,7 @@ void Connection::cancel() {
         m_socket.close();
     }
     catch(std::exception e) {
-        std::cout << "[Connection] exception: " << e.what() << std::endl;
+        BOOST_LOG(m_lg) << "[Connection] exception: " << e.what();
     }
 }
 
@@ -69,7 +68,7 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
                                 ,length,remaining - size));            
     } else {
         if(error) {
-            std::cout << "[Connection] body handler " << error.message() << std::endl; 
+            BOOST_LOG(m_lg) << "[Connection] body handler " << error.message();
         }
 
         std::deque<char> deq_buf;
@@ -91,7 +90,7 @@ void Connection::read_messages() {
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
-            std::cout << "[Connection] length handler: " << err.message() << std::endl;
+            BOOST_LOG(m_lg) << "[Connection] length handler: " << err.message();
             return;
         }
  
@@ -132,12 +131,10 @@ void Connection::read_handshake_body(const boost_error& error,size_t size,unsign
 }
 
 void Connection::read_handshake() {
-    std::cout << "get here" << std::endl;
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
-        std::cout << "handshake handler" << std::endl;
         if (err) {
-            std::cout << "[Connection] " << err.message() << std::endl;
+            BOOST_LOG(m_lg) << "[Connection] " << err.message();
             return;
         }
 

@@ -7,8 +7,10 @@
 #include <vector>
 #include <deque>
 #include <optional>
+#include <boost/log/sources/logger.hpp>
 
 #include "network/p2p/MessageType.h"
+#include "common/logger.h"
 
 class IMessage {
     public:

@@ -4,12 +4,14 @@
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
 #include "network/p2p/Response.h"
+#include "common/logger.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/log/sources/logger.hpp>
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <cstdlib>
@@ -23,6 +25,7 @@
 BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent,boost::asio::io_context &io) 
                     : m_torrent(torrent)
                     , m_io(io)
+                    , m_lg(logger::get())
                     {};
 
 void BitTorrent::request_peers() {
@@ -30,7 +33,7 @@ void BitTorrent::request_peers() {
     auto resp = sendTrackerRequest(tr);
 
     if(resp.isLeft) {
-        cout << "[BitTorrent] tracker response error: " << resp.leftValue << endl;
+        BOOST_LOG(m_lg) << "[BitTorrent] tracker response error: " << resp.leftValue;
         if (resp.leftValue == "announcing too fast") { sleep(10); }
         request_peers();
     }
@@ -58,26 +61,10 @@ void BitTorrent::perform_handshake(PeerId p) {
     std::string prot("BitTorrent protocol");
     char reserved[8] = {0,0,0,0,0,0,0,0};
     auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
-    cout << ">>> " + handshake.pprint() << endl;
+    BOOST_LOG(m_lg) << p.m_ip << " >>> " + handshake.pprint();
     m_client->send_handshake(p,std::move(handshake));
 
-    std::cout << "await" << std::endl;
     m_client->await_handshake(p);
-}
-
-PeerId BitTorrent::connect_and_handshake() {
-    auto p = connect_to_a_peer();
-    bool success = false;
-    // while(!success) {
-    //     perform_handshake(p);
-    //     if(false){
-    //         //drop the connection with peer since handshake was unsuccessfull
-    //         m_client->drop_connection(p);
-    //         p = connect_to_a_peer();
-    //     }
-    // }
-
-    return p;
 }
 
 PeerId BitTorrent::choose_peer() {
@@ -101,7 +88,7 @@ void BitTorrent::setup_client() {
 }
 
 void BitTorrent::attempt_connect(PeerId p) {
-    cout << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port << endl;
+    BOOST_LOG(m_lg) << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port;
     m_connected++;
     m_client->connect_to_peer(p);
 }
@@ -109,24 +96,15 @@ void BitTorrent::attempt_connect(PeerId p) {
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
     //ensure only one thread can at a time add or remove a connection
     if (pc == PeerChange::Added) {
-        std::cout << "added" << std::endl;
-        // m_mutex.lock();
-        
-        // m_mutex.unlock();
-
         perform_handshake(p);
-        std::cout << "after perform" << std::endl;
     } else {
-        std::cout << "removed" << std::endl;
-        // m_mutex.lock();
         m_connected--;
-        // m_mutex.unlock();
-        std::cout << "[BitTorrent]" << m_connected << std::endl;
     }
 
     if(m_connected < m_max_peers) {
-        PeerId p = connect_to_a_peer();
+        connect_to_a_peer();
     }
+    BOOST_LOG(m_lg) << "[BitTorrent] Current connections " << m_connected << "(" << m_max_peers << ")";
 }
 
 void BitTorrent::run() {
@@ -138,9 +116,10 @@ void BitTorrent::run() {
     setup_client();
 
     request_peers();
-    cout << "[BitTorrent] num peers: " << m_available_peers.size() << endl;
+    BOOST_LOG(m_lg) << "[BitTorrent] Tracker responded with : " << m_available_peers.size() << " peers";
 
-    auto p = connect_to_a_peer();
+    //attempt to connect to peers
+    connect_to_a_peer();
 
     t.join();
 }
