@@ -8,6 +8,8 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
@@ -108,10 +110,15 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
 }
 
 void BitTorrent::run() {
-    std::thread t([this](){
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work(m_io.get_executor());
-        m_io.run();
-    });
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work(m_io.get_executor());
+
+    boost::thread_group threads;
+
+    for( unsigned int i = 0; i < 4; i++ ) {
+        threads.create_thread(
+            [&]() { m_io.run(); }
+        );
+}
 
     setup_client();
 
@@ -121,5 +128,5 @@ void BitTorrent::run() {
     //attempt to connect to peers
     connect_to_a_peer();
 
-    t.join();
+    threads.join_all();
 }

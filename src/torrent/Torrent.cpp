@@ -61,12 +61,8 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
     auto bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
     auto piece_len = size_of_piece(piece);
 
-    BOOST_LOG(m_lg) << "[Torrent] bytes begin: " << bytes_begin;
-    
     auto files_bytes = 0;
     for(auto fi : m_files) {
-        BOOST_LOG(m_lg) << "[Torrent] looking at file " << concat_paths(fi.path);
-
         auto next_file_begin = files_bytes + fi.length;
         
         if(bytes_begin < next_file_begin) { // start position is in current file and there is data to write
@@ -99,7 +95,6 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
 }
 
 void Torrent::create_files(std::vector<FileData> &fds) {
-    BOOST_LOG(m_lg) << "[Torrent] creating files for file data";
     //create root directory if does not exist
     if(m_dir != "") {
         BOOST_LOG(m_lg) << "[Torrent] Creating dir: " << m_dir;
@@ -131,8 +126,6 @@ void Torrent::create_files(std::vector<FileData> &fds) {
             fstream.close();
             
             BOOST_LOG(m_lg) << "[Torrent] created file " << p.stem();
-        } else {
-            BOOST_LOG(m_lg) << "file or directory with same path already exists: " + fp;
         }
     }
 }
@@ -148,7 +141,6 @@ long long Torrent::size_of_piece(int piece) {
     if(info.file_mode.isLeft) {
         //if single file mode then it's simple
         int file_length = info.file_mode.leftValue.length;
-        BOOST_LOG(m_lg) << "[Torrent] file length" << file_length;
         //last piece has size of remainder of file
         return file_length - (info.pieces.size() - 1) * info.piece_length;
     } else {
@@ -157,8 +149,6 @@ long long Torrent::size_of_piece(int piece) {
         for(auto &f : info.file_mode.rightValue.files) {
             sum_file_lengths += f.length;
         }
-
-        BOOST_LOG(m_lg) << "[Torrent] sum of files" << sum_file_lengths;
 
         return sum_file_lengths - (info.pieces.size() - 1) * info.piece_length;
     }
@@ -174,7 +164,7 @@ long long Torrent::cumulative_size_of_pieces(int piece) {
 }
 
 void Torrent::write_data(PieceData &&pd) {
-    BOOST_LOG(m_lg) << "[Torrent] writing to piece " << pd.m_piece_index;
+    BOOST_LOG(m_lg) << "[Torrent] writing piece " << pd.m_piece_index;
     auto fds = divide_over_files(pd.m_piece_index);
 
     create_files(fds);
@@ -198,7 +188,7 @@ void Torrent::write_data(PieceData &&pd) {
         fstream.write(bytes_for_file.data(), bytes_for_file.size());
         bytes_pos = fd.end - fd.begin;
 
-        BOOST_LOG(m_lg) << "[Torrent] Wrote " << bytes_for_file.size() << " bytes to " << fd.full_path;
+        BOOST_LOG(m_lg) << "[Torrent] Wrote " << bytes_for_file.size() << " bytes from offset " << fd.begin << " to " << fd.full_path;
 
         fstream.close();
     }

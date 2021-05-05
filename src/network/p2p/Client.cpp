@@ -37,13 +37,13 @@ Client::Client(std::shared_ptr<Torrent> torrent
               ,m_lg(logger::get()) {
     m_client_id = generate_peerId();
     // Pieces are zero based index
-    for(int i = 0; i < 10/* torrent->m_mi.info.pieces.size() */;i++) {
+    for(int i = 0; i < torrent->m_mi.info.pieces.size(); i++) {
         m_missing_pieces.insert(i);
     }
 };
 
 bool Client::has_all_pieces() {
-    return m_missing_pieces.size() == 0;
+    return m_existing_pieces.size() == m_torrent->m_mi.info.pieces.size();
 }
 
 bool Client::is_choked_by(PeerId p) {
@@ -66,7 +66,7 @@ void Client::connect_to_peer(PeerId p) {
     
     //set up timeout of 5 seconds
     auto &timer = conn->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(5));
+    timer.expires_from_now(boost::posix_time::seconds(10));
     timer.async_wait(boost::bind(&Client::connect_timeout,this,p,boost::asio::placeholders::error));
     
 }
@@ -98,7 +98,6 @@ void Client::drop_connection(PeerId p) {
         { //ensure that a piece is not lost when we drop the peer
             std::unique_lock<std::mutex> lock(*m_piece_lock.get());
             if(piece != -1 && m_existing_pieces.find(piece) == m_existing_pieces.end() && m_missing_pieces.find(piece) == m_missing_pieces.end()) {
-
                 m_missing_pieces.insert(piece);
             }
         }
@@ -296,7 +295,7 @@ void Client::write_messages(PeerId p) {
     if(ps.m_peer_choking) {
         send_bitfield(p);
         auto &timer = m_connections[p]->get_timer();
-        timer.expires_from_now(boost::posix_time::millisec(5000));
+        timer.expires_from_now(boost::posix_time::millisec(10000));
         timer.async_wait(
             boost::bind(
                 &Client::unchoke_timeout,this,p
@@ -424,7 +423,7 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
     m_progress[p]->m_progress = PieceProgress::Requested;
 
     auto &timer = m_connections[p]->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(5));
+    timer.expires_from_now(boost::posix_time::seconds(10));
     timer.async_wait(
         boost::bind(
             &Client::piece_response_timeout,this,p
