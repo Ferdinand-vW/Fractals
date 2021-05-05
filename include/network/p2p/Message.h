@@ -11,12 +11,13 @@
 
 #include "network/p2p/MessageType.h"
 #include "common/logger.h"
+#include "network/p2p/PeerId.h"
 
 class IMessage {
     public:
         // virtual int get_length();
         virtual std::optional<MessageType> get_messageType() = 0;
-        static std::unique_ptr<IMessage> parse_message (int length,std::deque<char> &&deq);
+        static std::unique_ptr<IMessage> parse_message (PeerId p,int length,std::deque<char> &&deq);
         // length specified by BitTorrent specification
         virtual int get_length() = 0;
         virtual std::vector<char> to_bytes_repr() const = 0;

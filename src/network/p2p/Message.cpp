@@ -370,7 +370,7 @@ std::unique_ptr<Port> Port::from_bytes_repr(std::deque<char> &bytes) {
     return std::make_unique<Port>(Port(m_port));
 }
 
-std::unique_ptr<IMessage> IMessage::parse_message(int length,std::deque<char> &&deq_buf) {
+std::unique_ptr<IMessage> IMessage::parse_message(PeerId p,int length,std::deque<char> &&deq_buf) {
     if(length == 0) {return std::make_unique<KeepAlive>(); }
     
     auto &lg = logger::get();
@@ -379,53 +379,53 @@ std::unique_ptr<IMessage> IMessage::parse_message(int length,std::deque<char> &&
     deq_buf.pop_front();
     switch (mt) {
         case MessageType::MT_Choke:
-            BOOST_LOG(lg) << "<<< Choke";
+            BOOST_LOG(lg) << "Choke <<< " << p.m_ip;
             return std::make_unique<Choke>();
             break;
         case MessageType::MT_UnChoke: 
-            BOOST_LOG(lg) << "<<< Unchoke";
+            BOOST_LOG(lg) << "Unchoke <<< " << p.m_ip;
             return std::make_unique<UnChoke>();
             break;
         case MessageType::MT_Interested: 
-            BOOST_LOG(lg) << "<<< Interested";
+            BOOST_LOG(lg) << "Interested <<< " << p.m_ip;
             return std::make_unique<Interested>();
             break;
         case MessageType::MT_NotInterested:
-            BOOST_LOG(lg) << "<<< Not interested";
+            BOOST_LOG(lg) << "Not interested <<< " << p.m_ip;
             return std::make_unique<NotInterested>();
             break;
         case MessageType::MT_Have: {
             auto h = Have::from_bytes_repr(deq_buf);
-            BOOST_LOG(lg) << "<<< " + h->pprint();
+            BOOST_LOG(lg) << h->pprint() << " <<< " << p.m_ip;
             return h;
             break;
         }
         case MessageType::MT_Bitfield: {
             auto bf = Bitfield::from_bytes_repr(length, deq_buf);
-            BOOST_LOG(lg) << "<<< " + bf->pprint();
+            BOOST_LOG(lg) << bf->pprint() << " <<< " << p.m_ip;
             return bf;
             break;
         }
         case MessageType::MT_Request: {
             auto r = Request::from_bytes_repr(deq_buf);
-            BOOST_LOG(lg) << "<<< " + r->pprint();
+            BOOST_LOG(lg) << r->pprint() << " <<< " << p.m_ip;
             return r;
             break;
         }
         case MessageType::MT_Piece: {
-            auto p = Piece::from_bytes_repr(length, deq_buf);
-            BOOST_LOG(lg) << "<<< " + p->pprint();
-            return p;
+            auto pc = Piece::from_bytes_repr(length, deq_buf);
+            BOOST_LOG(lg) << pc->pprint() << " <<< " << p.m_ip;
+            return pc;
             break;
         }
         case MessageType::MT_Cancel: {
-            BOOST_LOG(lg) << "<<< Cancel";
+            BOOST_LOG(lg) << "Cancel <<< " << p.m_ip;
             auto c = Cancel::from_bytes_repr(deq_buf);
             return c;
             break;
         }
         case MessageType::MT_Port: {
-            BOOST_LOG(lg) << "<<< Port";
+            BOOST_LOG(lg) << "Port <<< " << p.m_ip;
             // auto p = Port::from_bytes_repr(deq_buf);
             // m_client->receive
             throw mt;

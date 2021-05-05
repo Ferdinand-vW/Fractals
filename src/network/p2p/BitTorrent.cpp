@@ -101,7 +101,7 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
         m_connected--;
     }
 
-    if(m_connected < m_max_peers) {
+    if(m_connected < m_max_peers && !m_client->has_all_pieces()) {
         connect_to_a_peer();
     }
     BOOST_LOG(m_lg) << "[BitTorrent] Current connections " << m_connected << "(" << m_max_peers << ")";

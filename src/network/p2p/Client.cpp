@@ -37,7 +37,7 @@ Client::Client(std::shared_ptr<Torrent> torrent
               ,m_lg(logger::get()) {
     m_client_id = generate_peerId();
     // Pieces are zero based index
-    for(int i = 0; i < torrent->m_mi.info.pieces.size();i++) {
+    for(int i = 0; i < 10/* torrent->m_mi.info.pieces.size() */;i++) {
         m_missing_pieces.insert(i);
     }
 };
@@ -94,10 +94,11 @@ void Client::drop_connection(PeerId p) {
     //if we were exchanging data with peer then
     //we may need to correct some book keeping
     if(m_progress.find(p) != m_progress.end()) {
-        int piece = m_progress[p]->m_data.m_piece_index; 
+        int piece = m_progress[p]->m_data.m_piece_index;
         { //ensure that a piece is not lost when we drop the peer
             std::unique_lock<std::mutex> lock(*m_piece_lock.get());
-            if(piece != -1 && m_existing_pieces.find(piece) != m_existing_pieces.end() && m_missing_pieces.find(piece) != m_missing_pieces.end()) {
+            if(piece != -1 && m_existing_pieces.find(piece) == m_existing_pieces.end() && m_missing_pieces.find(piece) == m_missing_pieces.end()) {
+
                 m_missing_pieces.insert(piece);
             }
         }
@@ -388,7 +389,7 @@ void Client::send_piece_requests(PeerId p) {
         Request request(piece_ptr->m_data.m_piece_index
                        ,0
                        ,std::min(remaining,std::min(piece_length,request_size)));
-        BOOST_LOG(m_lg) << p.m_ip << request.pprint();
+        BOOST_LOG(m_lg) << p.m_ip + " >>> " + request.pprint();
         auto req_ptr = std::make_unique<Request>(request);
         m_connections[p]->write_message(std::move(req_ptr)
             ,boost::bind(&Client::sent_piece_request,this,p
@@ -452,7 +453,7 @@ void Client::handle_peer_message(PeerId p,const boost_error &error,int length,st
         return;
     }
 
-    auto m = IMessage::parse_message(length, std::move(deq_buf));
+    auto m = IMessage::parse_message(p,length, std::move(deq_buf));
     switch(m->get_messageType().value()) {
         case MessageType::MT_Choke: 
             received_choke(p);

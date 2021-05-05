@@ -25,11 +25,16 @@ int main() {
     std::shared_ptr<std::mutex> mu = make_shared<std::mutex>();
     std::unique_lock<std::mutex> lock(*mu.get());
 
-    auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/[SubsPlease] Full Dive - 04 (720p) [DA12D376].mkv.torrent");
+    auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/shamanking.torrent");
     auto torr_ptr = std::make_shared<Torrent>(torr);
 
     boost::asio::io_context io;
     auto bt = BitTorrent(torr_ptr,io);
 
-    bt.run();
+    try {
+        bt.run();
+    }
+    catch(std::exception e) {
+        std::cout << e.what() << std::endl;
+    }
 }
