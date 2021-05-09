@@ -48,7 +48,7 @@ class Client : public enable_shared_from_this<Client> {
     std::map<PeerId, std::unique_ptr<PieceStatus>> m_progress;
 
     boost::asio::io_context& m_io;
-    std::map<PeerId, std::unique_ptr<Connection>> m_connections;
+    std::map<PeerId, std::shared_ptr<Connection>> m_connections;
 
     std::shared_ptr<Torrent> m_torrent;
     std::unique_ptr<std::mutex> m_piece_lock;

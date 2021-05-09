@@ -66,7 +66,7 @@ void Client::connect_to_peer(PeerId p) {
     
     //set up timeout of 5 seconds
     auto &timer = conn->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(10));
+    timer.expires_from_now(boost::posix_time::seconds(5));
     timer.async_wait(boost::bind(&Client::connect_timeout,this,p,boost::asio::placeholders::error));
     
 }
@@ -88,6 +88,12 @@ void Client::connect_timeout(PeerId p, const boost_error &error) {
 }
 
 void Client::drop_connection(PeerId p) {
+    if (m_connections.find(p) == m_connections.end()) {
+        BOOST_LOG(m_lg) << "already dropped peer " << p.m_ip;
+        return ;
+    } else {
+        BOOST_LOG(m_lg) << "drop peer " << p.m_ip;
+    }
     m_connections[p]->cancel(); //ensure connection is closed
     m_connections.erase(p); //remove the connection
 
@@ -269,10 +275,15 @@ void Client::handshake_timeout(PeerId p, const boost_error& error) {
 }
 
 void Client::await_handshake(PeerId p) {
+
     auto f = [this,p](auto err,auto l, auto &&d) {
+        BOOST_LOG(m_lg) << "handle peer f";
         handle_peer_handshake(p, err, l, std::move(d));
     };
 
+    if(m_connections.find(p) == m_connections.end()) {
+        BOOST_LOG(m_lg) << "not here";
+    }
     m_connections[p]->on_handshake(f);
     m_connections[p]->read_handshake();
     auto &timer = m_connections[p]->get_timer();
@@ -363,7 +374,7 @@ void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
 
 void Client::unchoke_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
-        BOOST_LOG(m_lg) << "[Client] unchoke time out"; 
+        BOOST_LOG(m_lg) << "[Client] unchoke time out " << p.m_ip; 
         drop_connection(p);
     }
 }
@@ -432,7 +443,7 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
 
 void Client::piece_response_timeout(PeerId p,const boost_error &error) {
     if(error != boost::asio::error::operation_aborted) {
-        BOOST_LOG(m_lg) << "[Client] piece response time out"; 
+        BOOST_LOG(m_lg) << "[Client] piece response time out " << p.m_ip; 
         drop_connection(p);
     }
 }
@@ -443,8 +454,8 @@ void Client::piece_response_timeout(PeerId p,const boost_error &error) {
 
 void Client::handle_peer_message(PeerId p,const boost_error &error,int length,std::deque<char> &&deq_buf) {
     if(error) {
-        BOOST_LOG(m_lg) << "[Client] Fatal error: " + error.message();
-        m_connections[p]->cancel();
+        BOOST_LOG(m_lg) << "[Client] Fatal error " + p.m_ip + " " + error.message();
+        drop_connection(p);
         return;
     }
 

@@ -20,6 +20,9 @@ std::string url_encode (const std::vector<char> &ptr) {
         curl_easy_cleanup(curl);
         return output; 
     }
-    else { return ""; }
+    else { 
+        curl_easy_cleanup(curl);
+        return "";
+    }
 
 }

@@ -55,14 +55,16 @@ void Connection::cancel() {
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
+    BOOST_LOG(m_lg) << "write message";
     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 
 void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
+    BOOST_LOG(m_lg) << "read message body";
     if (size < remaining && !error) {
         boost::asio::async_read(m_socket,m_buf
                                 ,boost::asio::transfer_exactly(remaining - size)
-                                ,boost::bind(&Connection::read_message_body,this
+                                ,boost::bind(&Connection::read_message_body,shared_from_this()
                                 ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
                                 ,length,remaining - size));            
     } else {
@@ -75,6 +77,9 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
         std::copy(boost::asio::buffers_begin(m_buf.data())
                 ,boost::asio::buffers_end(m_buf.data())
                 ,std::back_inserter(deq_buf));
+        std::cout << "read body:" << std::endl;
+        std::cout << m_buf.size() << std::endl;
+        std::cout << length << std::endl;
         m_buf.consume(length);
 
         for(auto cb : listeners) {
@@ -86,6 +91,7 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
 }
 
 void Connection::read_messages() {
+    BOOST_LOG(m_lg) << "read messages";
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
@@ -99,6 +105,9 @@ void Connection::read_messages() {
                  ,std::back_inserter(deq_buf));
         
         int length = bytes_to_int(deq_buf);
+        std::cout << "read length:" << std::endl;
+        std::cout << m_buf.size() << std::endl;
+        std::cout << length << std::endl;
         m_buf.consume(4); //TODO: Don't assume we've already read 4 bytes
 
         read_message_body(boost_error(),0,length,length);
@@ -111,10 +120,11 @@ void Connection::read_messages() {
 }
 
 void Connection::read_handshake_body(const boost_error& error,size_t size,unsigned char pstrlen,int length,int remaining) {
+    BOOST_LOG(m_lg) << "read handshake body";
     if (size < remaining && !error) {
         boost::asio::async_read(m_socket,m_buf
                                 ,boost::asio::transfer_exactly(remaining - size)
-                                ,boost::bind(&Connection::read_handshake_body,this
+                                ,boost::bind(&Connection::read_handshake_body,shared_from_this()
                                 ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
                                 ,pstrlen,length,remaining - size));            
     } else {
@@ -123,6 +133,9 @@ void Connection::read_handshake_body(const boost_error& error,size_t size,unsign
         std::copy(boost::asio::buffers_begin(m_buf.data())
                 ,boost::asio::buffers_end(m_buf.data())
                 ,std::back_inserter(deq_buf));
+        std::cout << "handshake body:" << std::endl;
+        std::cout << m_buf.size() << std::endl;
+        std::cout << length << std::endl;
         m_buf.consume(length);
         //pass the pstrlen which is necessary to construct a handshake message
         m_handshake_callback(error,pstrlen,std::move(deq_buf));
@@ -130,6 +143,7 @@ void Connection::read_handshake_body(const boost_error& error,size_t size,unsign
 }
 
 void Connection::read_handshake() {
+    BOOST_LOG(m_lg) << "read handshake";
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
@@ -145,6 +159,9 @@ void Connection::read_handshake() {
         
         unsigned char pstrlen = bytes_to_int(deq_buf);
         int length = pstrlen + 48;
+        std::cout << "handshake header:" << std::endl;
+        std::cout << m_buf.size() << std::endl;
+        std::cout << size << std::endl;
         m_buf.consume(1);
 
         read_handshake_body(boost_error(),0,pstrlen,length,length);
