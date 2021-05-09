@@ -55,6 +55,10 @@ bool Client::is_connected_to(PeerId p) {
 }
 
 void Client::connect_to_peer(PeerId p) {
+    if(m_connections.find(p) != m_connections.end()) {
+        BOOST_LOG(m_lg) << "already connected to " << p.m_ip;
+    }
+
     //Construct the connection object
     auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
     //From now on the connection must be fetched by reference
@@ -93,6 +97,9 @@ void Client::drop_connection(PeerId p) {
         return ;
     } else {
         BOOST_LOG(m_lg) << "drop peer " << p.m_ip;
+        for(auto &kvp : m_connections) {
+            BOOST_LOG(m_lg) << kvp.first.m_ip;
+        }
     }
     m_connections[p]->cancel(); //ensure connection is closed
     m_connections.erase(p); //remove the connection

@@ -96,6 +96,7 @@ void BitTorrent::attempt_connect(PeerId p) {
 }
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
+    BOOST_LOG(m_lg) << "peer change";
     //ensure only one thread can at a time add or remove a connection
     if (pc == PeerChange::Added) {
         perform_handshake(p);

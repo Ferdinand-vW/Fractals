@@ -31,7 +31,7 @@ class BitTorrent {
     std::set<PeerId> m_available_peers;
 
     int m_max_peers = 4;
-    int m_connected = 0;
+    std::atomic<int> m_connected = 0;
     
     std::shared_ptr<Torrent> m_torrent;
     boost::asio::io_context &m_io;
