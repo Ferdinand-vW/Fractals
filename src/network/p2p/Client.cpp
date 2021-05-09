@@ -57,6 +57,8 @@ bool Client::is_connected_to(PeerId p) {
 void Client::connect_to_peer(PeerId p) {
     if(m_connections.find(p) != m_connections.end()) {
         BOOST_LOG(m_lg) << "already connected to " << p.m_ip;
+        m_on_change_peers(p,PeerChange::Removed);
+        return;
     }
 
     //Construct the connection object
