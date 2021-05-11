@@ -31,32 +31,48 @@ BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent,boost::asio::io_context 
                     {};
 
 void BitTorrent::request_peers() {
-    auto tr = makeTrackerRequest(m_torrent->m_mi);
-    auto resp = sendTrackerRequest(tr);
+    std::unique_lock<std::recursive_mutex> lock(m_mutex,std::try_to_lock);
+    //only one thread should request peers
+    if(lock.owns_lock()) {
+        auto tr = makeTrackerRequest(m_torrent->m_mi);
+        auto resp = sendTrackerRequest(tr);
 
-    if(resp.isLeft) {
-        BOOST_LOG(m_lg) << "[BitTorrent] tracker response error: " << resp.leftValue;
-        if (resp.leftValue == "announcing too fast") { sleep(10); }
-        request_peers();
-    }
-    else {
-        for(auto &p : resp.rightValue.peers) {
-            PeerId peer = PeerId { p.ip,p.port };
-            m_available_peers.insert(peer);
+        if(resp.isLeft) {
+            BOOST_LOG(m_lg) << "[BitTorrent] tracker response error: " << resp.leftValue;
+            if (resp.leftValue == "announcing too fast") { sleep(10); }
+            request_peers();
+        }
+        else {
+            for(auto &p : resp.rightValue.peers) {
+                PeerId peer = PeerId { p.ip,p.port };
+                m_available_peers.insert(peer);
+            }
         }
     }
 }
 
-PeerId BitTorrent::connect_to_a_peer() {
-    auto p = choose_peer();
+std::optional<PeerId> BitTorrent::connect_to_a_peer() {
+    auto opt_p = choose_peer();
 
-    attempt_connect(p);
-    while(!m_client->is_connected_to(p)) {
-        p = choose_peer();
+    if(opt_p.has_value()) {
+        auto p = opt_p.value();
         attempt_connect(p);
-    }
 
-    return p;
+        while(!m_client->is_connected_to(p)) {
+            opt_p = choose_peer();
+            if(opt_p.has_value()){
+                p = opt_p.value();
+                attempt_connect(p);
+            } else {
+                return {};
+            }
+        }
+
+        return p;
+    } else {
+        return {};
+    }
+    
 }
 
 void BitTorrent::perform_handshake(PeerId p) {
@@ -69,16 +85,20 @@ void BitTorrent::perform_handshake(PeerId p) {
     m_client->await_handshake(p);
 }
 
-PeerId BitTorrent::choose_peer() {
+std::optional<PeerId> BitTorrent::choose_peer() {
     if(m_available_peers.size() == 0) {
         request_peers(); //request additional peers if we tried all
     }
-    int n = rand() % m_available_peers.size();
-    auto it = m_available_peers.begin();
-    std::advance(it,n);
-    PeerId p = *it;
-    m_available_peers.erase(p);
-    return p;
+    if(m_available_peers.size() != 0) {
+        int n = rand() % m_available_peers.size();
+        auto it = m_available_peers.begin();
+        std::advance(it,n);
+        PeerId p = *it;
+        m_available_peers.erase(p);
+        return p;
+    } else {
+        return {};
+    }
 }
 
 void BitTorrent::setup_client() {

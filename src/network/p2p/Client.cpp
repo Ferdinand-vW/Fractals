@@ -37,13 +37,14 @@ Client::Client(std::shared_ptr<Torrent> torrent
               ,m_lg(logger::get()) {
     m_client_id = generate_peerId();
     // Pieces are zero based index
-    for(int i = 0; i < torrent->m_mi.info.pieces.size(); i++) {
+    for(int i = 0; i < torrent->m_mi.info.number_of_pieces(); i++) {
         m_missing_pieces.insert(i);
+        BOOST_LOG(m_lg) << "piece " << i << " " << torrent->size_of_piece(i);
     }
 };
 
 bool Client::has_all_pieces() {
-    return m_existing_pieces.size() == m_torrent->m_mi.info.pieces.size();
+    return m_existing_pieces.size() == m_torrent->m_mi.info.number_of_pieces();
 }
 
 bool Client::is_choked_by(PeerId p) {
@@ -137,6 +138,7 @@ void Client::select_piece(PeerId p) {
 
         //if the peer has no pieces we are interested in then we can drop the peer
         if(interesting_pieces.empty()) {
+            BOOST_LOG(m_lg) << "no pieces left";
             drop_connection(p);
             return;
         }
@@ -272,6 +274,8 @@ void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length,
         //Successful handshake so now we can start communicating with client
         await_messages(p);
         write_messages(p);
+    } else {
+        drop_connection(p);
     }
 }
 
@@ -291,13 +295,16 @@ void Client::await_handshake(PeerId p) {
     };
 
     if(m_connections.find(p) == m_connections.end()) {
-        BOOST_LOG(m_lg) << "not here";
+        BOOST_LOG(m_lg) << "not here" << p.m_ip;
     }
+
+    auto &timer = m_connections[p]->get_timer();
+    timer.expires_from_now(boost::posix_time::seconds(10));
+    timer.async_wait(boost::bind(&Client::handshake_timeout,this,p,boost::asio::placeholders::error));
+
     m_connections[p]->on_handshake(f);
     m_connections[p]->read_handshake();
-    auto &timer = m_connections[p]->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(5));
-    timer.async_wait(boost::bind(&Client::handshake_timeout,this,p,boost::asio::placeholders::error));
+    
 }
 
 
@@ -315,7 +322,7 @@ void Client::write_messages(PeerId p) {
     if(ps.m_peer_choking) {
         send_bitfield(p);
         auto &timer = m_connections[p]->get_timer();
-        timer.expires_from_now(boost::posix_time::millisec(10000));
+        timer.expires_from_now(boost::posix_time::millisec(15000));
         timer.async_wait(
             boost::bind(
                 &Client::unchoke_timeout,this,p
@@ -332,7 +339,7 @@ void Client::send_bitfield(PeerId p) {
     std::vector<bool> bf;
     //pieces is a byte string consisting of consecutive 20length SHA1 hashes
     //thus the number of pieces is the length of the byte string divided by 20
-    int num_pieces = m_torrent->m_mi.info.pieces.size() / 20;
+    int num_pieces = m_torrent->m_mi.info.number_of_pieces();
 
     // bitfield must be a multiple of 8
     int mult8 = num_pieces % 8;
@@ -438,12 +445,19 @@ void Client::send_piece_requests(PeerId p) {
 void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) {
     if(error) {
         BOOST_LOG(m_lg) << "[Client] sending piece request to " << p.m_ip << " failed with " << error.message();
+        return;
     }
-        
+    
+    if(m_progress.find(p) == m_progress.end()) {
+        BOOST_LOG(m_lg) << "will segment fault due to progress " << p.m_ip;
+    }
     m_progress[p]->m_progress = PieceProgress::Requested;
 
+    if(m_connections.find(p) == m_connections.end()) {
+        BOOST_LOG(m_lg) << "will segment fault due to connections " << p.m_ip;
+    }
     auto &timer = m_connections[p]->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(10));
+    timer.expires_from_now(boost::posix_time::seconds(15));
     timer.async_wait(
         boost::bind(
             &Client::piece_response_timeout,this,p

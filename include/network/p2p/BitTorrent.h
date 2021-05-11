@@ -30,12 +30,12 @@ class BitTorrent {
     std::shared_ptr<Client> m_client;
     std::set<PeerId> m_available_peers;
 
-    int m_max_peers = 4;
+    int m_max_peers = 7;
     std::atomic<int> m_connected = 0;
     
     std::shared_ptr<Torrent> m_torrent;
     boost::asio::io_context &m_io;
-    // std::mutex m_mutex;
+    std::recursive_mutex m_mutex;
 
     boost::log::sources::logger_mt &m_lg;
 
@@ -46,11 +46,11 @@ class BitTorrent {
 
     private:
         void request_peers();
-        PeerId choose_peer();
+        std::optional<PeerId> choose_peer();
         void setup_client();
         void attempt_connect(PeerId p);
         void peer_change(PeerId p,PeerChange pc);
-        PeerId connect_to_a_peer();
+        std::optional<PeerId> connect_to_a_peer();
 
         void perform_handshake(PeerId p);
 };

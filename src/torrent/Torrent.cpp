@@ -133,16 +133,17 @@ void Torrent::create_files(std::vector<FileData> &fds) {
 long long Torrent::size_of_piece(int piece) {
     auto info = m_mi.info;
     int piece_length = info.piece_length;
+    int num_pieces = info.number_of_pieces();
 
     // All pieces but last have uniform size as specified in the info dict
-    if(piece != info.pieces.size() -1) { return piece_length; }
+    if(piece != num_pieces - 1) { return piece_length; }
     
     // For the last piece we need to compute the total file size (sum of all file lengths)
     if(info.file_mode.isLeft) {
         //if single file mode then it's simple
         int file_length = info.file_mode.leftValue.length;
         //last piece has size of remainder of file
-        return file_length - (info.pieces.size() - 1) * info.piece_length;
+        return file_length - (num_pieces - 1) * info.piece_length;
     } else {
         //In multi file mode we need to traverse over each file and sum
         int sum_file_lengths = 0;
@@ -150,7 +151,7 @@ long long Torrent::size_of_piece(int piece) {
             sum_file_lengths += f.length;
         }
 
-        return sum_file_lengths - (info.pieces.size() - 1) * info.piece_length;
+        return sum_file_lengths - (num_pieces - 1) * info.piece_length;
     }
 }
 
@@ -184,6 +185,10 @@ void Torrent::write_data(PieceData &&pd) {
 
         fstream.seekp(fd.begin); // set the correct offset to start write
 
+        BOOST_LOG(m_lg) << "[Torrent] " << bytes_pos;
+        BOOST_LOG(m_lg) << "[Torrent] " << fd.end;
+        BOOST_LOG(m_lg) << "[Torrent] " << fd.begin;
+        BOOST_LOG(m_lg) << "[Torrent] " << (bytes_pos + fd.end - fd.begin);
         std::vector<char> bytes_for_file(bytes.begin() + bytes_pos,bytes.begin() + bytes_pos + fd.end - fd.begin);
         fstream.write(bytes_for_file.data(), bytes_for_file.size());
         bytes_pos = fd.end - fd.begin;

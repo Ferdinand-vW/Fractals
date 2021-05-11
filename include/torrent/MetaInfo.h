@@ -76,6 +76,10 @@ struct InfoDict {
             auto to_line = [len](auto s) { return make_sized_line(s,len); };
             return str_concat_vector(map_vector<string,string>(v,to_line)) + s_fm + s_end;
         }
+
+        long long number_of_pieces() {
+            return pieces.size() / 20;
+        }
 };
 
 struct MetaInfo {
