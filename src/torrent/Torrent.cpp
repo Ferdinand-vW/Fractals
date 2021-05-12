@@ -58,15 +58,15 @@ And the length
 std::vector<FileData> Torrent::divide_over_files(int piece) {
     std::vector<FileData> fds;
 
-    auto bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
+    long long bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
     auto piece_len = size_of_piece(piece);
 
-    auto files_bytes = 0;
+    auto cum_files_bytes = 0;
     for(auto fi : m_files) {
-        auto next_file_begin = files_bytes + fi.length;
+        auto next_file_begin = cum_files_bytes + fi.length;
         
         if(bytes_begin < next_file_begin) { // start position is in current file and there is data to write
-            auto cur_file_offset = bytes_begin - files_bytes; // start position in current file
+            auto cur_file_offset = bytes_begin - cum_files_bytes; // start position in current file
             auto file_remaining = next_file_begin - bytes_begin; // bytes left in remainder of current file
             
             // How much can we write/is there to write
@@ -81,6 +81,10 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
             auto fd = FileData { fi,cur_file_offset, cur_file_offset + to_write };
             fds.push_back(fd);
             piece_len -= to_write; // update how many bytes are left
+
+            //given that there was data to write in the current file
+            //the offset to write at for the next file must be at the begin of that file
+            bytes_begin = next_file_begin;
         }
 
         // return early if there are no bytes left
@@ -88,7 +92,7 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
             return fds;
         }
 
-        files_bytes = next_file_begin;
+        cum_files_bytes = next_file_begin;
     }
 
     return fds;
@@ -181,7 +185,7 @@ void Torrent::write_data(PieceData &&pd) {
     for(auto fd : fds) {
         std::fstream fstream;
 
-        fstream.open(fd.full_path, std::fstream::out | std::fstream::binary);
+        fstream.open(fd.full_path, std::fstream::out | std::fstream::in | std::fstream::binary);
 
         fstream.seekp(fd.begin); // set the correct offset to start write
 
