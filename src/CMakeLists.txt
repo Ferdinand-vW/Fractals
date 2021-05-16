@@ -26,6 +26,7 @@ target_link_libraries(Fractals bencode_lib)
 target_link_libraries(Fractals OpenSSL::SSL)
 target_link_libraries(Fractals ${CURL_LIBRARIES})
 target_link_libraries(Fractals ${BOOST_LIBRARIES})
+target_link_libraries(Fractals ${SQLITE3_LIBRARIES})
 target_link_libraries(Fractals Boost::log boost_log_setup)
 target_link_libraries(Fractals pthread)
 

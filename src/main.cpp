@@ -1,10 +1,13 @@
 #include "torrent/Torrent.h"
 #include "network/p2p/BitTorrent.h"
 #include "common/logger.h"
+#include "persist/init_db.h"
 
 using namespace boost::asio;
 
 int main() {
+    DBHandle<DBType::SQLite3> db;
+
     //get current time and set as seed for rand
     srand ( time(NULL) );
 

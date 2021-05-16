@@ -24,6 +24,9 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
 
+find_package(SQLite3)
+include_directories(${SQLite3_INCLUDE_DIR})
+
 include_directories(include)
 include_directories(${NEITHER_INCLUDE_DIR})
 
