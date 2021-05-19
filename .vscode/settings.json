@@ -70,5 +70,14 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "*.ipp": "cpp"
-    }
+    },
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "torrents",
+            "database": "./torrents.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
 }

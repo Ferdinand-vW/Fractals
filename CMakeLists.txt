@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(SOURCE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
+set(SQLITE_ORM_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/sqlite_orm/include)
 set(NEITHER_HEADER_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/include)
 set(NEITHER_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/build/include)
 
@@ -30,6 +31,7 @@ include_directories(${SQLite3_INCLUDE_DIR})
 include_directories(include)
 include_directories(${NEITHER_INCLUDE_DIR})
 
+include_directories(${SQLITE_ORM_INCLUDE_DIR})
 
 add_subdirectory(libs/bencode)
 set_target_properties(bencode_run PROPERTIES EXCLUDE_FROM_ALL True)
