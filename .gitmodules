@@ -7,3 +7,6 @@
 	url = https://github.com/LoopPerfect/neither.git
 	branch = master
 	ignore = dirty
+[submodule "libs/sqlite_orm"]
+	path = libs/sqlite_orm
+	url = https://github.com/fnc12/sqlite_orm.git
