@@ -1,64 +1,17 @@
 #include "torrent/Torrent.h"
 #include "network/p2p/BitTorrent.h"
 #include "common/logger.h"
-#include "persist/init_db.h"
+#include "persist/storage.h"
 #include "sqlite_orm/sqlite_orm.h"
 
 using namespace boost::asio;
 
-struct TorrentF {
-    int id;
-    std::string name;
-    std::string meta_info_path;
-    std::string write_path;
-};
-
-struct PieceF {
-    int id;
-    int torrent_id;
-    int piece;
-};
-
-struct Announce {
-    int id;
-    int torrent_id;
-    time_t datetime;
-};
-
-struct AnnouncePeer {
-    int id;
-    int announce_id;
-    std::string ip;
-    int port;
-};
 
 int main() {
-    using namespace sqlite_orm;
-    auto storage = make_storage("torrents.db",
-                                make_table("torrent",
-                                           make_column("id", &TorrentF::id, primary_key()),
-                                           make_column("name", &TorrentF::name),
-                                           make_column("meta_info_path", &TorrentF::meta_info_path),
-                                           make_column("write_path", &TorrentF::write_path)),
-                                make_table("torrent_piece",
-                                           make_column("id", &PieceF::id, primary_key()),
-                                           make_column("torrent_id", &PieceF::torrent_id),
-                                           make_column("piece", &PieceF::piece),
-                                           foreign_key(&PieceF::torrent_id).references(&TorrentF::id)),
-                                make_table("torrent_announce",
-                                          make_column("id",&Announce::id,primary_key()),
-                                          make_column("torrent_id",&Announce::torrent_id),
-                                          make_column("datetime",&Announce::datetime),
-                                          foreign_key(&Announce::torrent_id).references(&TorrentF::id)),
-                                make_table("announce_peer",
-                                         make_column("id",&AnnouncePeer::id,primary_key()),
-                                         make_column("announce_id",&AnnouncePeer::announce_id),
-                                         make_column("ip",&AnnouncePeer::ip),
-                                         make_column("port",&AnnouncePeer::port),
-                                         foreign_key(&AnnouncePeer::announce_id).references(&Announce::id)));
+    Storage storage = init_storage("torrents.db");
     storage.sync_schema();
 
-    auto torr = TorrentF{56,"name","meta","write"};
+    auto torr = TorrentModel{56,"name","meta","write"};
     auto torr_id = storage.insert(torr);
     std::cout << torr_id << std::endl;
 
