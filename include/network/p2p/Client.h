@@ -15,7 +15,6 @@
 #include "network/p2p/PeerId.h"
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
-#include "network/p2p/Response.h"
 #include "common/logger.h"
 #include "torrent/Torrent.h"
 #include "torrent/PieceData.h"

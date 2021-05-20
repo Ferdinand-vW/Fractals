@@ -3,7 +3,6 @@
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
-#include "network/p2p/Response.h"
 #include "common/logger.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>

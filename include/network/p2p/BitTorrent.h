@@ -1,10 +1,8 @@
 #pragma once
 
 #include "network/p2p/Connection.h"
-#include "network/p2p/Response.h"
 #include "torrent/Torrent.h"
 #include "network/p2p/Client.h"
-#include "network/p2p/PeerListener.h"
 #include "network/p2p/PeerId.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>

@@ -3,6 +3,8 @@
 #include <string>
 #include <memory>
 
+#include "torrent/Torrent.h"
+#include "network/p2p/Announce.h"
 #include "torrent_model.h"
 #include "piece_model.h"
 #include "announce_model.h"
@@ -15,7 +17,7 @@ inline auto init_storage(std::string db) {
                                     make_table("torrent",
                                             make_column("id", &TorrentModel::id, primary_key()),
                                             make_column("name", &TorrentModel::name),
-                                            make_column("meta_info_path", &TorrentModel::meta_info_path),
+                                            make_column("meta_info_file", &TorrentModel::meta_info_path),
                                             make_column("write_path", &TorrentModel::write_path)),
                                     make_table("torrent_piece",
                                             make_column("id", &PieceModel::id, primary_key()),
@@ -35,4 +37,25 @@ inline auto init_storage(std::string db) {
                                             foreign_key(&AnnouncePeerModel::announce_id).references(&AnnounceModel::id)));
 }
 
-using Storage = decltype(init_storage(""));
+
+using InternalStorage = decltype(init_storage(""));
+
+class Storage {
+    public:
+        std::shared_ptr<InternalStorage> storage;
+
+        Storage();
+        void open_storage(std::string db);
+        void sync_schema();
+
+        void add_torrent(Torrent t);
+        std::vector<Torrent> load_torrents();
+        void delete_torrent(Torrent t);
+
+        void add_piece(Torrent t,int piece);
+        std::vector<int> load_pieces(Torrent t);
+
+        void add_announce(Torrent t,Announce ann);
+        std::optional<Announce> load_announce(Torrent t);
+
+};

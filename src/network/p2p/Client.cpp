@@ -5,7 +5,6 @@
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
-#include "network/p2p/Response.h"
 #include "torrent/PieceData.h"
 #include <algorithm>
 #include <boost/asio/bind_executor.hpp>

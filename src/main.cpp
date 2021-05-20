@@ -8,12 +8,12 @@ using namespace boost::asio;
 
 
 int main() {
-    Storage storage = init_storage("torrents.db");
-    storage.sync_schema();
+    Storage storage;
+    storage.open_storage("torrents.db");
 
-    auto torr = TorrentModel{56,"name","meta","write"};
-    auto torr_id = storage.insert(torr);
-    std::cout << torr_id << std::endl;
+    // auto torr = TorrentModel{56,"name","meta","write"};
+    // auto torr_id = storage.insert(torr);
+    // std::cout << torr_id << std::endl;
 
     // //get current time and set as seed for rand
     // srand ( time(NULL) );

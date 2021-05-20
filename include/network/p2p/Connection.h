@@ -15,7 +15,6 @@
 
 #include "network/p2p/Message.h"
 #include "network/p2p/PeerId.h"
-#include "network/p2p/Response.h"
 #include "common/logger.h"
 
 using namespace boost::asio;

@@ -14,7 +14,8 @@ set(SOURCES main.cpp
             network/p2p/MessageType.cpp
             network/p2p/PeerId.cpp
             torrent/PieceData.cpp
-            torrent/Torrent.cpp)
+            torrent/Torrent.cpp
+            persist/storage.cpp)
 
 # Add source to this project's executable.
 add_executable (Fractals ${SOURCES})
