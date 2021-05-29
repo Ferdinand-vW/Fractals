@@ -76,7 +76,7 @@
             "previewLimit": 50,
             "driver": "SQLite",
             "name": "torrents",
-            "database": "./torrents.db"
+            "database": "./build/src/torrents.db"
         }
     ],
     "sqltools.useNodeRuntime": true

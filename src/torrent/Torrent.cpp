@@ -11,7 +11,7 @@
 #include "torrent/BencodeConvert.h"
 
 
-Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_mi(mi),m_lg(logger::get()) {
+Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_name(fileName),m_mi(mi),m_lg(logger::get()) {
     auto info = m_mi.info;
     auto fm = info.file_mode;
     std::filesystem::path p(fileName);
