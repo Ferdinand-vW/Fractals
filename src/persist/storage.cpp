@@ -44,7 +44,7 @@ std::vector<TorrentModel> Storage::load_torrents() const {
 
 void Storage::delete_torrent(const TorrentModel &t) const {
     using namespace sqlite_orm;
-    m_storage->remove<TorrentModel>(where(c(&TorrentModel::id) == t.id));
+    m_storage->remove<TorrentModel>(t.id);
 }
 
 void Storage::add_piece(const PieceModel &pm) const {
@@ -56,5 +56,17 @@ std::vector<PieceModel> Storage::load_pieces(const TorrentModel &t) const {
     using namespace sqlite_orm;
     return m_storage->get_all<PieceModel>(
         where(c(&PieceModel::torrent_id) == t.id)
+    );
+}
+
+void Storage::add_announce(const AnnounceModel &ann) const {
+    using namespace sqlite_orm;
+    m_storage->insert(ann);
+}
+
+std::vector<AnnounceModel> Storage::load_announce(const TorrentModel &t) const {
+    using namespace sqlite_orm;
+    return m_storage->get_all<AnnounceModel>(
+        where(c(&AnnounceModel::torrent_id) == t.id)
     );
 }

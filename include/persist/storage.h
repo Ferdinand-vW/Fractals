@@ -28,7 +28,9 @@ inline auto init_storage(std::string db) {
                             make_table("torrent_announce",
                                     make_column("id",&AnnounceModel::id,primary_key()),
                                     make_column("torrent_id",&AnnounceModel::torrent_id),
-                                    make_column("datetime",&AnnounceModel::datetime),
+                                    make_column("peer_ip",&AnnounceModel::peer_ip),
+                                    make_column("peer_port",&AnnounceModel::peer_port),
+                                    make_column("datetime",&AnnounceModel::announce_time),
                                     foreign_key(&AnnounceModel::torrent_id).references(&TorrentModel::id)),
                             make_table("announce_peer",
                                     make_column("id",&AnnouncePeerModel::id,primary_key()),
@@ -58,7 +60,7 @@ class Storage {
         void add_piece(const PieceModel &pm) const;
         std::vector<PieceModel> load_pieces(const TorrentModel &t) const;
 
-        void add_announce(AnnounceModel ann) const;
-        std::optional<AnnounceModel> load_announce(const TorrentModel &t) const;
+        void add_announce(const AnnounceModel &ann) const;
+        std::vector<AnnounceModel> load_announce(const TorrentModel &t) const;
 
 };

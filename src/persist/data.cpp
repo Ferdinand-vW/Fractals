@@ -1,4 +1,7 @@
 #include "persist/data.h"
+#include "network/p2p/PeerId.h"
+#include <algorithm>
+#include <functional>
 
 void add_torrent(const Storage &st, const Torrent &t) {
     auto tm = TorrentModel { 0, t.m_name, "./metainfo/" + t.m_name + ".torrent" , "./downloads"};
@@ -37,8 +40,8 @@ std::vector<int> load_pieces(const Storage &st, const Torrent &t) {
     if(tm.has_value()) {
         auto pms = st.load_pieces(tm.value());
         std::vector<int> pieces;
-        std::transform(pms.begin(),pms.end(),pieces.end(),[](auto &pm) {
-            return pm.id;
+        std::transform(pms.begin(),pms.end(),pieces.end(),[](PieceModel &pm) {
+            return pm.piece;
         });
 
         return pieces;
@@ -48,9 +51,36 @@ std::vector<int> load_pieces(const Storage &st, const Torrent &t) {
 }
 
 void add_announce(const Storage &st, const Torrent &t, const Announce &ann) {
-
+    auto tm = st.load_torrent(t.m_name);
+    if(tm.has_value()) {
+        auto peers = ann.peers;
+        std::vector<AnnounceModel> ams;
+        std::transform(peers.begin(),peers.end(),ams.end(),[&tm,&ann](PeerId &p) {
+            return AnnounceModel{0,tm->id,p.m_ip,p.m_port,ann.datetime};
+        });
+        
+        std::for_each(ams.begin(),ams.end(),[&st](auto &am) { st.add_announce(am); });
+    }
 }
 
 std::optional<Announce> load_announce(const Storage &st, const Torrent &t) {
+    auto tm_opt = st.load_torrent(t.m_name);
+    if(!tm_opt.has_value()) { return {}; }
+    auto tm = tm_opt.value();
+
+    auto ams = st.load_announce(tm);
+
+    //if ams is empty then return nothing
+    if(ams.begin() == ams.end()) {
+        return {};
+    }
+
+    auto am = ams.front();
+    std::vector<PeerId> peers;
+    std::transform(ams.begin(),ams.end(),peers.end(),[](auto &am){
+        return PeerId { am.peer_ip,am.peer_port};
+    });
+
+    return Announce{am.announce_time,peers};
 
 }
