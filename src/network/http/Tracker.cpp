@@ -17,7 +17,7 @@
 
 std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
     auto peers_str = intercalate(", ",map_vector<Peer,std::string>(s.peers, [](const Peer &p) {
-        return "("s + p.peer_id + "," + p.ip + "," + std::to_string(p.port) + ")";
+        return "("s + p.peer_name + "," + p.peer_id.m_ip + "," + std::to_string(p.peer_id.m_port) + ")";
     }));
     os << "Tracker Reponse: " << endl;
     os << "{ tracker id: "+from_maybe(s.tracker_id,""s) << endl;
@@ -98,7 +98,7 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
         if(!mip.hasValue)      { return neither::left("Could not find field ip in peers dictionary"s); }
         if(!mport.hasValue)    { return neither::left("Could not find field port in peers dictionary"s); }
 
-        return neither::right(Peer { mpeer_id.value, mip.value, (uint)mport.value });
+        return neither::right(Peer { mpeer_id.value, PeerId(mip.value, (uint)mport.value) });
     };
 
     return mmap_vector<bdata,std::string,Peer>(bl.value(),parse_peer);
@@ -119,7 +119,7 @@ neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes
         ushort port = static_cast<unsigned char>(bytes[i+4]) * 256 + static_cast<unsigned char>(bytes[i+5]);
 
         auto peer_id = ip + ":" + std::to_string(port);
-        peers.push_back(Peer { peer_id, ip, port});
+        peers.push_back(Peer { peer_id, PeerId(ip, port)});
     }
 
     return neither::right<std::vector<Peer>>(peers);

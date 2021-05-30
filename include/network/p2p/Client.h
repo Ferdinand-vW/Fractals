@@ -12,7 +12,7 @@
 #include <boost/asio.hpp>
 
 #include "network/p2p/Connection.h"
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
 #include "common/logger.h"

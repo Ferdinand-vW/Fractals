@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <optional>
 #include <bits/types/time_t.h>
 
 struct AnnounceModel {
@@ -9,4 +10,6 @@ struct AnnounceModel {
     std::string peer_ip;
     uint peer_port;
     time_t announce_time;
+    int interval;
+    std::optional<int> min_interval;
 };

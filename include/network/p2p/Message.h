@@ -11,7 +11,7 @@
 
 #include "network/p2p/MessageType.h"
 #include "common/logger.h"
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 
 class IMessage {
     public:

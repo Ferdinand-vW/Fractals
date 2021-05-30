@@ -10,5 +10,9 @@ class PeerId {
         PeerId(std::string ip,uint port);
 
         bool operator<(const PeerId &p2) const;
+};
 
+struct Peer {
+    std::string peer_name;
+    PeerId peer_id;
 };

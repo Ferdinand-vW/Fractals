@@ -1,9 +1,10 @@
 #pragma once
 
 #include "network/p2p/Connection.h"
+#include "persist/storage.h"
 #include "torrent/Torrent.h"
 #include "network/p2p/Client.h"
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/log/sources/logger.hpp>
@@ -37,9 +38,13 @@ class BitTorrent {
 
     boost::log::sources::logger_mt &m_lg;
 
+    Storage m_storage;
+
 
     public:
-        BitTorrent (std::shared_ptr<Torrent> t,boost::asio::io_context &io);
+        BitTorrent (std::shared_ptr<Torrent> t
+                   ,boost::asio::io_context &io
+                   ,Storage st);
         void run();
 
     private:

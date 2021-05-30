@@ -4,7 +4,7 @@
 #include "common/utils.h"
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 #include "torrent/PieceData.h"
 #include <algorithm>
 #include <boost/asio/bind_executor.hpp>

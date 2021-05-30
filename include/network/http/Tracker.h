@@ -6,6 +6,8 @@
 
 #include "torrent/MetaInfo.h"
 #include "torrent/BencodeConvert.h"
+#include "Announce.h"
+#include "Peer.h"
 
 using namespace neither;
 
@@ -38,12 +40,6 @@ struct TrackerRequest {
         //trackerid
 };
 
-struct Peer {
-    std::string peer_id;
-    std::string ip;
-    uint port;
-};
-
 struct TrackerResponse {
     public:
         neither::Maybe<std::string> warning_message;
@@ -59,4 +55,5 @@ struct TrackerResponse {
 
 TrackerRequest makeTrackerRequest(const MetaInfo & mi);
 
+Announce toAnnounce(const TrackerResponse &tr);
 neither::Either<string,TrackerResponse> sendTrackerRequest(const TrackerRequest &tr);

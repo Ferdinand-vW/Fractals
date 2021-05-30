@@ -1,5 +1,5 @@
 #include "persist/data.h"
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 #include <algorithm>
 #include <functional>
 
@@ -56,7 +56,7 @@ void add_announce(const Storage &st, const Torrent &t, const Announce &ann) {
         auto peers = ann.peers;
         std::vector<AnnounceModel> ams;
         std::transform(peers.begin(),peers.end(),ams.end(),[&tm,&ann](PeerId &p) {
-            return AnnounceModel{0,tm->id,p.m_ip,p.m_port,ann.datetime};
+            return AnnounceModel{0,tm->id,p.m_ip,p.m_port,ann.announce_time};
         });
         
         std::for_each(ams.begin(),ams.end(),[&st](auto &am) { st.add_announce(am); });
@@ -81,6 +81,6 @@ std::optional<Announce> load_announce(const Storage &st, const Torrent &t) {
         return PeerId { am.peer_ip,am.peer_port};
     });
 
-    return Announce{am.announce_time,peers};
+    return Announce{am.announce_time,am.interval,am.min_interval,peers};
 
 }

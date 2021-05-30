@@ -7,12 +7,13 @@ set(SOURCES main.cpp
             common/encode.cpp 
             common/utils.cpp
             network/http/Tracker.cpp
+            network/http/Peer.cpp
             network/p2p/Connection.cpp
             network/p2p/BitTorrent.cpp
             network/p2p/Client.cpp 
             network/p2p/Message.cpp 
             network/p2p/MessageType.cpp
-            network/p2p/PeerId.cpp
+            network/http/Peer.cpp
             torrent/PieceData.cpp
             torrent/Torrent.cpp
             persist/storage.cpp

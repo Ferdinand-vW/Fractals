@@ -1,5 +1,4 @@
-
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 
 PeerId::PeerId(std::string ip,uint port) : m_ip(ip),m_port(port) {};
 

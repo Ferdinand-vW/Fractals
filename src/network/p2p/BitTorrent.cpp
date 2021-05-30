@@ -2,8 +2,10 @@
 #include "network/http/Tracker.h"
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
-#include "network/p2p/PeerId.h"
+#include "network/http/Peer.h"
 #include "common/logger.h"
+#include "persist/data.h"
+#include <bits/types/time_t.h>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
@@ -23,16 +25,28 @@
 #include <thread>
 #include <unistd.h>
 
-BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent,boost::asio::io_context &io) 
+BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent
+                      ,boost::asio::io_context &io
+                      ,Storage st) 
                     : m_torrent(torrent)
                     , m_io(io)
                     , m_lg(logger::get())
+                    , m_storage(st)
                     {};
 
 void BitTorrent::request_peers() {
     std::unique_lock<std::recursive_mutex> lock(m_mutex,std::try_to_lock);
     //only one thread should request peers
     if(lock.owns_lock()) {
+        auto mann = load_announce(m_storage, *m_torrent.get());
+        if(mann.has_value()) {
+            auto ann = mann.value();
+            time_t curr = std::time(0);
+            int iv = ann.min_interval.value_or(ann.interval);
+            if (curr - ann.announce_time < iv) {
+
+            }
+        }
         auto tr = makeTrackerRequest(m_torrent->m_mi);
         auto resp = sendTrackerRequest(tr);
 
@@ -43,8 +57,7 @@ void BitTorrent::request_peers() {
         }
         else {
             for(auto &p : resp.rightValue.peers) {
-                PeerId peer = PeerId { p.ip,p.port };
-                m_available_peers.insert(peer);
+                m_available_peers.insert(p.peer_id);
             }
         }
     }

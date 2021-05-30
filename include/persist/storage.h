@@ -4,7 +4,6 @@
 #include <memory>
 
 #include "torrent/Torrent.h"
-#include "network/p2p/Announce.h"
 #include "torrent_model.h"
 #include "piece_model.h"
 #include "announce_model.h"
@@ -30,7 +29,9 @@ inline auto init_storage(std::string db) {
                                     make_column("torrent_id",&AnnounceModel::torrent_id),
                                     make_column("peer_ip",&AnnounceModel::peer_ip),
                                     make_column("peer_port",&AnnounceModel::peer_port),
-                                    make_column("datetime",&AnnounceModel::announce_time),
+                                    make_column("announce_time",&AnnounceModel::announce_time),
+                                    make_column("interval",&AnnounceModel::interval),
+                                    make_column("min_interval",&AnnounceModel::min_interval),
                                     foreign_key(&AnnounceModel::torrent_id).references(&TorrentModel::id)),
                             make_table("announce_peer",
                                     make_column("id",&AnnouncePeerModel::id,primary_key()),
