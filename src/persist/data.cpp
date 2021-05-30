@@ -50,7 +50,7 @@ std::vector<int> load_pieces(const Storage &st, const Torrent &t) {
     }
 }
 
-void add_announce(const Storage &st, const Torrent &t, const Announce &ann) {
+void save_announce(const Storage &st, const Torrent &t, const Announce &ann) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {
         auto peers = ann.peers;
@@ -59,7 +59,14 @@ void add_announce(const Storage &st, const Torrent &t, const Announce &ann) {
             return AnnounceModel{0,tm->id,p.m_ip,p.m_port,ann.announce_time};
         });
         
-        std::for_each(ams.begin(),ams.end(),[&st](auto &am) { st.add_announce(am); });
+        std::for_each(ams.begin(),ams.end(),[&st](auto &am) { st.save_announce(am); });
+    }
+}
+
+void delete_announces(const Storage &st, const Torrent &t) {
+    auto tm = st.load_torrent(t.m_name);
+    if(tm.has_value()) {
+        st.delete_announces(tm.value());
     }
 }
 

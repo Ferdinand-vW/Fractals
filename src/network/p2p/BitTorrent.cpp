@@ -34,31 +34,68 @@ BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent
                     , m_storage(st)
                     {};
 
+
+std::optional<Announce> get_recent_announce(const Storage &st,const Torrent &t) {
+    auto mann = load_announce(st, t);
+    if(mann.has_value()) {
+        auto ann = mann.value();
+        time_t curr = std::time(0);
+        int iv = ann.min_interval.value_or(ann.interval);
+        //if a recent announce exists then return those peers
+        //we should not announce more often than @min_interval@
+        if (curr - ann.announce_time < iv) {
+            return ann;
+        } else {
+            //return nothing since the announce stored in database is not recent enough
+            return {};
+        }
+    }
+
+    return {};
+
+}
+
+std::optional<Announce> make_announce(const Torrent &t) {
+    auto tr = makeTrackerRequest(t.m_mi);
+    time_t curr = std::time(0);
+    auto resp = sendTrackerRequest(tr);
+
+    if(resp.isLeft) {
+        BOOST_LOG(logger::get()) << "[BitTorrent] tracker response error: " << resp.leftValue;
+        if (resp.leftValue == "announcing too fast") { sleep(10); }
+        return {};
+    }
+    else {
+        return toAnnounce(curr,resp.rightValue);
+    }
+}
+
 void BitTorrent::request_peers() {
     std::unique_lock<std::recursive_mutex> lock(m_mutex,std::try_to_lock);
     //only one thread should request peers
     if(lock.owns_lock()) {
-        auto mann = load_announce(m_storage, *m_torrent.get());
-        if(mann.has_value()) {
-            auto ann = mann.value();
-            time_t curr = std::time(0);
-            int iv = ann.min_interval.value_or(ann.interval);
-            if (curr - ann.announce_time < iv) {
+        auto &torr = *m_torrent.get();
+        auto mann = get_recent_announce(m_storage,torr);
 
+        std::vector<PeerId> new_peers;
+        if(mann.has_value()) { //recent announce exists so use already known peers
+            new_peers = mann->peers;
+        } else {//make a new announce
+            auto next_ann = make_announce(torr);
+            if(next_ann.has_value()) { //on success add received peers
+                new_peers = next_ann->peers;
+                delete_announces(m_storage,torr);
+                save_announce(m_storage, torr, next_ann.value()); //saves announce in db
+            } else { //indicates a failure in making the announce
+                     //we retry after short sleep
+                     //the 'current' invocation of request_peers will not add new peers
+                request_peers(); //this should probably be done async to avoid stack overflow
             }
         }
-        auto tr = makeTrackerRequest(m_torrent->m_mi);
-        auto resp = sendTrackerRequest(tr);
 
-        if(resp.isLeft) {
-            BOOST_LOG(m_lg) << "[BitTorrent] tracker response error: " << resp.leftValue;
-            if (resp.leftValue == "announcing too fast") { sleep(10); }
-            request_peers();
-        }
-        else {
-            for(auto &p : resp.rightValue.peers) {
-                m_available_peers.insert(p.peer_id);
-            }
+        //add new peers to set of known peers
+        for(auto &p : new_peers) {
+            m_available_peers.insert(p);
         }
     }
 }

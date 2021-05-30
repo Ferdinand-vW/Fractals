@@ -2,6 +2,7 @@
 
 #include "network/p2p/Connection.h"
 #include "persist/storage.h"
+#include "persist/data.h"
 #include "torrent/Torrent.h"
 #include "network/p2p/Client.h"
 #include "network/http/Peer.h"

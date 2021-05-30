@@ -55,5 +55,5 @@ struct TrackerResponse {
 
 TrackerRequest makeTrackerRequest(const MetaInfo & mi);
 
-Announce toAnnounce(const TrackerResponse &tr);
+Announce toAnnounce(time_t now,const TrackerResponse &tr);
 neither::Either<string,TrackerResponse> sendTrackerRequest(const TrackerRequest &tr);

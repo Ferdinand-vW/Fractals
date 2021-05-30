@@ -59,9 +59,16 @@ std::vector<PieceModel> Storage::load_pieces(const TorrentModel &t) const {
     );
 }
 
-void Storage::add_announce(const AnnounceModel &ann) const {
+void Storage::save_announce(const AnnounceModel &ann) const {
     using namespace sqlite_orm;
     m_storage->insert(ann);
+}
+
+void Storage::delete_announces(const TorrentModel &tm) const {
+    using namespace sqlite_orm;
+    m_storage->remove_all<AnnounceModel>(
+        where(c(&AnnounceModel::torrent_id) == tm.id)
+    );
 }
 
 std::vector<AnnounceModel> Storage::load_announce(const TorrentModel &t) const {

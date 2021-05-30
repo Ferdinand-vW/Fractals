@@ -11,5 +11,6 @@ void delete_torrent (const Storage &st,const Torrent &t);
 void add_piece(const Storage &st,const Torrent &t);
 std::vector<int> load_pieces(const Storage &st,const Torrent &t);
 
-void add_announce(const Storage &st,const Torrent &t,const Announce &ann);
+void save_announce(const Storage &st,const Torrent &t,const Announce &ann);
+void delete_announces(const Storage &st,const Torrent &t);
 std::optional<Announce> load_announce(const Storage &st,const Torrent &t);

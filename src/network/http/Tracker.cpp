@@ -197,6 +197,14 @@ neither::Either<std::string, TrackerResponse> parseTrackerReponse(const bdict &b
     
 }
 
+Announce toAnnounce(time_t now,const TrackerResponse &tr) {
+    std::vector<PeerId> peerIds;
+    std::transform(tr.peers.begin(),tr.peers.end(),peerIds.end(),[](auto &p) {
+        return p.peer_id;
+    });
+    return Announce { now, tr.interval, tr.min_interval, peerIds };
+}
+
 neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRequest &tr) {
     CURLcode res;
     CURL *curl = curl_easy_init();

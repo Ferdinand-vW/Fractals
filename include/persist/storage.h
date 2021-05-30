@@ -61,7 +61,8 @@ class Storage {
         void add_piece(const PieceModel &pm) const;
         std::vector<PieceModel> load_pieces(const TorrentModel &t) const;
 
-        void add_announce(const AnnounceModel &ann) const;
+        void save_announce(const AnnounceModel &ann) const;
+        void delete_announces(const TorrentModel &tm) const;
         std::vector<AnnounceModel> load_announce(const TorrentModel &t) const;
 
 };
