@@ -28,16 +28,24 @@
 
 Client::Client(std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
+              ,Storage storage
+              ,std::set<int> pieces
               ,std::function<void(PeerId,PeerChange)> on_change_peers)
               : m_io(io)
               ,m_torrent(torrent)
+              ,m_storage(storage)
               ,m_on_change_peers(on_change_peers)
               ,m_piece_lock(std::make_unique<std::mutex>())
               ,m_lg(logger::get()) {
     m_client_id = generate_peerId();
+
+    m_existing_pieces = pieces;
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.number_of_pieces(); i++) {
-        m_missing_pieces.insert(i);
+        //piece has not been downloaded yet so we wish to download it
+        if(m_existing_pieces.find(i) == m_existing_pieces.end()) {
+            m_missing_pieces.insert(i);
+        }
     }
 };
 
@@ -232,6 +240,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
         // update internal state of required pieces
         m_missing_pieces.erase(piece.m_piece_index);
         m_existing_pieces.insert(piece.m_piece_index);
+        save_piece(m_storage,*m_torrent.get(),piece.m_piece_index);
 
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
             piece_ptr->m_progress = PieceProgress::Completed;

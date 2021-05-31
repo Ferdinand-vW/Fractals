@@ -28,7 +28,7 @@ void delete_torrent(const Storage &st, const Torrent &t) {
     }
 }
 
-void add_piece(const Storage &st, const Torrent &t,int piece) {
+void save_piece(const Storage &st, const Torrent &t,int piece) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {
         auto pm = PieceModel {0,tm->id,piece};
@@ -36,19 +36,18 @@ void add_piece(const Storage &st, const Torrent &t,int piece) {
     }
 }
 
-std::vector<int> load_pieces(const Storage &st, const Torrent &t) {
+std::set<int> load_pieces(const Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
+    std::set<int> pieces;
     if(tm.has_value()) {
         auto pms = st.load_pieces(tm.value());
-        std::vector<int> pieces;
-        std::transform(pms.begin(),pms.end(),std::back_inserter(pieces),[](PieceModel &pm) {
-            return pm.piece;
-        });
-
-        return pieces;
-    } else {
-        return {};
+        
+        for(auto &pm : pms) {
+            pieces.insert(pm.piece);
+        }
     }
+
+    return pieces;
 }
 
 void save_announce(const Storage &st, const Torrent &t, const Announce &ann) {

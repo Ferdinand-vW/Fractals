@@ -158,7 +158,10 @@ void BitTorrent::setup_client() {
     auto f = [this](PeerId p,PeerChange pc) {
         peer_change(p, pc);
     };
-    Client c(m_torrent,m_io,f);
+
+    auto pieces = load_pieces(m_storage, *m_torrent.get());
+
+    Client c(m_torrent,m_io,m_storage,pieces,f);
     m_client = std::make_shared<Client>(std::move(c));
 }
 

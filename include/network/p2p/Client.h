@@ -16,6 +16,8 @@
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
 #include "common/logger.h"
+#include "persist/storage.h"
+#include "persist/data.h"
 #include "torrent/Torrent.h"
 #include "torrent/PieceData.h"
 
@@ -50,6 +52,7 @@ class Client : public enable_shared_from_this<Client> {
     std::map<PeerId, std::shared_ptr<Connection>> m_connections;
 
     std::shared_ptr<Torrent> m_torrent;
+    Storage m_storage;
     std::unique_ptr<std::mutex> m_piece_lock;
     
     std::function<void(PeerId,PeerChange)> m_on_change_peers;
@@ -61,6 +64,8 @@ class Client : public enable_shared_from_this<Client> {
         
         Client(std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
+              ,Storage storage
+              ,std::set<int> pieces
               ,std::function<void(PeerId,PeerChange)> on_change_peers);
 
         bool has_all_pieces();

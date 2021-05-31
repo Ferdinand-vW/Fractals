@@ -8,8 +8,8 @@ void save_torrent(const Storage &st, const Torrent &t);
 std::vector<std::unique_ptr<Torrent>> load_torrents(const Storage &st);
 void delete_torrent (const Storage &st,const Torrent &t);
 
-void add_piece(const Storage &st,const Torrent &t);
-std::vector<int> load_pieces(const Storage &st,const Torrent &t);
+void save_piece(const Storage &st,const Torrent &t,int piece);
+std::set<int> load_pieces(const Storage &st,const Torrent &t);
 
 void save_announce(const Storage &st,const Torrent &t,const Announce &ann);
 void delete_announces(const Storage &st,const Torrent &t);
