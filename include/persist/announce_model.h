@@ -12,4 +12,5 @@ struct AnnounceModel {
     time_t announce_time;
     int interval;
     std::optional<int> min_interval;
+    bool tested = false; //have we tried connecting to a peer?
 };

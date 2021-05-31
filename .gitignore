@@ -40,6 +40,7 @@ out/
 log.txt
 val.txt
 torrents.db
+*.sql
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

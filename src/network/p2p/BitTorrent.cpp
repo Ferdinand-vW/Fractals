@@ -44,6 +44,7 @@ std::optional<Announce> get_recent_announce(const Storage &st,const Torrent &t) 
         //if a recent announce exists then return those peers
         //we should not announce more often than @min_interval@
         if (curr - ann.announce_time < iv) {
+            BOOST_LOG(logger::get()) << "[BitTorrent] recent announce exists";
             return ann;
         } else {
             //return nothing since the announce stored in database is not recent enough
@@ -66,6 +67,7 @@ std::optional<Announce> make_announce(const Torrent &t) {
         return {};
     }
     else {
+        BOOST_LOG(logger::get()) << "[BitTorrent] tracker response: " << resp.rightValue;
         return toAnnounce(curr,resp.rightValue);
     }
 }
@@ -79,10 +81,12 @@ void BitTorrent::request_peers() {
 
         std::vector<PeerId> new_peers;
         if(mann.has_value()) { //recent announce exists so use already known peers
+            BOOST_LOG(m_lg) << "[BitTorrent] loaded recent announce";
             new_peers = mann->peers;
         } else {//make a new announce
             auto next_ann = make_announce(torr);
             if(next_ann.has_value()) { //on success add received peers
+                BOOST_LOG(m_lg) << "[BitTorrent] made new recent announce";
                 new_peers = next_ann->peers;
                 delete_announces(m_storage,torr);
                 save_announce(m_storage, torr, next_ann.value()); //saves announce in db

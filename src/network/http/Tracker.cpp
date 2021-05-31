@@ -1,6 +1,7 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <iterator>
 #include <netinet/in.h>
 #include <openssl/sha.h>
 #include <curl/curl.h>
@@ -199,7 +200,7 @@ neither::Either<std::string, TrackerResponse> parseTrackerReponse(const bdict &b
 
 Announce toAnnounce(time_t now,const TrackerResponse &tr) {
     std::vector<PeerId> peerIds;
-    std::transform(tr.peers.begin(),tr.peers.end(),peerIds.end(),[](auto &p) {
+    std::transform(tr.peers.begin(),tr.peers.end(),std::back_insert_iterator(peerIds),[](auto &p) {
         return p.peer_id;
     });
     return Announce { now, tr.interval, tr.min_interval, peerIds };
@@ -207,6 +208,7 @@ Announce toAnnounce(time_t now,const TrackerResponse &tr) {
 
 neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRequest &tr) {
     CURLcode res;
+    curl_global_init(0);
     CURL *curl = curl_easy_init();
     std::string readBuffer;
     string url = toHttpGetUrl(tr);
@@ -223,11 +225,13 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
         res = curl_easy_perform(curl);
         if(res != CURLE_OK) { 
             std::string curl_err = curl_easy_strerror(res);
+            /* always cleanup */ 
+            curl_easy_cleanup(curl);
             return left("curl_easy_perform() failed: "+curl_err); 
         }
-        /* always cleanup */ 
-        curl_easy_cleanup(curl);
     }
+
+    curl_easy_cleanup(curl);
 
     stringstream ss(readBuffer);
     auto mresp = bencode::decode<bencode::bdict>(ss);

@@ -34,16 +34,16 @@ int main() {
     // std::unique_lock<std::mutex> lock(*mu.get());
 
     auto torr = Torrent::read_torrent("/home/ferdinand/dev/Fractals/examples/shamanking.torrent");
-    add_torrent(storage,torr);
-    // auto torr_ptr = std::make_shared<Torrent>(torr);
+    save_torrent(storage,torr);
+    auto torr_ptr = std::make_shared<Torrent>(torr);
 
-    // boost::asio::io_context io;
-    // auto bt = BitTorrent(torr_ptr,io);
+    boost::asio::io_context io;
+    auto bt = BitTorrent(torr_ptr,io,storage);
 
-    // try {
-    //     bt.run();
-    // }
-    // catch(std::exception e) {
-    //     std::cout << e.what() << std::endl;
-    // }
+    try {
+        bt.run();
+    }
+    catch(std::exception e) {
+        std::cout << e.what() << std::endl;
+    }
 }

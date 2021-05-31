@@ -38,7 +38,6 @@ Client::Client(std::shared_ptr<Torrent> torrent
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.number_of_pieces(); i++) {
         m_missing_pieces.insert(i);
-        BOOST_LOG(m_lg) << "piece " << i << " " << torrent->size_of_piece(i);
     }
 };
 
