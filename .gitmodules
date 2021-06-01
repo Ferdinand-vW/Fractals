@@ -10,3 +10,9 @@
 [submodule "libs/sqlite_orm"]
 	path = libs/sqlite_orm
 	url = https://github.com/fnc12/sqlite_orm.git
+[submodule "libs/terminalpp"]
+	path = libs/terminalpp
+	url = https://github.com/KazDragon/terminalpp.git
+[submodule "libs/gsl-lite"]
+	path = libs/gsl-lite
+	url = https://github.com/gsl-lite/gsl-lite.git

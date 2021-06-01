@@ -8,6 +8,7 @@ set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
 set(SQLITE_ORM_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/sqlite_orm/include)
 set(NEITHER_HEADER_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/include)
 set(NEITHER_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/build/include)
+set(TERMINALPP_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/terminalpp/include)
 
 # scaffold neither headers
 set(NEITHER_HEADERS "either.hpp" "lift.hpp" "maybe.hpp" "neither.hpp" "traits.hpp" "try.hpp")
@@ -35,5 +36,10 @@ include_directories(${SQLITE_ORM_INCLUDE_DIR})
 
 add_subdirectory(libs/bencode)
 set_target_properties(bencode_run PROPERTIES EXCLUDE_FROM_ALL True)
+
+include_directories(${TERMINALPP_INCLUDE_DIR})
+find_package(gsl-lite REQUIRED)
+find_package(fmt REQUIRED)
+find_package(terminalpp REQUIRED)
 
 add_subdirectory(src)
