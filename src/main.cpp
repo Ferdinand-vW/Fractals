@@ -1,8 +1,5 @@
-#include <terminalpp/terminal.hpp>
-#include <terminalpp/canvas.hpp>
-#include <terminalpp/screen.hpp>
-
 #include "persist/data.h"
+#include "terminalpp/core.hpp"
 #include "torrent/Torrent.h"
 #include "network/p2p/BitTorrent.h"
 #include "common/logger.h"
@@ -11,28 +8,11 @@
 
 using namespace boost::asio;
 
-void write_to_console(terminalpp::bytes data)
-{
-    std::cout << std::string{data.begin(), data.end()};
-}
+
 
 int main()
 {
-    using namespace terminalpp::literals;
-    terminalpp::terminal terminal;
 
-    terminal.write(write_to_console)
-        << terminalpp::use_alternate_screen_buffer()
-        << terminalpp::save_cursor_position()
-        // << terminalpp::move_cursor({0, 0})
-        << "\\U263A"_ets
-        << terminalpp::restore_cursor_position();
-        
-
-    int x;
-    std::cin >> x;
-
-    terminal.write(write_to_console) << terminalpp::use_normal_screen_buffer();
 }
 
 

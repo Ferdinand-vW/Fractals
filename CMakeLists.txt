@@ -37,9 +37,4 @@ include_directories(${SQLITE_ORM_INCLUDE_DIR})
 add_subdirectory(libs/bencode)
 set_target_properties(bencode_run PROPERTIES EXCLUDE_FROM_ALL True)
 
-include_directories(${TERMINALPP_INCLUDE_DIR})
-find_package(gsl-lite REQUIRED)
-find_package(fmt REQUIRED)
-find_package(terminalpp REQUIRED)
-
 add_subdirectory(src)
