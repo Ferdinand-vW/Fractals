@@ -16,6 +16,6 @@
 [submodule "libs/gsl-lite"]
 	path = libs/gsl-lite
 	url = https://github.com/gsl-lite/gsl-lite.git
-[submodule "libs/TermOx"]
-	path = libs/TermOx
-	url = https://github.com/a-n-t-h-o-n-y/TermOx.git
+[submodule "libs/FTXUI"]
+	path = libs/FTXUI
+	url = https://github.com/ArthurSonzogni/FTXUI.git

@@ -8,7 +8,7 @@ set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
 set(SQLITE_ORM_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/sqlite_orm/include)
 set(NEITHER_HEADER_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/include)
 set(NEITHER_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/neither/neither/build/include)
-set(TERMINALPP_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/terminalpp/include)
+set(FTXUI_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/FTXUI/include)
 
 # scaffold neither headers
 set(NEITHER_HEADERS "either.hpp" "lift.hpp" "maybe.hpp" "neither.hpp" "traits.hpp" "try.hpp")
@@ -36,5 +36,8 @@ include_directories(${SQLITE_ORM_INCLUDE_DIR})
 
 add_subdirectory(libs/bencode)
 set_target_properties(bencode_run PROPERTIES EXCLUDE_FROM_ALL True)
+
+find_package(ftxui)
+include_directories(${FTXUI_INCLUDE_DIR})
 
 add_subdirectory(src)
