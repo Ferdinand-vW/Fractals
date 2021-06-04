@@ -72,6 +72,7 @@ class MyInputBase : public ComponentBase {
         // State update callback.
         std::function<void()> on_change = [] {};
         std::function<void()> on_enter = [] {};
+        std::function<void()> on_escape = [] {};
 
         // Component implementation.
         Element Render() override;
@@ -155,6 +156,11 @@ bool MyInputBase::OnEvent(Event event) {
         on_enter();
         return true;
     }
+
+    if(event == Event::Escape) {
+        on_escape();
+        return true;
+    }
   
     if (event == Event::Custom) {
         return false;
@@ -214,19 +220,19 @@ bool MyInputBase::OnMouseEvent(Event event) {
 int main(int argc, const char* argv[]) {
     using namespace ftxui;
     
-    printf("%c7%c[?1;47h%c[2J%c[1;1H",0x1B,0x1B,0x1B,0x1B);
+    printf("%c[?1049h%c[1;1H",0x1B,0x1B);
 
-    // printf("%c[2J%c[?1;47l%c8",0x1B,0x1B,0x1B);
     std::wstring first_name_;
     std::wstring entered_first = L"";
-    
+    auto screen = ScreenInteractive::Fullscreen();
     Component input_first_name_ = MyInput(&first_name_, "");
     MyInputBase::From(input_first_name_)->on_enter = [&] {
         entered_first = first_name_;
         first_name_ = L"";
     };
 
-    
+    MyInputBase::From(input_first_name_)->on_escape = screen.ExitLoopClosure();
+
     auto component = Container::Vertical({
         input_first_name_,
     });
@@ -241,8 +247,10 @@ int main(int argc, const char* argv[]) {
             border | bold | color(Color::Blue);
     });
     
-    auto screen = ScreenInteractive::Fullscreen();
+    
     screen.Loop(renderer);
+
+    printf("%c[?1049l",0x1B);
 }
 
 
