@@ -18,4 +18,5 @@
 	url = https://github.com/gsl-lite/gsl-lite.git
 [submodule "libs/FTXUI"]
 	path = libs/FTXUI
+	ignore = dirty
 	url = https://github.com/ArthurSonzogni/FTXUI.git
