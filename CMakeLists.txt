@@ -13,7 +13,7 @@ set(FTXUI_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/FTXUI/include)
 # scaffold neither headers
 set(NEITHER_HEADERS "either.hpp" "lift.hpp" "maybe.hpp" "neither.hpp" "traits.hpp" "try.hpp")
 foreach (H ${NEITHER_HEADERS}) 
-    file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR})
+    file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR}/neither)
 endforeach()
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
