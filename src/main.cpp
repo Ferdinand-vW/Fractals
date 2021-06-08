@@ -25,29 +25,9 @@
 #include "ftxui/component/input.hpp"
 #include "ftxui/component/mouse.hpp"  // for Mouse, Mouse::Left, Mouse::Pressed
 #include "ftxui/component/screen_interactive.hpp"  // for Component
+#include <cmath>
 
 using namespace ftxui;
-
-// class InputBox : public ComponentBase {
-//  public:
-//   ~InputBox() override = default;
- 
-//   ftxui::Element Render() override {
-//     ftxui::Elements children;
-//     for (size_t i = std::max(0, (int)keys.size() - 20); i < keys.size(); ++i) {
-//       children.push_back(text(Stringify(keys[i])));
-//     }
-//     return window(text(L"keys"), vbox(std::move(children)));
-//   }
- 
-//   bool OnEvent(Event event) override {
-//     keys.push_back(event);
-//     return true;
-//   }
- 
-//  private:
-//   std::vector<Event> keys;
-// };
 
 class MyInputBase : public ComponentBase {
     private:
@@ -97,15 +77,6 @@ Element MyInputBase::Render() {
        std::max(0, std::min<int>(content_->size(), cursor_position));
     auto main_decorator = flex | size(HEIGHT, EQUAL, 1);
     bool is_focused = Focused();
-    
-    // // placeholder.
-    // if (content_->size() == 0) {
-    //     if (is_focused)
-    //     return text(*placeholder_) | focus | dim | main_decorator |
-    //             reflect(input_box_);
-    //     else
-    //     return text(*placeholder_) | dim | main_decorator | reflect(input_box_);
-    // }
     
     // Not focused.
     if (!is_focused)
@@ -237,14 +208,71 @@ int main(int argc, const char* argv[]) {
         input_first_name_,
     });
     
+    auto column = [](std::wstring ws) { return text(ws) | color(Color::Red) | hcenter; };
+    auto cell = [](std::wstring ws) { return text(ws) | color(Color::Blue) | xflex; };
+    auto cols = [](Elements && e) { return vbox({e}) | xflex; };
+    auto colOfSize = [column](std::wstring name,int i) {
+            int rem = i - name.length();
+            int b_size = std::floor(rem / 2);
+            int a_size = std::ceil(rem / 2); 
+            std::string before(b_size,' ');
+            std::string after(a_size,' ');
+            std::wstring wbefore(before.begin(),before.end());
+            std::wstring wafter(after.begin(),after.end());
+            return hbox({text(wbefore),column(name),text(wafter)});
+        };
     auto renderer = Renderer(component, [&] {
         return vbox({
-                hbox({text(L"Torrent Name") | center ,separator(),text(L"Downloaded") | center}),
-                vbox({hbox({text(entered_first) | flex})}) | border | flex,
-                separator(),
-                hbox({input_first_name_->Render()}),
+                // columns
+                hbox({
+                    vbox({
+                        column(L"#"),
+                        separator() | color(Color::GreenLight),
+                        cell(L"test"),
+                        cell(L"test2")}),
+                    vbox({separator(),filler(),filler()}),
+                    cols({
+                        column(L"Torrent Name"),
+                        separator() | color(Color::GreenLight),
+                        cell(L"test"),
+                        cell(L"test2")}),
+                    vbox({separator(),filler(),filler()}),
+                    vbox({
+                        colOfSize(L"Size", 12),
+                        separator() | color(Color::GreenLight),
+                        cell(L"test"),
+                        cell(L"test2")}),
+                    vbox({separator(),filler(),filler()}),
+                    vbox({
+                        colOfSize(L"Progress", 16),
+                        separator() | color(Color::GreenLight),
+                        cell(L"test"),
+                        cell(L"test")}),
+                    vbox({separator(),filler(),filler()}),
+                    vbox({
+                        colOfSize(L"Down", 12),
+                        separator() | color(Color::GreenLight),
+                        cell(L"test"),
+                        cell(L"test")}),
+                    vbox({separator(),filler(),filler()}),
+                    vbox({
+                        colOfSize(L"Up", 12),
+                        separator() | color(Color::GreenLight),
+                        cell(L"test"),
+                        cell(L"test2")}),
+                    vbox({separator(),filler(),filler()}),
+                    cols({
+                        column(L"ETA"),
+                        separator() | color(Color::GreenLight),
+                        cell(L""),
+                        cell(L"")})
+                        })  | flex ,
+                hbox({hbox({text(entered_first) | flex}) | flex}) | flex,
+                separator() | color(Color::GreenLight),
+                hbox({input_first_name_->Render()})  | color(Color::GreenLight),
+                separator()  | color(Color::GreenLight)
             }) |
-            border | bold | color(Color::Blue);
+            bold | flex | color(Color::Blue);
     });
     
     
