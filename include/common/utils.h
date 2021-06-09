@@ -25,6 +25,11 @@ std::string make_sized_line(std::string s,int len);
 
 std::string concat_paths(std::vector<std::string> v);
 
+template<typename First,typename ... T>
+bool elem(First &&f,T && ... t) {
+    return ((f == t) || ...);
+}
+
 std::string random_alphaNumerical(int length);
 
 std::string bytes_to_hex(const std::vector<char> &bytes);
