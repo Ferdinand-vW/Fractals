@@ -1,6 +1,7 @@
 #pragma once
 
-#include "app/TorrentDisplay.h"
+#include "network/p2p/BitTorrent.h"
+#include "torrent/Torrent.h"
 #include "app/TerminalInput.h"
 
 #include "ftxui/component/input.hpp"
@@ -20,4 +21,25 @@
 #include "ftxui/component/mouse.hpp"  // for Mouse, Mouse::Left, Mouse::Pressed
 #include "ftxui/component/screen_interactive.hpp"  // for Component
 
-void runUI();
+using namespace ftxui;
+
+class TorrentDisplayBase : public ComponentBase {
+    private:
+        std::vector<std::shared_ptr<BitTorrent>> running;
+        std::vector<std::shared_ptr<Torrent>> completed;
+        std::vector<std::shared_ptr<Torrent>> stopped;
+        Component m_terminal_input;
+        std::wstring m_output_string;
+
+    public:
+        // Constructor.
+        TorrentDisplayBase(Component terminal_input);
+        ~TorrentDisplayBase() override = default;
+
+        // Access this interface from a Component
+        static TorrentDisplayBase* From(Component component);
+        Element Render() override;
+        std::optional<std::wstring> parse_command(std::wstring ws);
+};
+
+Component TorrentDisplay(Component terminal_input);

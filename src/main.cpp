@@ -17,14 +17,7 @@
 
 int main(int argc, const char* argv[]) {
     
-    printf("%c[?1049h%c[1;1H",0x1B,0x1B);
-
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
-    Component ui = UI();
-    
-    screen.Loop(ui);
-
-    printf("%c[?1049l",0x1B);
+    runUI();
 }
 
 

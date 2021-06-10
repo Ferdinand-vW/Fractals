@@ -6,6 +6,7 @@ set(SOURCES main.cpp
             app/Client.cpp
             app/UI.cpp
             app/TerminalInput.cpp
+            app/TorrentDisplay.cpp
             common/encode.cpp 
             common/utils.cpp
             network/http/Tracker.cpp
