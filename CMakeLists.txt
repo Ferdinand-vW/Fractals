@@ -41,3 +41,5 @@ find_package(ftxui)
 include_directories(${FTXUI_INCLUDE_DIR})
 
 add_subdirectory(src)
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")

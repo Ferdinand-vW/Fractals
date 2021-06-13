@@ -10,9 +10,11 @@ void runUI() {
     Component terminal_input = TerminalInput(&input_string, "");
 
     Component td = TorrentDisplay(terminal_input);
-    TerminalInputBase::From(terminal_input)->on_escape = screen.ExitLoopClosure();
-    TerminalInputBase::From(terminal_input)->on_enter = [&] {
-        TorrentDisplayBase::From(td)->parse_command(input_string);
+    auto doExit = screen.ExitLoopClosure();
+    TerminalInputBase::From(terminal_input)->on_escape = doExit;
+    TerminalInputBase::From(terminal_input)->on_enter = [&td,&doExit,&input_string] () {
+        bool shouldExit = TorrentDisplayBase::From(td)->parse_command(input_string);
+        if(shouldExit) { doExit(); }
         input_string = L"";
     };
 

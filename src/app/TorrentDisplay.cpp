@@ -1,3 +1,4 @@
+#include "app/Feedback.h"
 #include "app/UI.h"
 #include <filesystem>
 #include <ftxui/dom/elements.hpp>
@@ -13,43 +14,68 @@ TorrentDisplayBase* TorrentDisplayBase::From(Component component) {
     return static_cast<TorrentDisplayBase*>(component.get());
 }
 
-std::optional<std::wstring> TorrentDisplayBase::parse_command(std::wstring ws) {
-    std::wstringstream ss(ws);
+bool TorrentDisplayBase::parse_command(StringRef ws) {
+    std::wstringstream ss(ws->data());
     std::wstring com;
     ss >> com;
     
-    m_output_string = L"gotcha";
-
-    if(com.compare(L"exit")) {
-        return {};
+    if(com == L"exit") {
+        m_feedback.m_msg = L"Exiting...";
+        m_feedback.m_type = FeedbackType::Warning;
+        return true;
+    } 
+    
+    if(com == L"help") {
+        m_feedback.m_msg = L"Available commands: exit, add <filepath>, stop <torrent name or id>, resume <torrent name or id>, remove <torrent name or id>";
+        m_feedback.m_type = FeedbackType::Info;
+        return false;
     }
 
-    if(!elem(com,L"add",L"stop",L"remove")) {
-        return L"unknown command: " + com;
+    if(!elem(com,L"add",L"stop",L"resume",L"remove")) {
+        m_feedback.m_msg = L"unknown command: " + com;
+        m_feedback.m_type = FeedbackType::Error;
+
+        return false;
     }
 
-    if(ss.rdbuf()->in_avail()) {
-        return L"expecting exactly 1 argument but got none";
+    if(!ss.rdbuf()->in_avail()) {
+        m_feedback.m_msg = L"expecting exactly 1 argument but got none";
+        m_feedback.m_type = FeedbackType::Error;
+
+        return false;
     }
 
-    if(com.compare(L"add")) {
+    if(com == L"add") {
         std::wstring path;
         ss >> path;
         if(!std::filesystem::exists(path)) {
-            return L"path does not exist: " + path;
+            m_feedback.m_msg = L"path does not exist: " + path;
+            m_feedback.m_type = FeedbackType::Error;
         } else {
             //parse file and create torrent
             // on error return error message
-            return {};
         }
-    } else if (com.compare(L"stop")) {
+
+        return false;
+    } 
+    
+    if (com == L"stop") {
         std::wstring torr_id;
         ss >> torr_id;
-        return {};
-    } else {
-
-        return {};
+        // return {};
     }
+
+    if(com == L"resume") {
+        std::wstring torr_id;
+        ss >> torr_id;
+    }
+
+    if(com == L"remove") {
+        std::wstring torr_id;
+        ss >> torr_id;
+    }
+
+    return false;
 }
 
 Element TorrentDisplayBase::Render() {
@@ -119,8 +145,7 @@ Element TorrentDisplayBase::Render() {
                         cell(L""),
                         cell(L"")})
                         })  | flex ,
-                separator() | color(Color::GreenLight),
-                hbox({text(m_output_string)}),
+                hbox({text(m_feedback.m_msg) | color(feedBackColor(m_feedback))}),
                 separator() | color(Color::GreenLight),
                 hbox({m_terminal_input->Render()})  | color(Color::GreenLight),
                 separator()  | color(Color::GreenLight)

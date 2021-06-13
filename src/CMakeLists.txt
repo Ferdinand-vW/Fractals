@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 # file(GLOB SOURCES "*.cpp" "")
 set(SOURCES main.cpp 
             app/Client.cpp
+            app/Feedback.cpp
             app/UI.cpp
             app/TerminalInput.cpp
             app/TorrentDisplay.cpp

@@ -3,6 +3,7 @@
 #include "network/p2p/BitTorrent.h"
 #include "torrent/Torrent.h"
 #include "app/TerminalInput.h"
+#include "app/Feedback.h"
 
 #include "ftxui/component/input.hpp"
 #include "ftxui/component/captured_mouse.hpp"  // for ftxui
@@ -29,7 +30,7 @@ class TorrentDisplayBase : public ComponentBase {
         std::vector<std::shared_ptr<Torrent>> completed;
         std::vector<std::shared_ptr<Torrent>> stopped;
         Component m_terminal_input;
-        std::wstring m_output_string;
+        Feedback m_feedback;
 
     public:
         // Constructor.
@@ -39,7 +40,7 @@ class TorrentDisplayBase : public ComponentBase {
         // Access this interface from a Component
         static TorrentDisplayBase* From(Component component);
         Element Render() override;
-        std::optional<std::wstring> parse_command(std::wstring ws);
+        bool parse_command(StringRef ws);
 };
 
 Component TorrentDisplay(Component terminal_input);
