@@ -1,9 +1,34 @@
-#include "app/UI.h"
-#include "app/TerminalInput.h"
-#include "app/TorrentDisplay.h"
-#include <cstdio>
+#include "app/TorrentController.h"
+#include "neither/either.hpp"
+#include "persist/storage.h"
+#include <boost/asio/io_context.hpp>
 
-void runUI() {
+TorrentController::TorrentController(boost::asio::io_context &io,Storage &st) : m_io(io),m_storage(st) {
+
+}
+
+void TorrentController::run() {
+    runUI();
+}
+
+Either<std::string,int> TorrentController::on_add(std::string filepath) {
+    return left("test"s);
+}
+
+std::optional<std::string> on_remove(int torr_id) {
+    return {};
+}
+
+std::optional<std::string> on_stop(int torr_id) {
+    return {};
+}
+
+std::optional<std::string> on_resume(int torr_id) {
+    return {};  
+}
+
+void TorrentController::runUI() {
+    using namespace ftxui;
     auto screen = ftxui::ScreenInteractive::Fullscreen();
 
     std::wstring input_string;

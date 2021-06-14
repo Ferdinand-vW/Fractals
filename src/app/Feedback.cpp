@@ -8,6 +8,8 @@ Color feedBackTypeColor(FeedbackType fbt) {
             return Color::Yellow;
         case FeedbackType::Info:
             return Color::White;
+        default:
+            return Color::Blue;
     }
 }
 

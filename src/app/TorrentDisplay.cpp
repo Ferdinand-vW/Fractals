@@ -1,5 +1,5 @@
 #include "app/Feedback.h"
-#include "app/UI.h"
+#include "app/TorrentDisplay.h"
 #include <filesystem>
 #include <ftxui/dom/elements.hpp>
 #include <sstream>
