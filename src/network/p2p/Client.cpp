@@ -29,7 +29,6 @@
 Client::Client(std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
               ,Storage storage
-              ,std::set<int> pieces
               ,std::function<void(PeerId,PeerChange)> on_change_peers)
               : m_io(io)
               ,m_torrent(torrent)
@@ -39,7 +38,7 @@ Client::Client(std::shared_ptr<Torrent> torrent
               ,m_lg(logger::get()) {
     m_client_id = generate_peerId();
 
-    m_existing_pieces = pieces;
+    m_existing_pieces = m_torrent->get_pieces();
     // Pieces are zero based index
     for(int i = 0; i < torrent->m_mi.info.number_of_pieces(); i++) {
         //piece has not been downloaded yet so we wish to download it

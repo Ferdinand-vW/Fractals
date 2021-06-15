@@ -65,7 +65,6 @@ class Client : public enable_shared_from_this<Client> {
         Client(std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
               ,Storage storage
-              ,std::set<int> pieces
               ,std::function<void(PeerId,PeerChange)> on_change_peers);
 
         bool has_all_pieces();

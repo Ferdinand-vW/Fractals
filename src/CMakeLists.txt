@@ -8,6 +8,7 @@ set(SOURCES main.cpp
             app/TorrentController.cpp
             app/TerminalInput.cpp
             app/TorrentDisplay.cpp
+            app/TorrentView.cpp
             common/encode.cpp 
             common/utils.cpp
             network/http/Tracker.cpp

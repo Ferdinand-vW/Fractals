@@ -4,6 +4,7 @@
 #include "torrent/Torrent.h"
 #include "app/TerminalInput.h"
 #include "app/Feedback.h"
+#include "app/TorrentView.h"
 
 #include "ftxui/component/input.hpp"
 #include "ftxui/component/captured_mouse.hpp"  // for ftxui
@@ -26,9 +27,9 @@ using namespace ftxui;
 
 class TorrentDisplayBase : public ComponentBase {
     private:
-        std::vector<std::shared_ptr<BitTorrent>> running;
-        std::vector<std::shared_ptr<Torrent>> completed;
-        std::vector<std::shared_ptr<Torrent>> stopped;
+        std::vector<TorrentView> running;
+        std::vector<TorrentView> completed;
+        std::vector<TorrentView> stopped;
         Component m_terminal_input;
         Feedback m_feedback;
 

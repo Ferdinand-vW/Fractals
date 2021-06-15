@@ -11,7 +11,8 @@
 #include "torrent/BencodeConvert.h"
 
 
-Torrent::Torrent(MetaInfo &mi,std::string fileName) : m_name(fileName),m_mi(mi),m_lg(logger::get()) {
+Torrent::Torrent(MetaInfo &mi,std::string fileName,std::set<int> pieces) 
+                : m_name(fileName),m_mi(mi),m_lg(logger::get()),m_pieces(pieces) {
     auto info = m_mi.info;
     auto fm = info.file_mode;
     std::filesystem::path p(fileName);
@@ -45,7 +46,7 @@ Torrent Torrent::read_torrent(std::string fp) {
     std::filesystem::path p(fp);
     neither::Either<std::string,MetaInfo> bd = BencodeConvert::from_bdata<MetaInfo>(bencode::bdata(bd_));
 
-    return Torrent(bd.rightValue,p.stem().string());
+    return Torrent(bd.rightValue,p.stem().string(),{});
 
 }
 
@@ -134,6 +135,23 @@ void Torrent::create_files(std::vector<FileData> &fds) {
     }
 }
 
+long long Torrent::size_of_pieces(std::set<int> pieces) {
+    //all pieces but last have equal size.
+    long long sum_size_pieces = m_mi.info.number_of_pieces() * m_mi.info.piece_length;
+
+    //if last piece is also present then we must subtract one standard piece size 
+    // from the above and add the last piece size
+    int last_piece = m_mi.info.number_of_pieces() - 1;
+    bool has_last_piece = pieces.find(last_piece) != pieces.end();
+    if(has_last_piece) {
+        sum_size_pieces -= m_mi.info.piece_length; //subtract standard piece size
+        sum_size_pieces += size_of_piece(last_piece); //then add last piece size
+    }
+
+    return sum_size_pieces;
+
+}
+
 long long Torrent::size_of_piece(int piece) {
     auto info = m_mi.info;
     int piece_length = info.piece_length;
@@ -157,6 +175,18 @@ long long Torrent::size_of_piece(int piece) {
 
         return sum_file_lengths - (num_pieces - 1) * info.piece_length;
     }
+}
+
+void Torrent::add_piece(int p) {
+    m_pieces.insert(p);
+}
+
+void Torrent::add_piece(std::set<int> pieces) {
+    m_pieces.insert(pieces.begin(),pieces.end());
+}
+
+std::set<int> Torrent::get_pieces() {
+    return m_pieces;
 }
 
 long long Torrent::cumulative_size_of_pieces(int piece) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ftxui/component/screen_interactive.hpp"
 #include "neither/either.hpp"
 #include "network/p2p/BitTorrent.h"
 #include "persist/storage.h"
@@ -16,6 +17,7 @@ class TorrentController {
     private:
         boost::asio::io_context &m_io;
         Storage &m_storage;
+        ftxui::ScreenInteractive m_screen;
 
         //unique id for each torrent, displayed under # column
         std::map<int,std::shared_ptr<Torrent>> torrents;
