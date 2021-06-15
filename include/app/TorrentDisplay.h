@@ -27,9 +27,9 @@ using namespace ftxui;
 
 class TorrentDisplayBase : public ComponentBase {
     private:
-        std::vector<TorrentView> running;
-        std::vector<TorrentView> completed;
-        std::vector<TorrentView> stopped;
+        std::vector<TorrentView> m_running;
+        std::vector<TorrentView> m_completed;
+        std::vector<TorrentView> m_stopped;
         Component m_terminal_input;
         Feedback m_feedback;
 

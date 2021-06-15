@@ -6,16 +6,9 @@
 class TorrentView {
 
     public:
-        TorrentView(std::shared_ptr<BitTorrent> t);
-
-
-    private:
-        std::shared_ptr<BitTorrent> m_model;
         int m_id;
-        std::optional<time_t> prev_time;
-        long long prev_downloaded = 0;
-        long long prev_uploaded = 0;
-        
+
+        TorrentView(std::shared_ptr<BitTorrent> t);
         std::string get_name();
         long long get_size();
         long long get_downloaded();
@@ -26,4 +19,10 @@ class TorrentView {
         int get_connected_seeders();
         int get_total_leechers();
         int get_connected_leechers();
+
+    private:
+        std::shared_ptr<BitTorrent> m_model;
+        std::optional<time_t> prev_time;
+        long long prev_downloaded = 0;
+        long long prev_uploaded = 0;
 };

@@ -1,8 +1,12 @@
 #include "app/Feedback.h"
 #include "app/TorrentDisplay.h"
+#include "ftxui/screen/screen.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <ftxui/dom/elements.hpp>
+#include <iterator>
 #include <sstream>
+#include <string>
 
 Component TorrentDisplay(Component terminal_input) {
     return Make<TorrentDisplayBase>(terminal_input);
@@ -93,58 +97,71 @@ Element TorrentDisplayBase::Render() {
             return hbox({text(wbefore),column(name),text(wafter)});
         };
 
+    std::vector<ftxui::Element> idElems;
+    std::vector<ftxui::Element> stateElems;
+    std::vector<ftxui::Element> nameElems;
+    std::vector<ftxui::Element> sizeElems;
+    std::vector<ftxui::Element> progressElems;
+    std::vector<ftxui::Element> downElems;
+    std::vector<ftxui::Element> upElems;
+    std::vector<ftxui::Element> etaElems;
+
+    auto populate = [&](auto &collection) {
+        for(TorrentView &tv : collection) {
+            idElems.push_back(cell(std::to_wstring(tv.m_id)));
+            stateElems.push_back(cell(L"Running"));
+            std::wstring wname(tv.get_name().begin(),tv.get_name().end());
+            nameElems.push_back(cell(wname));
+            sizeElems.push_back(cell(std::to_wstring(tv.get_size())));
+            progressElems.push_back(cell(std::to_wstring(tv.get_downloaded())));
+            downElems.push_back(cell(std::to_wstring(tv.get_download_speed())));
+            upElems.push_back(cell(std::to_wstring(tv.get_upload_speed())));
+            etaElems.push_back(cell(L"0"));
+        }
+    };
+
+    // set column headers
+    idElems.push_back(colOfSize(L"#",4));
+    idElems.push_back(separator() | color(Color::GreenLight));
+    stateElems.push_back(colOfSize(L"State",10));
+    stateElems.push_back(separator() | color(Color::GreenLight));
+    nameElems.push_back(column(L"Torrent Name"));
+    nameElems.push_back(separator() | color(Color::GreenLight));
+    sizeElems.push_back(colOfSize(L"Size", 12));
+    sizeElems.push_back(separator() | color(Color::GreenLight));
+    progressElems.push_back(colOfSize(L"Progress", 16));
+    progressElems.push_back(separator() | color(Color::GreenLight));
+    downElems.push_back(colOfSize(L"Down", 12));
+    downElems.push_back(separator() | color(Color::GreenLight));
+    upElems.push_back(colOfSize(L"Up", 12));
+    upElems.push_back(separator() | color(Color::GreenLight));
+    etaElems.push_back(column(L"ETA"));
+    etaElems.push_back(separator() | color(Color::GreenLight));
+
+    //populate each column; each column 1 cell per torrent
+    populate(m_running);
+    populate(m_completed);
+    populate(m_stopped);
+    
     return vbox({
                 // columns
                 hbox({
-                    vbox({
-                        column(L"#"),
-                        separator() | color(Color::GreenLight),
-                        cell(L"test"),
-                        cell(L"test2")}),
-                    vbox({separator(),filler(),filler()}),
-                    vbox({
-                        column(L"State"),
-                        separator() | color(Color::GreenLight),
-                        cell(L"Running"),
-                        cell(L"Completed")
-                    }),
-                    vbox({separator(),filler(),filler()}),
-                    cols({
-                        column(L"Torrent Name"),
-                        separator() | color(Color::GreenLight),
-                        cell(L"test"),
-                        cell(L"test2")}),
-                    vbox({separator(),filler(),filler()}),
-                    vbox({
-                        colOfSize(L"Size", 12),
-                        separator() | color(Color::GreenLight),
-                        cell(L"test"),
-                        cell(L"test2")}),
-                    vbox({separator(),filler(),filler()}),
-                    vbox({
-                        colOfSize(L"Progress", 16),
-                        separator() | color(Color::GreenLight),
-                        cell(L"test"),
-                        cell(L"test")}),
-                    vbox({separator(),filler(),filler()}),
-                    vbox({
-                        colOfSize(L"Down", 12),
-                        separator() | color(Color::GreenLight),
-                        cell(L"test"),
-                        cell(L"test")}),
-                    vbox({separator(),filler(),filler()}),
-                    vbox({
-                        colOfSize(L"Up", 12),
-                        separator() | color(Color::GreenLight),
-                        cell(L"test"),
-                        cell(L"test2")}),
-                    vbox({separator(),filler(),filler()}),
-                    cols({
-                        column(L"ETA"),
-                        separator() | color(Color::GreenLight),
-                        cell(L""),
-                        cell(L"")})
-                        })  | flex ,
+                    vbox(idElems),
+                    vbox({separator()}),
+                    vbox(stateElems),
+                    vbox({separator()}),
+                    vbox(nameElems) | xflex,
+                    vbox({separator()}),
+                    vbox(sizeElems),
+                    vbox({separator()}),
+                    vbox(progressElems),
+                    vbox({separator()}),
+                    vbox(downElems),
+                    vbox({separator()}),
+                    vbox(upElems),
+                    vbox({separator()}),
+                    vbox(etaElems) | xflex
+                    }) | flex,
                 hbox({text(m_feedback.m_msg) | color(feedBackColor(m_feedback))}),
                 separator() | color(Color::GreenLight),
                 hbox({m_terminal_input->Render()})  | color(Color::GreenLight),
