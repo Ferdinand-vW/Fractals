@@ -1,8 +1,10 @@
 #include "app/TorrentController.h"
+#include "app/TorrentDisplay.h"
 #include "ftxui/component/screen_interactive.hpp"
 #include "neither/either.hpp"
 #include "persist/storage.h"
 #include <boost/asio/io_context.hpp>
+#include <functional>
 
 TorrentController::TorrentController(boost::asio::io_context &io,Storage &st) 
                                   : m_io(io),m_storage(st)
@@ -16,15 +18,15 @@ Either<std::string,int> TorrentController::on_add(std::string filepath) {
     return left("test"s);
 }
 
-std::optional<std::string> on_remove(int torr_id) {
+std::optional<std::string> TorrentController::on_remove(int torr_id) {
     return {};
 }
 
-std::optional<std::string> on_stop(int torr_id) {
+std::optional<std::string> TorrentController::on_stop(int torr_id) {
     return {};
 }
 
-std::optional<std::string> on_resume(int torr_id) {
+std::optional<std::string> TorrentController::on_resume(int torr_id) {
     return {};  
 }
 
@@ -42,6 +44,14 @@ void TorrentController::runUI() {
     Component terminal_input = TerminalInput(&input_string, "");
 
     Component td = TorrentDisplay(terminal_input);
+    auto tdb = TorrentDisplayBase::From(td);
+
+    //Sets up control flow of View -> Controller
+    tdb->on_add    = std::bind(&TorrentController::on_add,this,std::placeholders::_1);
+    tdb->on_remove = std::bind(&TorrentController::on_remove,this,std::placeholders::_1);
+    tdb->on_stop   = std::bind(&TorrentController::on_stop,this,std::placeholders::_1);
+    tdb->on_resume = std::bind(&TorrentController::on_resume,this,std::placeholders::_1);
+
     auto doExit = m_screen.ExitLoopClosure(); //had to move this outside of the on_enter definition
                                             // as it would otherwise not trigger
     TerminalInputBase::From(terminal_input)->on_escape = doExit;

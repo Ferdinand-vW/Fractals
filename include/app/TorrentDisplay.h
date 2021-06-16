@@ -34,6 +34,11 @@ class TorrentDisplayBase : public ComponentBase {
         Feedback m_feedback;
 
     public:
+        std::function<Either<std::string,int>(std::string)> on_add;
+        std::function<std::optional<std::string>(int)> on_remove;
+        std::function<std::optional<std::string>(int)> on_stop;
+        std::function<std::optional<std::string>(int)> on_resume;
+
         // Constructor.
         TorrentDisplayBase(Component terminal_input);
         ~TorrentDisplayBase() override = default;
