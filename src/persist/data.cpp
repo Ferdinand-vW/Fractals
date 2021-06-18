@@ -1,4 +1,5 @@
 #include "persist/data.h"
+#include "common/maybe.h"
 #include "network/http/Peer.h"
 #include <algorithm>
 #include <functional>
@@ -9,14 +10,17 @@ void save_torrent(const Storage &st, const Torrent &t) {
     st.add_torrent(tm);
 }
 
-std::vector<std::unique_ptr<Torrent>> load_torrents(const Storage &st) {
+std::vector<std::shared_ptr<Torrent>> load_torrents(const Storage &st) {
     auto tms = st.load_torrents();
 
-    std::vector<std::unique_ptr<Torrent>> torrs;
+    std::vector<std::shared_ptr<Torrent>> torrs;
 
-    std::transform(tms.begin(),tms.end(),std::back_inserter(torrs),[](auto &tm) {
-        return std::make_unique<Torrent>(Torrent::read_torrent(tm.meta_info_path));
-    });
+    for(auto &tm : tms) {
+        auto t = Torrent::read_torrent(tm.meta_info_path);
+        if(!t.isLeft) {
+            torrs.push_back(std::make_shared<Torrent>(t.rightValue));
+        }
+    }
 
     return torrs;
 }

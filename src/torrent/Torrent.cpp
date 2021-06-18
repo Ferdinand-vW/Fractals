@@ -5,6 +5,7 @@
 #include "bencode/bencode.h"
 #include "common/encode.h"
 #include "common/utils.h"
+#include "neither/either.hpp"
 #include "network/p2p/Message.h"
 #include "torrent/Torrent.h"
 #include "torrent/MetaInfo.h"
@@ -37,17 +38,25 @@ Torrent::Torrent(MetaInfo &mi,std::string fileName,std::set<int> pieces)
     m_info_hash = sha1_encode(bencode::encode(BencodeConvert::to_bdict(m_mi.info)));
 }
 
-Torrent Torrent::read_torrent(std::string fp) {
+neither::Either<std::string,Torrent> Torrent::read_torrent(std::string fp) {
     std::ifstream fstream;
     fstream.open(fp, std::ifstream::binary);
+    
     auto mbd = bencode::decode<bencode::bdict>(fstream);
+    //return on decode failure
+    if(mbd.has_error()) { return left(mbd.error().message()); }
+
+    //value is safe since we return on error above
     bencode::bdict bd_ = mbd.value();
 
     std::filesystem::path p(fp);
     neither::Either<std::string,MetaInfo> bd = BencodeConvert::from_bdata<MetaInfo>(bencode::bdata(bd_));
 
-    return Torrent(bd.rightValue,p.stem().string(),{});
-
+    if(bd.isLeft) {
+        return left<std::string>(bd.leftValue);
+    } else {
+        return right(Torrent(bd.rightValue,p.stem().string(),{}));
+    }
 }
 
 /*

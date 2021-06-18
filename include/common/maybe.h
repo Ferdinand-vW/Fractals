@@ -102,8 +102,20 @@ static C either_to_val(const Either<A,B> &e,std::function<C(A)> f,std::function<
 }
 
 template<class A,class B,class C>
-static Either<A,Either<B,C>> either_of(Either<A,B> e1,Either<A,C> e2) {
+static Either<A,Either<B,C>> either_of(const Either<A,B> &e1,const Either<A,C> &e2) {
     if (!e1.isLeft) { return e1.rightMap([](const B &l) { return Either<B,C>(left(l)); }); }
     else            { return e2.rightMap([](const C &r) { return Either<B,C>(right(r)); }); }
 }
 
+template<class A,class B,class C>
+static std::vector<C> map_either(const std::vector<B> &vec,std::function<Either<A,C>(B)> f) {
+    std::vector<C> out;
+    for(B &b : vec) {
+        Either<A,C> c = f(b);
+        if(c.isRight) {
+            out.push_back(c.rightValue);
+        }
+    }
+
+    return out;
+}

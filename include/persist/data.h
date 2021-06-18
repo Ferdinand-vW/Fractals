@@ -5,7 +5,7 @@
 #include "network/http/Announce.h"
 
 void save_torrent(const Storage &st, const Torrent &t);
-std::vector<std::unique_ptr<Torrent>> load_torrents(const Storage &st);
+std::vector<std::shared_ptr<Torrent>> load_torrents(const Storage &st);
 void delete_torrent (const Storage &st,const Torrent &t);
 
 void save_piece(const Storage &st,const Torrent &t,int piece);

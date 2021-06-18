@@ -2,9 +2,11 @@
 #include "app/TorrentDisplay.h"
 #include "ftxui/component/screen_interactive.hpp"
 #include "neither/either.hpp"
+#include "persist/data.h"
 #include "persist/storage.h"
 #include <boost/asio/io_context.hpp>
 #include <functional>
+#include <mutex>
 
 TorrentController::TorrentController(boost::asio::io_context &io,Storage &st) 
                                   : m_io(io),m_storage(st)
@@ -15,7 +17,19 @@ void TorrentController::run() {
 }
 
 Either<std::string,int> TorrentController::on_add(std::string filepath) {
-    return left("test"s);
+    auto torr = Torrent::read_torrent(filepath);
+    if(torr.isLeft) {
+        return left<std::string>(torr.leftValue);
+    } else {
+        //write torrent to database
+        save_torrent(m_storage, torr.rightValue);
+
+        //list torrent in display and assign id
+        int torr_id = list_torrent(std::make_shared<Torrent>(torr.rightValue));
+        start_torrent(torr_id); //Start running the torrent
+
+        return right<int>(torr_id);
+    }
 }
 
 std::optional<std::string> TorrentController::on_remove(int torr_id) {
@@ -28,6 +42,24 @@ std::optional<std::string> TorrentController::on_stop(int torr_id) {
 
 std::optional<std::string> TorrentController::on_resume(int torr_id) {
     return {};  
+}
+
+int TorrentController::list_torrent(std::shared_ptr<Torrent> torrent) {
+    int torr_id = -1;
+    {   //make sure each displayed torrent is assigned a unique id during lifetime the program 
+        std::unique_lock<std::mutex> lock(m_mutex);
+        torr_id = m_torrent_counter;
+        m_torrent_counter++;
+    }
+
+    // display the 
+    m_torrents.insert({torr_id,torrent});
+
+    return torr_id;
+}
+
+void TorrentController::start_torrent(int torr_id) {
+
 }
 
 void TorrentController::on_exit() {

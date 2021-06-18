@@ -18,16 +18,20 @@ class TorrentController {
         boost::asio::io_context &m_io;
         Storage &m_storage;
         ftxui::ScreenInteractive m_screen;
+        std::mutex m_mutex;
+        std::atomic<int> m_torrent_counter = 0;
 
         //unique id for each torrent, displayed under # column
-        std::map<int,std::shared_ptr<Torrent>> torrents;
-        std::map<int,std::shared_ptr<BitTorrent>> active_torrents;
+        std::map<int,std::shared_ptr<Torrent>> m_torrents;
+        std::map<int,std::shared_ptr<BitTorrent>> m_active_torrents;
         
         //callback functions to be passed to view
         Either<std::string, int> on_add(std::string filepath);
         std::optional<std::string> on_remove(int torr_id);
         std::optional<std::string> on_stop(int torr_id);
         std::optional<std::string> on_resume(int torr_id);
+        int list_torrent(std::shared_ptr<Torrent> torrent);
+        void start_torrent(int torr_id);
         void on_exit();
 
         void runUI();
