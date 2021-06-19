@@ -27,17 +27,18 @@ using namespace ftxui;
 
 class TorrentDisplayBase : public ComponentBase {
     private:
-        std::vector<TorrentView> m_running;
-        std::vector<TorrentView> m_completed;
-        std::vector<TorrentView> m_stopped;
         Component m_terminal_input;
         Feedback m_feedback;
 
     public:
-        std::function<Either<std::string,int>(std::string)> on_add;
-        std::function<std::optional<std::string>(int)> on_remove;
-        std::function<std::optional<std::string>(int)> on_stop;
-        std::function<std::optional<std::string>(int)> on_resume;
+        std::vector<TorrentView> m_running;
+        std::vector<TorrentView> m_completed;
+        std::vector<TorrentView> m_stopped;
+
+        std::function<Either<std::string,std::string>(std::string)> m_on_add;
+        std::function<std::optional<std::string>(int)> m_on_remove;
+        std::function<std::optional<std::string>(int)> m_on_stop;
+        std::function<std::optional<std::string>(int)> m_on_resume;
 
         // Constructor.
         TorrentDisplayBase(Component terminal_input);

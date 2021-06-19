@@ -147,14 +147,10 @@ std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bytes) {
     return v;
 }
 
-/*
-s = 7 i = 0
-s = 6 i = 1
-s = 5 i = 2
-s = 4 i = 3
-s = 3 i = 4
-s = 2 i = 5
-s = 1 i = 6
-s = 0 i = 7
-s = 7 i = 0
-*/
+std::wstring make_wide(const std::string &s) {
+    return std::wstring(s.begin(),s.end());
+}
+
+std::string unwide(const std::wstring &ws) {
+    return std::string(ws.begin(),ws.end());
+}

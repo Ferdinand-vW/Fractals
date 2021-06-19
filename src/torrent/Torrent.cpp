@@ -146,7 +146,7 @@ void Torrent::create_files(std::vector<FileData> &fds) {
 
 long long Torrent::size_of_pieces(std::set<int> pieces) {
     //all pieces but last have equal size.
-    long long sum_size_pieces = m_mi.info.number_of_pieces() * m_mi.info.piece_length;
+    long long sum_size_pieces = pieces.size() * m_mi.info.piece_length;
 
     //if last piece is also present then we must subtract one standard piece size 
     // from the above and add the last piece size

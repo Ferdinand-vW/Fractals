@@ -54,10 +54,16 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         ss >> path;
         if(!std::filesystem::exists(path)) {
             m_feedback.m_msg = L"path does not exist: " + path;
-            m_feedback.m_type = FeedbackType::Error;
+            m_feedback.m_type = FeedbackType::Warning;
         } else {
-            //parse file and create torrent
-            // on error return error message
+            auto res = m_on_add(unwide(path));
+            if(res.isLeft) {
+                m_feedback.m_msg = make_wide(res.rightValue);
+                m_feedback.m_type = FeedbackType::Error;
+            } else {
+                m_feedback.m_msg = L"added torrent " + make_wide(res.rightValue);
+                m_feedback.m_type = FeedbackType::Info;
+            }
         }
 
         return false;
@@ -106,12 +112,11 @@ Element TorrentDisplayBase::Render() {
     std::vector<ftxui::Element> upElems;
     std::vector<ftxui::Element> etaElems;
 
-    auto populate = [&](auto &collection) {
+    auto populate = [&](auto &s,auto &collection) {
         for(TorrentView &tv : collection) {
             idElems.push_back(cell(std::to_wstring(tv.m_id)));
-            stateElems.push_back(cell(L"Running"));
-            std::wstring wname(tv.get_name().begin(),tv.get_name().end());
-            nameElems.push_back(cell(wname));
+            stateElems.push_back(cell(s));
+            nameElems.push_back(cell(make_wide(tv.get_name())));
             sizeElems.push_back(cell(std::to_wstring(tv.get_size())));
             progressElems.push_back(cell(std::to_wstring(tv.get_downloaded())));
             downElems.push_back(cell(std::to_wstring(tv.get_download_speed())));
@@ -138,10 +143,10 @@ Element TorrentDisplayBase::Render() {
     etaElems.push_back(column(L"ETA"));
     etaElems.push_back(separator() | color(Color::GreenLight));
 
-    //populate each column; each column 1 cell per torrent
-    populate(m_running);
-    populate(m_completed);
-    populate(m_stopped);
+    // //populate each column; each column 1 cell per torrent
+    populate(L"Running",m_running);
+    populate(L"Completed",m_completed);
+    populate(L"Stopped",m_stopped);
     
     return vbox({
                 // columns

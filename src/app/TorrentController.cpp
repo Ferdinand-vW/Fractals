@@ -2,6 +2,7 @@
 #include "app/TorrentDisplay.h"
 #include "ftxui/component/screen_interactive.hpp"
 #include "neither/either.hpp"
+#include "network/p2p/BitTorrent.h"
 #include "persist/data.h"
 #include "persist/storage.h"
 #include <boost/asio/io_context.hpp>
@@ -16,7 +17,7 @@ void TorrentController::run() {
     runUI();
 }
 
-Either<std::string,int> TorrentController::on_add(std::string filepath) {
+Either<std::string,std::string> TorrentController::on_add(std::string filepath) {
     auto torr = Torrent::read_torrent(filepath);
     if(torr.isLeft) {
         return left<std::string>(torr.leftValue);
@@ -24,11 +25,16 @@ Either<std::string,int> TorrentController::on_add(std::string filepath) {
         //write torrent to database
         save_torrent(m_storage, torr.rightValue);
 
-        //list torrent in display and assign id
-        int torr_id = list_torrent(std::make_shared<Torrent>(torr.rightValue));
-        start_torrent(torr_id); //Start running the torrent
+        auto torr_shared = std::make_shared<Torrent>(torr.rightValue);
+        auto bt = std::shared_ptr<BitTorrent>(new BitTorrent(torr_shared,m_io,m_storage));
 
-        return right<int>(torr_id);
+        //list torrent in display and assign id
+        int torr_id = list_torrent(bt);
+        // start_torrent(torr_id); //Start running the torrent
+
+        m_display->m_stopped.push_back(TorrentView(bt));
+
+        return right<std::string>(torr_shared->m_name);
     }
 }
 
@@ -44,7 +50,7 @@ std::optional<std::string> TorrentController::on_resume(int torr_id) {
     return {};  
 }
 
-int TorrentController::list_torrent(std::shared_ptr<Torrent> torrent) {
+int TorrentController::list_torrent(std::shared_ptr<BitTorrent> torrent) {
     int torr_id = -1;
     {   //make sure each displayed torrent is assigned a unique id during lifetime the program 
         std::unique_lock<std::mutex> lock(m_mutex);
@@ -77,12 +83,15 @@ void TorrentController::runUI() {
 
     Component td = TorrentDisplay(terminal_input);
     auto tdb = TorrentDisplayBase::From(td);
-
+    
+    //set up control of view for controller
+    m_display = std::shared_ptr<TorrentDisplayBase>(tdb); 
+    
     //Sets up control flow of View -> Controller
-    tdb->on_add    = std::bind(&TorrentController::on_add,this,std::placeholders::_1);
-    tdb->on_remove = std::bind(&TorrentController::on_remove,this,std::placeholders::_1);
-    tdb->on_stop   = std::bind(&TorrentController::on_stop,this,std::placeholders::_1);
-    tdb->on_resume = std::bind(&TorrentController::on_resume,this,std::placeholders::_1);
+    tdb->m_on_add    = std::bind(&TorrentController::on_add,this,std::placeholders::_1);
+    tdb->m_on_remove = std::bind(&TorrentController::on_remove,this,std::placeholders::_1);
+    tdb->m_on_stop   = std::bind(&TorrentController::on_stop,this,std::placeholders::_1);
+    tdb->m_on_resume = std::bind(&TorrentController::on_resume,this,std::placeholders::_1);
 
     auto doExit = m_screen.ExitLoopClosure(); //had to move this outside of the on_enter definition
                                             // as it would otherwise not trigger

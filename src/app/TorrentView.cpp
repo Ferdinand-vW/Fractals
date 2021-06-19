@@ -29,7 +29,7 @@ long long TorrentView::get_downloaded() {
 
 long long TorrentView::get_download_speed() {
     time_t curr = std::time(0);
-    if(!prev_time.has_value()) {
+    if(!prev_time.has_value() || prev_time == curr) {
         prev_time = curr;
         return 0;
     }
@@ -39,6 +39,7 @@ long long TorrentView::get_download_speed() {
     auto downl = get_downloaded();
 
     // (number of bytes downloaded since previous update) / (time passed since previous update)
+
     auto speed = (downl - prev_downloaded) / (curr - prev);
 
     // update the 'prev' variables with values of 'curr' variables
@@ -50,7 +51,7 @@ long long TorrentView::get_download_speed() {
 
 long long TorrentView::get_upload_speed() {
     time_t curr = std::time(0);
-    if(!prev_time.has_value()) {
+    if(!prev_time.has_value() || prev_time == curr) {
         prev_time = curr;
         return 0;
     }
