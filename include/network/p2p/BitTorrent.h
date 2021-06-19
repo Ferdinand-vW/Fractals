@@ -42,6 +42,7 @@ class BitTorrent {
                    ,boost::asio::io_context &io
                    ,Storage st);
         void run();
+        void stop();
 
         std::shared_ptr<Torrent> m_torrent;
         std::shared_ptr<Client> m_client;

@@ -187,16 +187,6 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
 }
 
 void BitTorrent::run() {
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work(m_io.get_executor());
-
-    boost::thread_group threads;
-
-    for( unsigned int i = 0; i < 4; i++ ) {
-        threads.create_thread(
-            [&]() { m_io.run(); }
-        );
-}
-
     setup_client();
 
     request_peers();
@@ -204,6 +194,9 @@ void BitTorrent::run() {
 
     //attempt to connect to peers
     connect_to_a_peer();
+}
 
-    threads.join_all();
+void BitTorrent::stop() {
+    m_max_peers = 0; //make sure client does not attempt to connect to new peers
+    m_client->close_connections();
 }

@@ -7,25 +7,34 @@
 #include "torrent/Torrent.h"
 #include "app/TorrentDisplay.h"
 #include "app/TerminalInput.h"
+#include <boost/asio/detail/thread_group.hpp>
 #include <boost/asio/io_context.hpp>
 
 class TorrentController {
     public:
         TorrentController(boost::asio::io_context &m_io,Storage &st);
         void run();
+        void exit();
 
     private:
         boost::asio::io_context &m_io;
         Storage &m_storage;
-        ftxui::ScreenInteractive m_screen;
+        
         std::mutex m_mutex;
+        boost::log::sources::logger_mt &m_lg;
+
         std::atomic<int> m_torrent_counter = 0;
+        int m_thread_count = 4;
+        boost::asio::detail::thread_group m_threads;
+        using work_guard = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
+        std::optional<work_guard> m_work;
 
         //unique id for each torrent, displayed under # column
         std::map<int,std::shared_ptr<BitTorrent>> m_torrents;
         std::map<int,std::shared_ptr<BitTorrent>> m_active_torrents;
         
-        std::shared_ptr<TorrentDisplayBase> m_display;
+        Component m_display;
+        ftxui::ScreenInteractive m_screen;
 
         //callback functions to be passed to view
         Either<std::string, std::string> on_add(std::string filepath);
@@ -34,6 +43,7 @@ class TorrentController {
         std::optional<std::string> on_resume(int torr_id);
         int list_torrent(std::shared_ptr<BitTorrent> torrent);
         void start_torrent(int torr_id);
+        void stop_torrents();
         void on_exit();
 
         void runUI();

@@ -67,6 +67,8 @@ class Client : public enable_shared_from_this<Client> {
               ,Storage storage
               ,std::function<void(PeerId,PeerChange)> on_change_peers);
 
+        void close_connections();
+
         bool has_all_pieces();
         bool is_choked_by(PeerId p);
         bool is_connected_to(PeerId p);

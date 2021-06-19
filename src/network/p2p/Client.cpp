@@ -48,6 +48,12 @@ Client::Client(std::shared_ptr<Torrent> torrent
     }
 };
 
+void Client::close_connections() {
+    for(auto &peer_conn : m_connections) {
+        peer_conn.second->cancel();
+    }
+}
+
 bool Client::has_all_pieces() {
     return m_existing_pieces.size() == m_torrent->m_mi.info.number_of_pieces();
 }
