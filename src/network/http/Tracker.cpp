@@ -219,7 +219,7 @@ neither::Either<std::string, TrackerResponse> sendTrackerRequest(const TrackerRe
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeTrackerResponseData);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         // curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
     
         /* Perform the request, res will get the return code */ 
         res = curl_easy_perform(curl);

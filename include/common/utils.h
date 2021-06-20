@@ -22,6 +22,8 @@ std::string str_concat_vector(const std::vector<std::string> &v);
 std::string intercalate(std::string del,const std::vector<std::string> &v);
 
 std::string make_sized_line(std::string s,int len);
+std::wstring take_n(std::wstring s, int n);
+std::string take_n(std::string s, int n);
 
 std::string concat_paths(std::vector<std::string> v);
 

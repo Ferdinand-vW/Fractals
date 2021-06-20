@@ -94,15 +94,39 @@ std::optional<std::string> TorrentController::add_torrent(std::shared_ptr<BitTor
 }
 
 std::optional<std::string> TorrentController::on_remove(int torr_id) {
+    //starting a non-existing torrent does not do anything
+    if(m_torrents.find(torr_id) == m_torrents.end()) {
+        return "torrent identifier " + std::to_string(torr_id) + " does not match any torrent";
+    }
+
+    auto bt = m_torrents[torr_id];
+    bt->stop();
+    m_torrents.erase(torr_id);
+
     return {};
 }
 
 std::optional<std::string> TorrentController::on_stop(int torr_id) {
+    //starting a non-existing torrent does not do anything
+    if(m_torrents.find(torr_id) == m_torrents.end()) {
+        return "torrent identifier " + std::to_string(torr_id) + " does not match any torrent";
+    }
+
+    auto bt = m_torrents[torr_id];
+    bt->stop();
+
     return {};
 }
 
 std::optional<std::string> TorrentController::on_resume(int torr_id) {
-    return {};  
+    //starting a non-existing torrent does not do anything
+    if(m_torrents.find(torr_id) == m_torrents.end()) {
+        return "torrent identifier " + std::to_string(torr_id) + " does not match any torrent";
+    }
+
+    start_torrent(torr_id);
+
+    return {};
 }
 
 int TorrentController::list_torrent(std::shared_ptr<BitTorrent> torrent) {
@@ -126,7 +150,7 @@ void TorrentController::start_torrent(int torr_id) {
     }
 
     auto bt = m_torrents[torr_id];
-    bt->run();
+    m_io.post([bt]() {bt->run();});
 }
 
 void TorrentController::stop_torrents() {

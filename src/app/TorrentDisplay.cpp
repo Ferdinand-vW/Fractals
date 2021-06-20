@@ -49,6 +49,24 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         return false;
     }
 
+    //parse string identifiers with format '#<integer>'
+    //the integer *should* refer to a torrent id
+    //return error messages on failure
+    auto parse_ident = [](auto &ident) -> Either<std::string,int> {
+        if(ident.substr(0,1) != L"#") {
+            return left<std::string>("torrent identifier must start with #. Expected format is #<torrent id>.");
+        }
+
+        auto s_num = ident.substr(1,ident.size() - 1);
+        int num = -1;
+        auto b = boost::conversion::try_lexical_convert<int>(s_num,num);
+        if(!b) {
+            return left<std::string>("torrent identifier must contain number. Expected format is #<torrent id>.");
+        } else {
+            return right<int>(num);
+        }
+    };
+
     if(com == L"add") {
         std::wstring path;
         ss >> path;
@@ -58,7 +76,7 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         } else {
             auto res = m_on_add(unwide(path));
             if(res.isLeft) {
-                m_feedback.m_msg = make_wide(res.rightValue);
+                m_feedback.m_msg = make_wide(res.leftValue);
                 m_feedback.m_type = FeedbackType::Error;
             } else {
                 m_feedback.m_msg = L"added torrent " + make_wide(res.rightValue);
@@ -70,19 +88,69 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
     } 
     
     if (com == L"stop") {
-        std::wstring torr_id;
-        ss >> torr_id;
-        // return {};
+        //parse and validate the second argument
+        std::wstring ident;
+        ss >> ident;
+        auto arg_ident = parse_ident(ident);
+
+        if(arg_ident.isLeft) {
+            m_feedback.m_msg = make_wide(arg_ident.leftValue);
+            m_feedback.m_type = FeedbackType::Error;
+        } else {
+            //send stop message to TorrentController
+            auto res = m_on_stop(arg_ident.rightValue);
+            if(res.has_value()) { //means failure
+                m_feedback.m_msg = make_wide(res.value());
+                m_feedback.m_type = FeedbackType::Error;
+            } else {
+                m_feedback.m_msg = L"paused torrent " + std::to_wstring(arg_ident.rightValue);
+                m_feedback.m_type = FeedbackType::Info;
+            }
+        }
     }
 
     if(com == L"resume") {
-        std::wstring torr_id;
-        ss >> torr_id;
+        //parse and validate the second argument
+        std::wstring ident;
+        ss >> ident;
+        auto arg_ident = parse_ident(ident);
+
+        if(arg_ident.isLeft) {
+            m_feedback.m_msg = make_wide(arg_ident.leftValue);
+            m_feedback.m_type = FeedbackType::Error;
+        } else {
+            //send resume message to TorrentController
+            auto res = m_on_resume(arg_ident.rightValue);
+            if(res.has_value()) {
+                m_feedback.m_msg = make_wide(res.value());
+                m_feedback.m_type = FeedbackType::Error;
+            } else {
+                m_feedback.m_msg = L"resumed torrent " + std::to_wstring(arg_ident.rightValue);
+                m_feedback.m_type = FeedbackType::Info;
+            }
+        }
     }
 
     if(com == L"remove") {
-        std::wstring torr_id;
-        ss >> torr_id;
+        //parse and validate the second argument
+        std::wstring ident;
+        ss >> ident;
+        auto arg_ident = parse_ident(ident);
+
+        if(arg_ident.isLeft) {
+            m_feedback.m_msg = make_wide(arg_ident.leftValue);
+            m_feedback.m_type = FeedbackType::Error;
+        } else {
+            //send remove message to TorrentController
+            auto res = m_on_remove(arg_ident.rightValue);
+            if(res.has_value()) {
+                m_feedback.m_msg = make_wide(res.value());
+                m_feedback.m_type = FeedbackType::Error;
+            } else {
+                m_feedback.m_msg = L"removed torrent " + std::to_wstring(arg_ident.rightValue);
+                m_feedback.m_type = FeedbackType::Info;
+            }
+        }
     }
 
     return false;

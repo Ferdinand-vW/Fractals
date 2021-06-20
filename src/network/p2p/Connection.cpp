@@ -60,11 +60,13 @@ void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(co
 }
 
 void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
-    BOOST_LOG(m_lg) << "Message Stats:";
-    BOOST_LOG(m_lg) << "size =" << size;
-    BOOST_LOG(m_lg) << "length =" << length;
-    BOOST_LOG(m_lg) << "remaining =" << remaining;
-    BOOST_LOG(m_lg) << "error = " << error.message();
+    if(size == 0) {
+        BOOST_LOG(m_lg) << "Message Stats:";
+        BOOST_LOG(m_lg) << "size =" << size;
+        BOOST_LOG(m_lg) << "length =" << length;
+        BOOST_LOG(m_lg) << "remaining =" << remaining;
+        BOOST_LOG(m_lg) << "error = " << error.message();
+    }
     if (size < remaining && !error) {
         boost::asio::async_read(m_socket,m_buf
                                 ,boost::asio::transfer_exactly(remaining - size)
