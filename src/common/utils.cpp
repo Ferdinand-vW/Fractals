@@ -1,9 +1,11 @@
 
 #include "common/utils.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <iterator>
+#include <list>
 #include <string>
 #include <sstream>
 #include <filesystem>
@@ -145,6 +147,28 @@ std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bytes) {
     }
 
     return v;
+}
+
+std::wstring pp_bytes(long long bytes) {
+    std::list<std::wstring> units = { L"B",L"KB",L"MB",L"GB"};
+    long double d = bytes;
+    auto u = units.front();
+    units.pop_front();
+    while (d > 1000 && units.size() > 0) {
+        d = d / 1000;
+        u = units.front();
+        units.pop_front();
+    }
+
+    auto nat = std::floor(d); // xx.yyzz -> xx
+    auto dec = d - std::floor(d); // xx.yyzz - xx -> 0.yyzz
+    auto dec_rounded = std::floor(dec*100); // 0.yyzz -> yy
+
+    return std::to_wstring((long long)nat) + L"." + std::to_wstring((long long)dec_rounded) + L" " + u;
+}
+
+std::wstring pp_bytes_per_second(long long bytes) {
+    return pp_bytes(bytes) + L"/s";
 }
 
 std::wstring make_wide(const std::string &s) {

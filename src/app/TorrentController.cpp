@@ -17,6 +17,11 @@ TorrentController::TorrentController(boost::asio::io_context &io,Storage &st)
                                   , m_ticker(m_screen) {}
 
 void TorrentController::run() {
+    //initialize view components
+    Component terminal_input = TerminalInput(&m_terminal_input, "");
+    m_terminal = terminal_input;
+    m_display = TorrentDisplay(terminal_input);
+
     for( unsigned int i = 0; i < m_thread_count; i++ ) {
         m_threads.create_thread(
             [&]() { m_io.run(); }
@@ -137,11 +142,7 @@ void TorrentController::on_exit() {
 void TorrentController::runUI() {
     using namespace ftxui;
 
-    std::wstring input_string;
-    Component terminal_input = TerminalInput(&input_string, "");
-
-    //set up control of view for controller
-    m_display = TorrentDisplay(terminal_input);
+    auto terminal = m_terminal.value();
     auto tdb = TorrentDisplayBase::From(m_display.value());
     
     //Sets up control flow of View -> Controller
@@ -152,17 +153,17 @@ void TorrentController::runUI() {
 
     auto doExit = m_screen.ExitLoopClosure(); //had to move this outside of the on_enter definition
                                             // as it would otherwise not trigger
-    TerminalInputBase::From(terminal_input)->on_escape = [this,&doExit] () {
+    TerminalInputBase::From(terminal)->on_escape = [this,&doExit] () {
         exit();
         doExit();
     };
-    TerminalInputBase::From(terminal_input)->on_enter = [this,&doExit,&input_string] () {
-        bool shouldExit = TorrentDisplayBase::From(m_display.value())->parse_command(input_string);
+    TerminalInputBase::From(terminal)->on_enter = [this,&doExit] () {
+        bool shouldExit = TorrentDisplayBase::From(m_display.value())->parse_command(m_terminal_input);
         if(shouldExit) { exit(); doExit(); }
-        input_string = L"";
+        m_terminal_input = L"";
     };
 
-    auto renderer = Renderer(terminal_input,[&] { return m_display.value()->Render(); });
+    auto renderer = Renderer(terminal,[&] { return m_display.value()->Render(); });
     m_ticker.start();
     m_screen.Loop(renderer);
 }

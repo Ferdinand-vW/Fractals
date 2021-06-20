@@ -117,10 +117,10 @@ Element TorrentDisplayBase::Render() {
             idElems.push_back(cell(std::to_wstring(tv.m_id)));
             stateElems.push_back(cell(s));
             nameElems.push_back(cell(make_wide(tv.get_name())));
-            sizeElems.push_back(cell(std::to_wstring(tv.get_size())));
-            progressElems.push_back(cell(std::to_wstring(tv.get_downloaded())));
-            downElems.push_back(cell(std::to_wstring(tv.get_download_speed())));
-            upElems.push_back(cell(std::to_wstring(tv.get_upload_speed())));
+            sizeElems.push_back(cell(pp_bytes(tv.get_size())));
+            progressElems.push_back(cell(pp_bytes(tv.get_downloaded())));
+            downElems.push_back(cell(pp_bytes_per_second(tv.get_download_speed())));
+            upElems.push_back(cell(pp_bytes_per_second(tv.get_upload_speed())));
             etaElems.push_back(cell(L"0"));
         }
     };

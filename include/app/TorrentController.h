@@ -34,6 +34,9 @@ class TorrentController {
         std::map<int,std::shared_ptr<BitTorrent>> m_torrents;
         
         std::optional<Component> m_display;
+        std::optional<Component> m_terminal;
+        std::wstring m_terminal_input;
+        
         ftxui::ScreenInteractive m_screen;
         ScreenTicker m_ticker;
 
