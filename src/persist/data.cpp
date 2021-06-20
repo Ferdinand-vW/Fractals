@@ -2,11 +2,16 @@
 #include "common/maybe.h"
 #include "network/http/Peer.h"
 #include <algorithm>
+#include <filesystem>
 #include <functional>
 #include <iterator>
 
-void save_torrent(const Storage &st, const Torrent &t) {
-    auto tm = TorrentModel { 0, t.m_name, "./metainfo/" + t.m_name + ".torrent" , "./downloads"};
+void save_torrent(const Storage &st, std::string mi,const Torrent &t) {
+    auto mi_path = "./metainfo/" + t.m_name + ".torrent";
+    //copy the meta info to a local directory
+    std::filesystem::copy(mi,mi_path
+                         ,std::filesystem::copy_options::overwrite_existing);
+    auto tm = TorrentModel { 0, t.m_name, mi_path, "./downloads"};
     st.add_torrent(tm);
 }
 

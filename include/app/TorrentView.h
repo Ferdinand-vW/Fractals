@@ -22,7 +22,9 @@ class TorrentView {
 
     private:
         std::shared_ptr<BitTorrent> m_model;
-        std::optional<time_t> prev_time;
-        long long prev_downloaded = 0;
-        long long prev_uploaded = 0;
+        std::optional<time_t> m_prev_time;
+        long long m_prev_download_speed = 0;
+        long long m_prev_upload_speed = 0;
+        long long m_prev_downloaded = 0;
+        long long m_prev_uploaded = 0;
 };

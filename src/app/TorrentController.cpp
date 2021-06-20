@@ -6,13 +6,15 @@
 #include "persist/data.h"
 #include "persist/storage.h"
 #include <boost/asio/io_context.hpp>
+#include <filesystem>
 #include <functional>
 #include <mutex>
 
 TorrentController::TorrentController(boost::asio::io_context &io,Storage &st) 
                                   : m_io(io),m_storage(st),m_lg(logger::get())
                                   , m_work(work_guard(m_io.get_executor()))
-                                  , m_screen(ftxui::ScreenInteractive::Fullscreen()) {}
+                                  , m_screen(ftxui::ScreenInteractive::Fullscreen())
+                                  , m_ticker(m_screen) {}
 
 void TorrentController::run() {
     for( unsigned int i = 0; i < m_thread_count; i++ ) {
@@ -42,6 +44,7 @@ void TorrentController::exit() {
     //before the library attempts to clean up the components when we still have an existing pointer to one
     //removal of this line may cause segfaults
     m_display.reset();
+    m_ticker.stop();
     
     //this doesn't actually do anything
     //for some reason we need to exit the loop from within runUI function
@@ -49,12 +52,20 @@ void TorrentController::exit() {
 }
 
 Either<std::string,std::string> TorrentController::on_add(std::string filepath) {
-    auto torr = Torrent::read_torrent(filepath);
-    if(torr.isLeft) {
+    auto eth_torr = Torrent::read_torrent(filepath);
+    if(eth_torr.isLeft) {
         //provide error message to view
-        return left<std::string>(torr.leftValue);
+        return left<std::string>(eth_torr.leftValue);
     } else {
-        auto bt = to_bit_torrent(torr.rightValue);
+        auto torr = std::move(eth_torr.rightValue);
+        if(has_torrent(m_storage, torr)) {
+            return left<std::string>("torrent " + torr.m_name + " already exists!");
+        }
+        //write torrent to database
+        save_torrent(m_storage, filepath,torr);
+
+        //add torrent to program state
+        auto bt = to_bit_torrent(torr);
         auto res = add_torrent(bt);
 
         if(res.has_value()) {
@@ -67,19 +78,12 @@ Either<std::string,std::string> TorrentController::on_add(std::string filepath) 
 }
 
 std::optional<std::string> TorrentController::add_torrent(std::shared_ptr<BitTorrent> bt) {
-    if(has_torrent(m_storage, *bt->m_torrent.get())) {
-        return "torrent " + bt->m_torrent->m_name + " already exists!";
-    }
-
-    //write torrent to database
-    save_torrent(m_storage, *bt->m_torrent.get());
-
     int torr_id = list_torrent(bt); //adds torrent to controller state
     start_torrent(torr_id); //Start running the torrent
 
     //adds torrent to display
     auto tdb = TorrentDisplayBase::From(m_display.value());
-    tdb->m_stopped.push_back(TorrentView(bt));
+    tdb->m_running.push_back(TorrentView(bt));
 
     return {};
 }
@@ -159,6 +163,7 @@ void TorrentController::runUI() {
     };
 
     auto renderer = Renderer(terminal_input,[&] { return m_display.value()->Render(); });
+    m_ticker.start();
     m_screen.Loop(renderer);
 }
 

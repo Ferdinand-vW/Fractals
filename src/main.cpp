@@ -12,6 +12,7 @@
 
 #include "app/TorrentController.h"
 #include "persist/data.h"
+#include <filesystem>
 #include <signal.h>
 #include <boost/stacktrace.hpp>
 #include <cstdlib>       // std::abort
@@ -40,6 +41,10 @@ int main(int argc, const char* argv[]) {
     Storage storage;
     storage.open_storage("torrents.db");
     storage.sync_schema();
+
+    if(!std::filesystem::exists("./metainfo")) {
+        std::filesystem::create_directory("./metainfo");
+    }
 
     //get current time and set as seed for rand
     srand (time(NULL));

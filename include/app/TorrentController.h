@@ -7,6 +7,7 @@
 #include "torrent/Torrent.h"
 #include "app/TorrentDisplay.h"
 #include "app/TerminalInput.h"
+#include "app/ScreenTicker.h"
 #include <boost/asio/detail/thread_group.hpp>
 #include <boost/asio/io_context.hpp>
 
@@ -34,6 +35,9 @@ class TorrentController {
         
         std::optional<Component> m_display;
         ftxui::ScreenInteractive m_screen;
+        ScreenTicker m_ticker;
+
+
 
         //callback functions to be passed to view
         Either<std::string, std::string> on_add(std::string filepath);

@@ -29,43 +29,45 @@ long long TorrentView::get_downloaded() {
 
 long long TorrentView::get_download_speed() {
     time_t curr = std::time(0);
-    if(!prev_time.has_value() || prev_time == curr) {
-        prev_time = curr;
-        return 0;
+    if(!m_prev_time.has_value() || m_prev_time == curr) {
+        m_prev_time = curr;
+        return m_prev_download_speed;
     }
 
-    time_t prev = prev_time.value();
+    time_t prev = m_prev_time.value();
 
     auto downl = get_downloaded();
 
     // (number of bytes downloaded since previous update) / (time passed since previous update)
 
-    auto speed = (downl - prev_downloaded) / (curr - prev);
+    auto speed = (downl - m_prev_downloaded) / (curr - prev);
 
     // update the 'prev' variables with values of 'curr' variables
-    prev_downloaded = downl;
-    prev_time = curr;
+    m_prev_downloaded = downl;
+    m_prev_time = curr;
+    m_prev_download_speed = speed;
 
     return speed;
 }
 
 long long TorrentView::get_upload_speed() {
     time_t curr = std::time(0);
-    if(!prev_time.has_value() || prev_time == curr) {
-        prev_time = curr;
-        return 0;
+    if(!m_prev_time.has_value() || m_prev_time == curr) {
+        m_prev_time = curr;
+        return m_prev_upload_speed;
     }
 
-    time_t prev = prev_time.value();
+    time_t prev = m_prev_time.value();
 
     auto upl = 0;
 
     // (number of bytes uploaded since previous update) / (time passed since previous update)
-    auto speed = (upl - prev_uploaded) / (curr - prev);
+    auto speed = (upl - m_prev_uploaded) / (curr - prev);
 
     // update the 'prev' variables with values of 'curr' variables
-    prev_uploaded = upl;
-    prev_time = curr;
+    m_prev_uploaded = upl;
+    m_prev_time = curr;
+    m_prev_upload_speed = speed;
 
     return speed;
 }
