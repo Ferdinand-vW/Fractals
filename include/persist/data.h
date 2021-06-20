@@ -6,6 +6,7 @@
 
 void save_torrent(const Storage &st, const Torrent &t);
 std::vector<std::shared_ptr<Torrent>> load_torrents(const Storage &st);
+bool has_torrent(const Storage &st, const Torrent &t);
 void delete_torrent (const Storage &st,const Torrent &t);
 
 void save_piece(const Storage &st,const Torrent &t,int piece);

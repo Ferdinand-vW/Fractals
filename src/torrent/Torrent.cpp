@@ -240,5 +240,7 @@ void Torrent::write_data(PieceData &&pd) {
 
         fstream.close();
     }
+
+    add_piece(pd.m_piece_index);
 }
  

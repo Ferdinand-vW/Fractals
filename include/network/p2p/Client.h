@@ -52,7 +52,7 @@ class Client : public enable_shared_from_this<Client> {
     std::map<PeerId, std::shared_ptr<Connection>> m_connections;
 
     std::shared_ptr<Torrent> m_torrent;
-    Storage m_storage;
+    Storage &m_storage;
     std::unique_ptr<std::mutex> m_piece_lock;
     
     std::function<void(PeerId,PeerChange)> m_on_change_peers;
@@ -64,7 +64,7 @@ class Client : public enable_shared_from_this<Client> {
         
         Client(std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
-              ,Storage storage
+              ,Storage &storage
               ,std::function<void(PeerId,PeerChange)> on_change_peers);
 
         void close_connections();

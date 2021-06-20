@@ -28,7 +28,7 @@
 
 Client::Client(std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
-              ,Storage storage
+              ,Storage &storage
               ,std::function<void(PeerId,PeerChange)> on_change_peers)
               : m_io(io)
               ,m_torrent(torrent)
@@ -194,6 +194,7 @@ void Client::received_unchoke(PeerId p) {
         m_connections[p]->get_timer().cancel();
         write_messages(p); // start write message loop
     }
+    BOOST_LOG(m_lg) << "received unchoked: " << ps.m_peer_choking;
 }
 
 void Client::received_interested(PeerId p) {

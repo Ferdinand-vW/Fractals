@@ -27,7 +27,7 @@
 
 BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent
                       ,boost::asio::io_context &io
-                      ,Storage st) 
+                      ,Storage &st) 
                     : m_torrent(torrent)
                     , m_io(io)
                     , m_lg(logger::get())

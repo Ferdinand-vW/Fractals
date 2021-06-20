@@ -34,13 +34,13 @@ class BitTorrent {
 
     boost::log::sources::logger_mt &m_lg;
 
-    Storage m_storage;
+    Storage &m_storage;
 
 
     public:
         BitTorrent (std::shared_ptr<Torrent> t
                    ,boost::asio::io_context &io
-                   ,Storage st);
+                   ,Storage &st);
         void run();
         void stop();
 

@@ -25,6 +25,10 @@ std::vector<std::shared_ptr<Torrent>> load_torrents(const Storage &st) {
     return torrs;
 }
 
+bool has_torrent(const Storage &st, const Torrent &t) {
+    return st.load_torrent(t.m_name).has_value();
+}
+
 void delete_torrent(const Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {

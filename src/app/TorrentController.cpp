@@ -21,42 +21,67 @@ void TorrentController::run() {
         );
     }
 
+    //load known torrents
+    auto torrs = load_torrents(m_storage);
+    for(auto &torr : torrs) {
+        BOOST_LOG(m_lg) << torr->m_name;
+        add_torrent(to_bit_torrent(torr));
+    }
+
     runUI();
 }
 
 void TorrentController::exit() {
     stop_torrents();
-    time_t curr = std::time(0);
-    m_work.reset();
+    m_work.reset(); //release m_io.run from threads
     m_threads.join(); //wait for torrents to be fully stopped
-    time_t curr2 = std::time(0);
-    BOOST_LOG(m_lg) << "hallo" << curr << " " << curr2;
     m_io.stop();
+
+    //Appears that the terminal output library cleans up after a screen loop exit
+    //we need to make sure that we remove any dependencies to components owned by this class
+    //before the library attempts to clean up the components when we still have an existing pointer to one
+    //removal of this line may cause segfaults
+    m_display.reset();
+    
     //this doesn't actually do anything
     //for some reason we need to exit the loop from within runUI function
-    m_screen.ExitLoopClosure();
+    // m_screen.ExitLoopClosure();
 }
 
 Either<std::string,std::string> TorrentController::on_add(std::string filepath) {
     auto torr = Torrent::read_torrent(filepath);
     if(torr.isLeft) {
+        //provide error message to view
         return left<std::string>(torr.leftValue);
     } else {
-        //write torrent to database
-        save_torrent(m_storage, torr.rightValue);
+        auto bt = to_bit_torrent(torr.rightValue);
+        auto res = add_torrent(bt);
 
-        auto torr_shared = std::make_shared<Torrent>(torr.rightValue);
-        auto bt = std::shared_ptr<BitTorrent>(new BitTorrent(torr_shared,m_io,m_storage));
-
-        //list torrent in display and assign id
-        int torr_id = list_torrent(bt);
-        start_torrent(torr_id); //Start running the torrent
-
-        auto tdb = TorrentDisplayBase::From(m_display);
-        tdb->m_stopped.push_back(TorrentView(bt));
-
-        return right<std::string>(torr_shared->m_name);
+        if(res.has_value()) {
+            return left<std::string>(res.value());
+        } else {
+            //provide name of torrent to view
+            return right<std::string>(bt->m_torrent->m_name);
+        }
     }
+}
+
+std::optional<std::string> TorrentController::add_torrent(std::shared_ptr<BitTorrent> bt) {
+    if(has_torrent(m_storage, *bt->m_torrent.get())) {
+        return "torrent " + bt->m_torrent->m_name + " already exists!";
+    }
+
+    //write torrent to database
+    save_torrent(m_storage, *bt->m_torrent.get());
+
+    int torr_id = list_torrent(bt); //adds torrent to controller state
+    start_torrent(torr_id); //Start running the torrent
+
+    //adds torrent to display
+    auto tdb = TorrentDisplayBase::From(m_display.value());
+    tdb->m_stopped.push_back(TorrentView(bt));
+
+    return {};
 }
 
 std::optional<std::string> TorrentController::on_remove(int torr_id) {
@@ -79,7 +104,7 @@ int TorrentController::list_torrent(std::shared_ptr<BitTorrent> torrent) {
         m_torrent_counter++;
     }
 
-    // display the 
+    // insert torrent in torrent list
     m_torrents.insert({torr_id,torrent});
 
     return torr_id;
@@ -96,10 +121,6 @@ void TorrentController::start_torrent(int torr_id) {
 }
 
 void TorrentController::stop_torrents() {
-    for(auto &bt : m_active_torrents) {
-        bt.second->stop();
-    }
-
     for(auto &bt : m_torrents) {
         bt.second->stop();
     }
@@ -117,7 +138,7 @@ void TorrentController::runUI() {
 
     //set up control of view for controller
     m_display = TorrentDisplay(terminal_input);
-    auto tdb = TorrentDisplayBase::From(m_display);
+    auto tdb = TorrentDisplayBase::From(m_display.value());
     
     //Sets up control flow of View -> Controller
     tdb->m_on_add    = std::bind(&TorrentController::on_add,this,std::placeholders::_1);
@@ -132,11 +153,20 @@ void TorrentController::runUI() {
         doExit();
     };
     TerminalInputBase::From(terminal_input)->on_enter = [this,&doExit,&input_string] () {
-        bool shouldExit = TorrentDisplayBase::From(m_display)->parse_command(input_string);
+        bool shouldExit = TorrentDisplayBase::From(m_display.value())->parse_command(input_string);
         if(shouldExit) { exit(); doExit(); }
         input_string = L"";
     };
 
-    auto renderer = Renderer(terminal_input,[&] { return m_display->Render(); });
+    auto renderer = Renderer(terminal_input,[&] { return m_display.value()->Render(); });
     m_screen.Loop(renderer);
+}
+
+std::shared_ptr<BitTorrent> TorrentController::to_bit_torrent(Torrent &torr) {
+    auto torr_shared = std::make_shared<Torrent>(torr);
+    return to_bit_torrent(torr_shared);
+}
+
+std::shared_ptr<BitTorrent> TorrentController::to_bit_torrent(std::shared_ptr<Torrent> torr) {
+    return std::shared_ptr<BitTorrent>(new BitTorrent(torr,m_io,m_storage));
 }

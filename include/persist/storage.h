@@ -16,7 +16,7 @@ inline auto init_storage(std::string db) {
     return make_storage(db,
                             make_table("torrent",
                                     make_column("id", &TorrentModel::id, primary_key()),
-                                    make_column("name", &TorrentModel::name),
+                                    make_column("name", &TorrentModel::name, unique()),
                                     make_column("meta_info_file", &TorrentModel::meta_info_path),
                                     make_column("write_path", &TorrentModel::write_path)),
                             make_table("torrent_piece",

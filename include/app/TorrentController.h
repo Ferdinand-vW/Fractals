@@ -31,13 +31,13 @@ class TorrentController {
 
         //unique id for each torrent, displayed under # column
         std::map<int,std::shared_ptr<BitTorrent>> m_torrents;
-        std::map<int,std::shared_ptr<BitTorrent>> m_active_torrents;
         
-        Component m_display;
+        std::optional<Component> m_display;
         ftxui::ScreenInteractive m_screen;
 
         //callback functions to be passed to view
         Either<std::string, std::string> on_add(std::string filepath);
+        std::optional<std::string> add_torrent(std::shared_ptr<BitTorrent> bt);
         std::optional<std::string> on_remove(int torr_id);
         std::optional<std::string> on_stop(int torr_id);
         std::optional<std::string> on_resume(int torr_id);
@@ -47,4 +47,7 @@ class TorrentController {
         void on_exit();
 
         void runUI();
+
+        std::shared_ptr<BitTorrent> to_bit_torrent(Torrent &torr);
+        std::shared_ptr<BitTorrent> to_bit_torrent(std::shared_ptr<Torrent> torr);
 };
