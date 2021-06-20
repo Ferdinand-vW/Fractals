@@ -13,6 +13,7 @@
 #include "app/TorrentController.h"
 #include "persist/data.h"
 #include <filesystem>
+#include <fstream>
 #include <signal.h>
 #include <boost/stacktrace.hpp>
 #include <cstdlib>       // std::abort
@@ -22,14 +23,18 @@
 // useful for debugging
 void my_terminate_handler() {
     try {
-        std::cout << boost::stacktrace::stacktrace();
+        std::ofstream ofs("err.txt");
+        ofs << boost::stacktrace::stacktrace();
+        ofs.close();
     } catch (...) {}
     std::abort();
 }
 
 void my_segfault_handler(int sig) {
     try {
-        std::cout << boost::stacktrace::stacktrace();
+        std::ofstream ofs("err.txt");
+        ofs << boost::stacktrace::stacktrace();
+        ofs.close();
     } catch (...) {}
     std::abort();
 }

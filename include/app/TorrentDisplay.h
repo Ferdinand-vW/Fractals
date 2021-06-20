@@ -36,9 +36,9 @@ class TorrentDisplayBase : public ComponentBase {
         std::vector<TorrentView> m_stopped;
 
         std::function<Either<std::string,std::string>(std::string)> m_on_add;
-        std::function<std::optional<std::string>(int)> m_on_remove;
-        std::function<std::optional<std::string>(int)> m_on_stop;
-        std::function<std::optional<std::string>(int)> m_on_resume;
+        std::function<Either<std::string,std::string>(int)> m_on_remove;
+        std::function<Either<std::string,std::string>(int)> m_on_stop;
+        std::function<Either<std::string,std::string>(int)> m_on_resume;
 
         // Constructor.
         TorrentDisplayBase(Component terminal_input);

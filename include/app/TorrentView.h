@@ -8,7 +8,7 @@ class TorrentView {
     public:
         int m_id;
 
-        TorrentView(std::shared_ptr<BitTorrent> t);
+        TorrentView(int id,std::shared_ptr<BitTorrent> t);
         std::string get_name();
         long long get_size();
         long long get_downloaded();

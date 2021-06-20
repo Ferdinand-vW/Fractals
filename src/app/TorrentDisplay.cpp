@@ -99,11 +99,11 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         } else {
             //send stop message to TorrentController
             auto res = m_on_stop(arg_ident.rightValue);
-            if(res.has_value()) { //means failure
-                m_feedback.m_msg = make_wide(res.value());
+            if(res.isLeft) { //means failure
+                m_feedback.m_msg = make_wide(res.leftValue);
                 m_feedback.m_type = FeedbackType::Error;
             } else {
-                m_feedback.m_msg = L"paused torrent " + std::to_wstring(arg_ident.rightValue);
+                m_feedback.m_msg = L"paused torrent " + make_wide(res.rightValue);
                 m_feedback.m_type = FeedbackType::Info;
             }
         }
@@ -121,11 +121,11 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         } else {
             //send resume message to TorrentController
             auto res = m_on_resume(arg_ident.rightValue);
-            if(res.has_value()) {
-                m_feedback.m_msg = make_wide(res.value());
+            if(res.isLeft) {
+                m_feedback.m_msg = make_wide(res.leftValue);
                 m_feedback.m_type = FeedbackType::Error;
             } else {
-                m_feedback.m_msg = L"resumed torrent " + std::to_wstring(arg_ident.rightValue);
+                m_feedback.m_msg = L"resumed torrent " + make_wide(res.rightValue);
                 m_feedback.m_type = FeedbackType::Info;
             }
         }
@@ -143,11 +143,11 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         } else {
             //send remove message to TorrentController
             auto res = m_on_remove(arg_ident.rightValue);
-            if(res.has_value()) {
-                m_feedback.m_msg = make_wide(res.value());
+            if(res.isLeft) {
+                m_feedback.m_msg = make_wide(res.leftValue);
                 m_feedback.m_type = FeedbackType::Error;
             } else {
-                m_feedback.m_msg = L"removed torrent " + std::to_wstring(arg_ident.rightValue);
+                m_feedback.m_msg = L"removed torrent " + make_wide(res.rightValue);
                 m_feedback.m_type = FeedbackType::Info;
             }
         }

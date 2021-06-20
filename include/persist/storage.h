@@ -45,7 +45,7 @@ inline auto init_storage(std::string db) {
 using InternalStorage = decltype(init_storage(""));
 
 class Storage {
-
+        std::mutex m_update_mutex;
     public:
         std::shared_ptr<InternalStorage> m_storage;
 
@@ -53,16 +53,16 @@ class Storage {
         void open_storage(std::string db);
         void sync_schema();
 
-        void add_torrent(const TorrentModel &t) const;
+        void add_torrent(const TorrentModel &t);
         std::optional<TorrentModel> load_torrent(std::string name) const;
         std::vector<TorrentModel> load_torrents() const;
-        void delete_torrent(const TorrentModel &t) const;
+        void delete_torrent(const TorrentModel &t);
 
-        void add_piece(const PieceModel &pm) const;
+        void add_piece(const PieceModel &pm);
         std::vector<PieceModel> load_pieces(const TorrentModel &t) const;
 
-        void save_announce(const AnnounceModel &ann) const;
-        void delete_announces(const TorrentModel &tm) const;
+        void save_announce(const AnnounceModel &ann);
+        void delete_announces(const TorrentModel &tm);
         std::vector<AnnounceModel> load_announce(const TorrentModel &t) const;
 
 };

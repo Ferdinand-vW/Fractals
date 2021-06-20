@@ -2,6 +2,7 @@
 #include "persist/torrent_model.h"
 #include "sqlite_orm/sqlite_orm.h"
 #include "torrent/Torrent.h"
+#include <mutex>
 #include <optional>
 
 Storage::Storage() {};
@@ -12,7 +13,7 @@ void Storage::open_storage(std::string db) {
         //connect to user given db and create tables if not already present
         auto storage = init_storage(db);
         // update shared pointer to point to new database connection
-        m_storage = std::make_shared<InternalStorage>(storage);                                        
+        m_storage = std::make_shared<InternalStorage>(storage);
     }
 }
 
@@ -20,7 +21,8 @@ void Storage::sync_schema() {
     m_storage->sync_schema();
 }
 
-void Storage::add_torrent(const TorrentModel &tm) const {
+void Storage::add_torrent(const TorrentModel &tm) {
+    std::unique_lock<std::mutex> l(m_update_mutex);
     m_storage->insert(tm);
 }
 
@@ -42,13 +44,15 @@ std::vector<TorrentModel> Storage::load_torrents() const {
     return m_storage->get_all<TorrentModel>();
 }
 
-void Storage::delete_torrent(const TorrentModel &t) const {
+void Storage::delete_torrent(const TorrentModel &t) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> _lock(m_update_mutex);
     m_storage->remove<TorrentModel>(t.id);
 }
 
-void Storage::add_piece(const PieceModel &pm) const {
+void Storage::add_piece(const PieceModel &pm) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> _lock(m_update_mutex);
     m_storage->insert(pm);
 }
 
@@ -59,13 +63,15 @@ std::vector<PieceModel> Storage::load_pieces(const TorrentModel &t) const {
     );
 }
 
-void Storage::save_announce(const AnnounceModel &ann) const {
+void Storage::save_announce(const AnnounceModel &ann) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> _lock(m_update_mutex);
     m_storage->insert(ann);
 }
 
-void Storage::delete_announces(const TorrentModel &tm) const {
+void Storage::delete_announces(const TorrentModel &tm) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> _lock(m_update_mutex);
     m_storage->remove_all<AnnounceModel>(
         where(c(&AnnounceModel::torrent_id) == tm.id)
     );

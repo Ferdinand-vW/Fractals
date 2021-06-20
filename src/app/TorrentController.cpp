@@ -31,7 +31,7 @@ void TorrentController::run() {
     //load known torrents
     auto torrs = load_torrents(m_storage);
     for(auto &torr : torrs) {
-        BOOST_LOG(m_lg) << torr->m_name;
+        BOOST_LOG(m_lg) << "loading torrent " << torr->m_name;
         add_torrent(to_bit_torrent(torr));
     }
 
@@ -56,7 +56,7 @@ void TorrentController::exit() {
     // m_screen.ExitLoopClosure();
 }
 
-Either<std::string,std::string> TorrentController::on_add(std::string filepath) {
+Either<std::string,TorrentName> TorrentController::on_add(std::string filepath) {
     auto eth_torr = Torrent::read_torrent(filepath);
     if(eth_torr.isLeft) {
         //provide error message to view
@@ -71,62 +71,57 @@ Either<std::string,std::string> TorrentController::on_add(std::string filepath) 
 
         //add torrent to program state
         auto bt = to_bit_torrent(torr);
-        auto res = add_torrent(bt);
+        add_torrent(bt);
 
-        if(res.has_value()) {
-            return left<std::string>(res.value());
-        } else {
-            //provide name of torrent to view
-            return right<std::string>(bt->m_torrent->m_name);
-        }
+        //provide name of torrent to view
+        return right<TorrentName>(bt->m_torrent->m_name);
     }
 }
 
-std::optional<std::string> TorrentController::add_torrent(std::shared_ptr<BitTorrent> bt) {
+void TorrentController::add_torrent(std::shared_ptr<BitTorrent> bt) {
     int torr_id = list_torrent(bt); //adds torrent to controller state
     start_torrent(torr_id); //Start running the torrent
 
     //adds torrent to display
     auto tdb = TorrentDisplayBase::From(m_display.value());
-    tdb->m_running.push_back(TorrentView(bt));
-
-    return {};
+    tdb->m_running.push_back(TorrentView(torr_id,bt));
 }
 
-std::optional<std::string> TorrentController::on_remove(int torr_id) {
+Either<std::string,TorrentName> TorrentController::on_remove(int torr_id) {
     //starting a non-existing torrent does not do anything
     if(m_torrents.find(torr_id) == m_torrents.end()) {
-        return "torrent identifier " + std::to_string(torr_id) + " does not match any torrent";
+        return left<std::string>("torrent identifier " + std::to_string(torr_id) + " does not match any torrent");
     }
 
     auto bt = m_torrents[torr_id];
     bt->stop();
     m_torrents.erase(torr_id);
 
-    return {};
+    return right<std::string>(bt->m_torrent->m_name);
 }
 
-std::optional<std::string> TorrentController::on_stop(int torr_id) {
+Either<std::string,TorrentName> TorrentController::on_stop(int torr_id) {
     //starting a non-existing torrent does not do anything
     if(m_torrents.find(torr_id) == m_torrents.end()) {
-        return "torrent identifier " + std::to_string(torr_id) + " does not match any torrent";
+        return left("torrent identifier " + std::to_string(torr_id) + " does not match any torrent");
     }
 
     auto bt = m_torrents[torr_id];
     bt->stop();
 
-    return {};
+    return right<TorrentName>(bt->m_torrent->m_name);
 }
 
-std::optional<std::string> TorrentController::on_resume(int torr_id) {
+Either<std::string,TorrentName> TorrentController::on_resume(int torr_id) {
     //starting a non-existing torrent does not do anything
     if(m_torrents.find(torr_id) == m_torrents.end()) {
-        return "torrent identifier " + std::to_string(torr_id) + " does not match any torrent";
+        return left("torrent identifier " + std::to_string(torr_id) + " does not match any torrent");
     }
 
+    auto bt = m_torrents[torr_id];
     start_torrent(torr_id);
 
-    return {};
+    return right<TorrentName>(bt->m_torrent->m_name);
 }
 
 int TorrentController::list_torrent(std::shared_ptr<BitTorrent> torrent) {

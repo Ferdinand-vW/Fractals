@@ -6,7 +6,7 @@
 #include <functional>
 #include <iterator>
 
-void save_torrent(const Storage &st, std::string mi,const Torrent &t) {
+void save_torrent(Storage &st, std::string mi,const Torrent &t) {
     auto mi_path = "./metainfo/" + t.m_name + ".torrent";
     //copy the meta info to a local directory
     std::filesystem::copy(mi,mi_path
@@ -34,14 +34,14 @@ bool has_torrent(const Storage &st, const Torrent &t) {
     return st.load_torrent(t.m_name).has_value();
 }
 
-void delete_torrent(const Storage &st, const Torrent &t) {
+void delete_torrent(Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {
         st.delete_torrent(tm.value());
     }
 }
 
-void save_piece(const Storage &st, const Torrent &t,int piece) {
+void save_piece(Storage &st, const Torrent &t,int piece) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {
         auto pm = PieceModel {0,tm->id,piece};
@@ -63,7 +63,7 @@ std::set<int> load_pieces(const Storage &st, const Torrent &t) {
     return pieces;
 }
 
-void save_announce(const Storage &st, const Torrent &t, const Announce &ann) {
+void save_announce(Storage &st, const Torrent &t, const Announce &ann) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {
         auto peers = ann.peers;
@@ -76,7 +76,7 @@ void save_announce(const Storage &st, const Torrent &t, const Announce &ann) {
     }
 }
 
-void delete_announces(const Storage &st, const Torrent &t) {
+void delete_announces(Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
     if(tm.has_value()) {
         st.delete_announces(tm.value());

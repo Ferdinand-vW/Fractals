@@ -3,7 +3,7 @@
 #include <bits/types/time_t.h>
 #include <numeric>
 
-TorrentView::TorrentView(std::shared_ptr<BitTorrent> t) : m_model(t) {};
+TorrentView::TorrentView(int id,std::shared_ptr<BitTorrent> t) : m_id(id),m_model(t) {};
 
 std::string TorrentView::get_name() {
     return m_model->m_torrent->m_name;
