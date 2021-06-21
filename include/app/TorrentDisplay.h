@@ -22,6 +22,7 @@
 #include "ftxui/component/input.hpp"
 #include "ftxui/component/mouse.hpp"  // for Mouse, Mouse::Left, Mouse::Pressed
 #include "ftxui/component/screen_interactive.hpp"  // for Component
+#include <string>
 
 using namespace ftxui;
 
@@ -31,9 +32,9 @@ class TorrentDisplayBase : public ComponentBase {
         Feedback m_feedback;
 
     public:
-        std::vector<TorrentView> m_running;
-        std::vector<TorrentView> m_completed;
-        std::vector<TorrentView> m_stopped;
+        std::map<int,TorrentView> m_running;
+        std::map<int,TorrentView> m_completed;
+        std::map<int,TorrentView> m_stopped;
 
         std::function<Either<std::string,std::string>(std::string)> m_on_add;
         std::function<Either<std::string,std::string>(int)> m_on_remove;

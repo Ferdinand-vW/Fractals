@@ -84,7 +84,7 @@ void TorrentController::add_torrent(std::shared_ptr<BitTorrent> bt) {
 
     //adds torrent to display
     auto tdb = TorrentDisplayBase::From(m_display.value());
-    tdb->m_running.push_back(TorrentView(torr_id,bt));
+    tdb->m_running.insert({torr_id,(TorrentView(torr_id,bt))});
 }
 
 Either<std::string,TorrentName> TorrentController::on_remove(int torr_id) {
@@ -96,6 +96,18 @@ Either<std::string,TorrentName> TorrentController::on_remove(int torr_id) {
     auto bt = m_torrents[torr_id];
     bt->stop();
     m_torrents.erase(torr_id);
+
+    auto tdb = TorrentDisplayBase::From(m_display.value());
+    auto remove_in_map = [torr_id](auto &m) {
+        if(m.find(torr_id) != m.end()) {
+            m.erase(torr_id);
+        }
+    };
+    //since there should only be one of each torr_id in a single map
+    //we can simply attempt to delete from all. Only exactly one entry will be removed.
+    remove_in_map(tdb->m_completed);
+    remove_in_map(tdb->m_running);
+    remove_in_map(tdb->m_stopped);
 
     return right<std::string>(bt->m_torrent->m_name);
 }
@@ -109,6 +121,16 @@ Either<std::string,TorrentName> TorrentController::on_stop(int torr_id) {
     auto bt = m_torrents[torr_id];
     bt->stop();
 
+    auto tdb = TorrentDisplayBase::From(m_display.value());
+    auto run_entry = tdb->m_running.find(torr_id);
+    if(run_entry == tdb->m_running.end()) {
+        return left("torrent " + std::to_string(torr_id) + " is not currently running");
+    }
+
+    //move torrent from m_stopped to m_running
+    tdb->m_stopped.insert({torr_id,run_entry->second});
+    tdb->m_running.erase(torr_id);
+
     return right<TorrentName>(bt->m_torrent->m_name);
 }
 
@@ -120,6 +142,16 @@ Either<std::string,TorrentName> TorrentController::on_resume(int torr_id) {
 
     auto bt = m_torrents[torr_id];
     start_torrent(torr_id);
+
+    auto tdb = TorrentDisplayBase::From(m_display.value());
+    auto stop_entry = tdb->m_stopped.find(torr_id);
+    if(stop_entry == tdb->m_stopped.end()) {
+        return left("torrent " + std::to_string(torr_id) + " is not currently running");
+    }
+
+    //move torrent from m_running to m_stopped
+    tdb->m_running.insert({torr_id,stop_entry->second});
+    tdb->m_stopped.erase(torr_id);
 
     return right<TorrentName>(bt->m_torrent->m_name);
 }

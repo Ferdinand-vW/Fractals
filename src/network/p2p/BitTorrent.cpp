@@ -187,6 +187,7 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
 }
 
 void BitTorrent::run() {
+    m_max_peers = 7;
     setup_client();
 
     request_peers();
@@ -198,5 +199,6 @@ void BitTorrent::run() {
 
 void BitTorrent::stop() {
     m_max_peers = 0; //make sure client does not attempt to connect to new peers
+    m_connected = 0;
     m_client->close_connections();
 }

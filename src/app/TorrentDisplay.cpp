@@ -72,7 +72,7 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
         ss >> path;
         if(!std::filesystem::exists(path)) {
             m_feedback.m_msg = L"path does not exist: " + path;
-            m_feedback.m_type = FeedbackType::Warning;
+            m_feedback.m_type = FeedbackType::Error;
         } else {
             auto res = m_on_add(unwide(path));
             if(res.isLeft) {
@@ -181,7 +181,7 @@ Element TorrentDisplayBase::Render() {
     std::vector<ftxui::Element> etaElems;
 
     auto populate = [&](auto &s,auto &collection) {
-        for(TorrentView &tv : collection) {
+        for(auto &[_,tv] : collection) {
             idElems.push_back(cell(std::to_wstring(tv.m_id)));
             stateElems.push_back(cell(s));
             nameElems.push_back(cell(make_wide(tv.get_name())));
