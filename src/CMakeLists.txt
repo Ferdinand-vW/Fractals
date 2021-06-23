@@ -15,6 +15,7 @@ set(SOURCES main.cpp
             network/http/Tracker.cpp
             network/http/Peer.cpp
             network/p2p/Connection.cpp
+            network/p2p/PeerManager.cpp
             network/p2p/BitTorrent.cpp
             network/p2p/Client.cpp 
             network/p2p/Message.cpp 

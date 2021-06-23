@@ -13,6 +13,7 @@
 
 #include "network/p2p/Connection.h"
 #include "network/http/Peer.h"
+#include "network/p2p/PeerManager.h"
 #include "network/p2p/Message.h"
 #include "network/http/Tracker.h"
 #include "common/logger.h"
@@ -31,29 +32,20 @@ struct P2PStatus {
     std::set<int> m_available_pieces;
 };
 
-enum class PieceProgress { Nothing, Requested, Downloaded, Completed };
-enum class PeerChange { Added, Removed };
-struct PieceStatus {
-    PieceProgress m_progress;
-    PieceData m_data;
-    long long offset; // Use offset to determine from which point to request block 
-};
-
-
 class Client : public enable_shared_from_this<Client> {
     std::map<PeerId,P2PStatus> m_peer_status;
 
     //a piece must always be present in at least one of these 3 containers
     std::set<int> m_missing_pieces;
     std::set<int> m_existing_pieces;
-    std::map<PeerId, std::unique_ptr<PieceStatus>> m_progress;
+    std::unique_ptr<std::mutex> m_piece_lock;
 
     boost::asio::io_context& m_io;
-    std::map<PeerId, std::shared_ptr<Connection>> m_connections;
+    PeerManager m_peers;
 
     std::shared_ptr<Torrent> m_torrent;
     Storage &m_storage;
-    std::unique_ptr<std::mutex> m_piece_lock;
+    
     
     std::function<void(PeerId,PeerChange)> m_on_change_peers;
 
@@ -62,7 +54,8 @@ class Client : public enable_shared_from_this<Client> {
     public:
         std::vector<char> m_client_id;
         
-        Client(std::shared_ptr<Torrent> torrent
+        Client(int max_peers
+              ,std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
               ,Storage &storage
               ,std::function<void(PeerId,PeerChange)> on_change_peers);
@@ -99,7 +92,7 @@ class Client : public enable_shared_from_this<Client> {
         void add_peer(PeerId p);
 
     private:
-        void add_peer_progress(PeerId p);
+        void add_peer_work(PeerId p,int piece, long long piece_size);
 
         void send_piece_requests(PeerId p);
         void sent_piece_request(PeerId p,const boost_error &error, size_t size);

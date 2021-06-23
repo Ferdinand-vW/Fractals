@@ -3,6 +3,8 @@
 #include <numeric>
 #include <iostream>
 
+PieceData::PieceData(int piece_index,long long length) : m_piece_index(piece_index),m_length(length) {}
+
 bool PieceData::is_complete() {
     int block_length = 0;
     for(auto &b : m_blocks) {

@@ -5,6 +5,8 @@
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
 #include "network/http/Peer.h"
+#include "network/p2p/PeerManager.h"
+#include "network/p2p/PeerWork.h"
 #include "torrent/PieceData.h"
 #include <algorithm>
 #include <boost/asio/bind_executor.hpp>
@@ -26,11 +28,13 @@
 #include <mutex>
 #include <string>
 
-Client::Client(std::shared_ptr<Torrent> torrent
+Client::Client(int max_peers
+              ,std::shared_ptr<Torrent> torrent
               ,boost::asio::io_context &io
               ,Storage &storage
               ,std::function<void(PeerId,PeerChange)> on_change_peers)
-              : m_io(io)
+              : m_peers(PeerManager(max_peers)) 
+              ,m_io(io)
               ,m_torrent(torrent)
               ,m_storage(storage)
               ,m_on_change_peers(on_change_peers)
@@ -49,9 +53,7 @@ Client::Client(std::shared_ptr<Torrent> torrent
 };
 
 void Client::close_connections() {
-    for(auto &peer_conn : m_connections) {
-        peer_conn.second->cancel();
-    }
+    m_peers.disable();
 }
 
 bool Client::has_all_pieces() {
@@ -63,23 +65,32 @@ bool Client::is_choked_by(PeerId p) {
 }
 
 bool Client::is_connected_to(PeerId p) {
-    return m_connections.find(p) != m_connections.end() && m_connections[p]->is_open();
+    return m_peers.is_connected_to(p) && m_peers[p]->is_open();
 }
 
 void Client::connect_to_peer(PeerId p) {
-    if(m_connections.find(p) != m_connections.end()) {
+    //if provided peer id is a peer we have already established connections with
+    //then we should try anew
+    if(m_peers.is_connected_to(p)) {
         BOOST_LOG(m_lg) << "already connected to " << p.m_ip;
         m_on_change_peers(p,PeerChange::Removed);
         return;
     }
 
     //Construct the connection object
-    auto conn_ptr = std::unique_ptr<Connection>(new Connection(m_io,p));
+    auto conn = std::shared_ptr<Connection>(new Connection(m_io,p));
     //From now on the connection must be fetched by reference
-    m_connections.insert({ p, std::move(conn_ptr) });
+    bool res = m_peers.add_new_connection(p,conn);
 
-    //Start connecting to the peer
-    auto &conn = m_connections[p];
+    //if res = false then the connection manager is disabled
+    //therefore we must now stop, otherwise we can continue.
+    //If the ConnectionManager is disabled right after the addition of the above connection
+    //then since we use a shared_ptr our resource will not be deleted until it goes out of scope
+    //furthermore the async operations will simply error out
+    if(!res) {
+        return;
+    }
+
     conn->connect(boost::bind(&Client::connected,this,p,boost::asio::placeholders::error));
     
     //set up timeout of 5 seconds
@@ -92,7 +103,7 @@ void Client::connect_to_peer(PeerId p) {
 void Client::connected(PeerId p,const boost_error &error) {
     if(!error) {
         BOOST_LOG(m_lg) << "[Client] connected to " << p.m_ip;
-        m_connections[p]->get_timer().cancel();
+        m_peers[p]->get_timer().cancel();
         //report that we've successfully connected to a peer
         m_on_change_peers(p,PeerChange::Added);
     }
@@ -106,31 +117,24 @@ void Client::connect_timeout(PeerId p, const boost_error &error) {
 }
 
 void Client::drop_connection(PeerId p) {
-    if (m_connections.find(p) == m_connections.end()) {
+    auto mconn = m_peers.lookup(p);
+    if (!mconn.has_value()) {
         BOOST_LOG(m_lg) << "already dropped peer " << p.m_ip;
         return ;
     } else {
         BOOST_LOG(m_lg) << "drop peer " << p.m_ip;
-        for(auto &kvp : m_connections) {
-            BOOST_LOG(m_lg) << kvp.first.m_ip;
-        }
     }
-    m_connections[p]->cancel(); //ensure connection is closed
-    m_connections.erase(p); //remove the connection
+    auto conn = mconn.value(); 
+    conn->cancel(); //ensure connection is closed
+    m_peers.remove_connection(p);
 
-    //if we were exchanging data with peer then
-    //we may need to correct some book keeping
-    if(m_progress.find(p) != m_progress.end()) {
-        int piece = m_progress[p]->m_data.m_piece_index;
-        { //ensure that a piece is not lost when we drop the peer
-            std::unique_lock<std::mutex> lock(*m_piece_lock.get());
-            if(piece != -1 && m_existing_pieces.find(piece) == m_existing_pieces.end() && m_missing_pieces.find(piece) == m_missing_pieces.end()) {
-                m_missing_pieces.insert(piece);
-            }
-        }
+    //if peer had work then reinsert the piece into missing pieces data struct
+    auto work = m_peers.lookup_work(p);
+    if(work.has_value()) {
+        m_missing_pieces.insert(work->get()->m_data.m_piece_index);
+        m_peers.finished_work(p);
     }
-    
-    m_progress.erase(p); // remove held piece progress of peer
+
     m_on_change_peers(p,PeerChange::Removed); //notify observer that we've dropped a peer
 }
 
@@ -160,23 +164,19 @@ void Client::select_piece(PeerId p) {
     }
 
     // m_peer_status[p].m_available_pieces.erase(piece); // too early?
-    int piece_size = m_torrent->size_of_piece(piece);
-    auto &piece_ptr = m_progress[p];
-    piece_ptr->m_data.m_piece_index = piece;
-    piece_ptr->m_data.m_length = piece_size;
-    piece_ptr->m_progress = PieceProgress::Nothing;
-    piece_ptr->m_data.m_blocks.clear();
-    BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece: " << piece_ptr->m_data.m_piece_index;
-    BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece size: " << piece_ptr->m_data.m_length;
+    auto piece_size = m_torrent->size_of_piece(piece);
+    add_peer_work(p,piece,piece_size);
+
+    BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece: " << piece;
+    BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece size: " << piece_size;
 }
 
-void Client::add_peer_progress(PeerId p) {
-    auto piece_ptr = std::make_unique<PieceStatus>();
-    piece_ptr->m_data.m_piece_index = -1;
-    piece_ptr->m_data.m_length = -1;
-    piece_ptr->m_data.m_blocks.clear(); // empty existing data if present
-    piece_ptr->m_progress = PieceProgress::Nothing;
-    m_progress.insert({p,std::move(piece_ptr)});
+void Client::add_peer_work(PeerId p,int piece,long long piece_size) {
+    PieceData pd(piece,piece_size);
+    PeerWork pw = { PieceProgress::Nothing, pd };
+
+    auto work_ptr = std::make_shared<PeerWork>(pw);
+    m_peers.new_work(p, work_ptr);
 }
 
 void Client::received_choke(PeerId p) {
@@ -191,7 +191,7 @@ void Client::received_unchoke(PeerId p) {
     //client had already been unchoked by peer
     if(ps.m_peer_choking) {
         ps.m_peer_choking = false;
-        m_connections[p]->get_timer().cancel();
+        m_peers[p]->get_timer().cancel();
         write_messages(p); // start write message loop
     }
     BOOST_LOG(m_lg) << "received unchoked: " << ps.m_peer_choking;
@@ -231,28 +231,30 @@ void Client::received_request(PeerId p, Request &r) {
 void Client::received_piece(PeerId p, Piece &pc) {
     BOOST_LOG(m_lg) << "[Client] received piece " << pc.m_index << " from " << p.m_ip;
     Block b = Block { pc.m_begin, pc.m_block };
-    m_connections[p]->get_timer().cancel();
+    m_peers[p]->get_timer().cancel();
 
-    auto &piece_ptr = m_progress[p];
+    auto mwork = m_peers.lookup_work(p);
+    //if we can't find the work for this peer thenwe should assume peer manager has been canceled
+    if(!mwork.has_value()) { return; }
+    auto work = mwork.value();
 
-    piece_ptr->m_data.add_block(b);
-    if(piece_ptr->m_data.is_complete()) {
+    work->m_data.add_block(b);
+    if(work->m_data.is_complete()) {
         
         BOOST_LOG(m_lg) << "[BitTorrent] received all data from " << p.m_ip << " for " << pc.pprint();
         
-        PieceData piece = piece_ptr->m_data;
+        PieceData piece = work->m_data;
         m_torrent->write_data(std::move(piece));
 
         // update internal state of required pieces
         m_missing_pieces.erase(piece.m_piece_index);
         m_existing_pieces.insert(piece.m_piece_index);
+        m_peers.finished_work(p);
         save_piece(m_storage,*m_torrent.get(),piece.m_piece_index);
 
         if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
-            piece_ptr->m_progress = PieceProgress::Completed;
             BOOST_LOG(m_lg) << "[BitTorrent] received all pieces";
         } else { //otherwise we can continue to request pieces
-            piece_ptr->m_progress = PieceProgress::Nothing;
             write_messages(p);
         }
 
@@ -260,7 +262,7 @@ void Client::received_piece(PeerId p, Piece &pc) {
     else {
         BOOST_LOG(m_lg) << "[BitTorrent] added block to " << pc.pprint();
 
-        piece_ptr->m_progress = PieceProgress::Downloaded;
+        work->m_progress = PieceProgress::Downloaded;
         write_messages(p);
     }
 }
@@ -272,18 +274,16 @@ void Client::received_garbage(PeerId p) {
 }
 
 void Client::send_handshake(PeerId p,HandShake &&hs) {
-    m_connections[p]->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
+    m_peers[p]->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
 }
 
 void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length, std::deque<char> &&deq_buf) {
     if(!error) {
-        m_connections[p]->get_timer().cancel();
+        m_peers[p]->get_timer().cancel();
         auto hs = HandShake::from_bytes_repr(length, deq_buf);
         //TODO : check integrity of hs
         BOOST_LOG(m_lg) << hs->pprint() << " <<< " << p.m_ip;
 
-        //indicate that there's data exchange occurring with this peer
-        add_peer_progress(p);
         //Successful handshake so now we can start communicating with client
         await_messages(p);
         write_messages(p);
@@ -301,22 +301,22 @@ void Client::handshake_timeout(PeerId p, const boost_error& error) {
 }
 
 void Client::await_handshake(PeerId p) {
-
+    auto mpeer = m_peers.lookup(p);
+    //peer has already been removed
+    if(!mpeer.has_value()) { return; }
     auto f = [this,p](auto err,auto l, auto &&d) {
         BOOST_LOG(m_lg) << "handle peer f";
         handle_peer_handshake(p, err, l, std::move(d));
     };
 
-    if(m_connections.find(p) == m_connections.end()) {
-        BOOST_LOG(m_lg) << "not here" << p.m_ip;
-    }
+    auto peer = mpeer.value();
 
-    auto &timer = m_connections[p]->get_timer();
+    auto &timer = peer->get_timer();
     timer.expires_from_now(boost::posix_time::seconds(10));
     timer.async_wait(boost::bind(&Client::handshake_timeout,this,p,boost::asio::placeholders::error));
 
-    m_connections[p]->on_handshake(f);
-    m_connections[p]->read_handshake();
+    peer->on_handshake(f);
+    peer->read_handshake();
     
 }
 
@@ -325,8 +325,8 @@ void Client::await_messages(PeerId p) {
     auto f = [this,p](auto err,auto l,auto &&d) {
         handle_peer_message(p, err, l, std::move(d));
     };
-    m_connections[p]->on_receive(f);
-    m_connections[p]->read_messages();
+    m_peers[p]->on_receive(f);
+    m_peers[p]->read_messages();
 }
 
 void Client::write_messages(PeerId p) {
@@ -334,7 +334,7 @@ void Client::write_messages(PeerId p) {
     
     if(ps.m_peer_choking) {
         send_bitfield(p);
-        auto &timer = m_connections[p]->get_timer();
+        auto &timer = m_peers[p]->get_timer();
         timer.expires_from_now(boost::posix_time::millisec(15000));
         timer.async_wait(
             boost::bind(
@@ -365,7 +365,7 @@ void Client::send_bitfield(PeerId p) {
 
     BOOST_LOG(m_lg) << p.m_ip << " >>> " << msg.pprint();
 
-    m_connections[p]->write_message(
+    m_peers[p]->write_message(
           std::move(msg_ptr)
         , boost::bind(&Client::sent_bitfield,this,p
                     ,boost::asio::placeholders::error
@@ -375,7 +375,7 @@ void Client::send_bitfield(PeerId p) {
 void Client::sent_bitfield(PeerId p,const boost_error &error,size_t size) {
     if(error) {
         BOOST_LOG(m_lg) << "[Client] sending bitfield to " << p.m_ip << " failed with " << error.message();
-        m_connections[p]->cancel();
+        m_peers[p]->cancel();
         return;
     }
 }
@@ -384,7 +384,7 @@ void Client::send_interested(PeerId p) {
     if(!m_peer_status[p].m_am_interested && m_peer_status[p].m_available_pieces.size() > 0) {
         auto msg_ptr = std::make_unique<Interested>(Interested());
         BOOST_LOG(m_lg) << p.m_ip << " >>> " << msg_ptr->pprint();
-        m_connections[p]->write_message(std::move(msg_ptr)
+        m_peers[p]->write_message(std::move(msg_ptr)
             ,boost::bind(&Client::sent_interested,this,p
                     ,boost::asio::placeholders::error
                     ,boost::asio::placeholders::bytes_transferred));
@@ -394,7 +394,7 @@ void Client::send_interested(PeerId p) {
 void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
     if(error) {
         BOOST_LOG(m_lg) << "[Client] sending interested to " << p.m_ip << " failed with " << error.message();
-        m_connections[p]->cancel();
+        m_peers[p]->cancel();
         return;
     } else {
         m_peer_status[p].m_am_interested = true;
@@ -409,50 +409,37 @@ void Client::unchoke_timeout(PeerId p,const boost_error &error) {
 }
 
 void Client::send_piece_requests(PeerId p) {
+    auto mpeer = m_peers.lookup(p);
+    if(!mpeer.has_value()) { return; }
     auto cb = [&](const boost_error &error,size_t size) {
         sent_piece_request(p, error, size);
     };
-    if(m_progress.find(p) == m_progress.end()) {
-        select_piece(p);
+
+    auto peer = mpeer.value();
+    if(!m_peers.lookup_work(p).has_value()) {
+        select_piece(p); // assign work to peer
     }
-
-    auto &piece_ptr = m_progress[p];
-    if (piece_ptr->m_progress == PieceProgress::Nothing) {
-        select_piece(p);
-        
-        //calculate size to request
-        int request_size = 1 << 14 ; // 16KB, standard request size 
-        int remaining = piece_ptr->m_data.remaining(); // remaining data of piece
-        int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
-
-        Request request(piece_ptr->m_data.m_piece_index
-                       ,0
-                       ,std::min(remaining,std::min(piece_length,request_size)));
-        BOOST_LOG(m_lg) << p.m_ip + " >>> " + request.pprint();
-        auto req_ptr = std::make_unique<Request>(request);
-        m_connections[p]->write_message(std::move(req_ptr)
-            ,boost::bind(&Client::sent_piece_request,this,p
-                       ,boost::asio::placeholders::error
-                       ,boost::asio::placeholders::bytes_transferred));
-
+    auto mwork = m_peers.lookup_work(p);
+    if(!mwork.has_value()) { 
+        BOOST_LOG(m_lg) << "[Client] expected work to be assigned to peer " + p.m_ip;
         return;
-    } else if (piece_ptr->m_progress == PieceProgress::Downloaded) {
-        int request_size = 1 << 14; // 16KB
-        int remaining = piece_ptr->m_data.remaining();
-        int piece_length = m_torrent->m_mi.info.piece_length;
-
-        Request request(piece_ptr->m_data.m_piece_index
-                       ,piece_ptr->m_data.next_block_begin()
-                       ,std::min(remaining,std::min(piece_length,request_size)));
-        BOOST_LOG(m_lg) << p.m_ip << " >>> " << request.pprint();
-        auto req_ptr = std::make_unique<Request>(request);
-        m_connections[p]->write_message(std::move(req_ptr)
-            ,boost::bind(&Client::sent_piece_request,this,p
-                       ,boost::asio::placeholders::error
-                       ,boost::asio::placeholders::bytes_transferred));
-    } else {
-        BOOST_LOG(m_lg) << "[BitTorrent] Completed downloading. Leaving thread..";
     }
+    auto work = mwork.value();
+
+    //calculate size to request
+    int request_size = 1 << 14 ; // 16KB, standard request size 
+    int remaining = work->m_data.remaining(); // remaining data of piece
+    int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
+
+    Request request(work->m_data.m_piece_index
+                    ,0
+                    ,std::min(remaining,std::min(piece_length,request_size)));
+    BOOST_LOG(m_lg) << p.m_ip + " >>> " + request.pprint();
+    auto req_ptr = std::make_unique<Request>(request);
+    peer->write_message(std::move(req_ptr)
+        ,boost::bind(&Client::sent_piece_request,this,p
+                    ,boost::asio::placeholders::error
+                    ,boost::asio::placeholders::bytes_transferred));
 }
 
 void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) {
@@ -461,15 +448,21 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
         return;
     }
     
-    if(m_progress.find(p) == m_progress.end()) {
+    auto mwork = m_peers.lookup_work(p);
+    if(mwork.has_value()) {
         BOOST_LOG(m_lg) << "will segment fault due to progress " << p.m_ip;
+        return;
     }
-    m_progress[p]->m_progress = PieceProgress::Requested;
 
-    if(m_connections.find(p) == m_connections.end()) {
+    auto mpeer = m_peers.lookup(p);
+    if(!mpeer.has_value()) {
         BOOST_LOG(m_lg) << "will segment fault due to connections " << p.m_ip;
+        return;
     }
-    auto &timer = m_connections[p]->get_timer();
+
+    mwork.value()->m_progress = PieceProgress::Requested;
+
+    auto &timer = mpeer.value()->get_timer();
     timer.expires_from_now(boost::posix_time::seconds(15));
     timer.async_wait(
         boost::bind(

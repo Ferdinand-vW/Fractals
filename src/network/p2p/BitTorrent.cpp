@@ -161,8 +161,7 @@ void BitTorrent::setup_client() {
 
     auto pieces = load_pieces(m_storage, *m_torrent.get());
     m_torrent->add_piece(pieces);
-    Client c(m_torrent,m_io,m_storage,f);
-    m_client = std::make_shared<Client>(std::move(c));
+    m_client = std::shared_ptr<Client>(new Client(m_max_peers,m_torrent,m_io,m_storage,f));
 }
 
 void BitTorrent::attempt_connect(PeerId p) {
@@ -187,6 +186,7 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
 }
 
 void BitTorrent::run() {
+    BOOST_LOG(m_lg) << "[BitTorrent] run";
     m_max_peers = 7;
     setup_client();
 
@@ -198,7 +198,6 @@ void BitTorrent::run() {
 }
 
 void BitTorrent::stop() {
-    m_max_peers = 0; //make sure client does not attempt to connect to new peers
-    m_connected = 0;
+    BOOST_LOG(m_lg) << "[BitTorrent] stop";
     m_client->close_connections();
 }
