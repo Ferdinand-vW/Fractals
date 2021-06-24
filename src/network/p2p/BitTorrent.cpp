@@ -35,7 +35,7 @@ BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent
                     {};
 
 
-std::optional<Announce> get_recent_announce(const Storage &st,const Torrent &t) {
+std::optional<Announce> get_recent_announce(Storage &st,const Torrent &t) {
     auto mann = load_announce(st, t);
     if(mann.has_value()) {
         auto ann = mann.value();
@@ -111,7 +111,7 @@ std::optional<PeerId> BitTorrent::connect_to_a_peer() {
         auto p = opt_p.value();
         attempt_connect(p);
 
-        while(!m_client->is_connected_to(p)) {
+        while(!m_client->is_connected_to(p) && m_client->is_enabled()) {
             opt_p = choose_peer();
             if(opt_p.has_value()){
                 p = opt_p.value();
@@ -166,7 +166,6 @@ void BitTorrent::setup_client() {
 
 void BitTorrent::attempt_connect(PeerId p) {
     BOOST_LOG(m_lg) << "[BitTorrent] connecting to peer " << p.m_ip << ":" << p.m_port;
-    m_connected++;
     m_client->connect_to_peer(p);
 }
 
@@ -175,11 +174,10 @@ void BitTorrent::peer_change(PeerId p,PeerChange pc) {
     //ensure only one thread can at a time add or remove a connection
     if (pc == PeerChange::Added) {
         perform_handshake(p);
-    } else {
-        m_connected--;
     }
 
-    if(m_connected < m_max_peers && !m_client->has_all_pieces()) {
+    if(!m_client->has_all_pieces() && m_client->is_enabled()) {
+        BOOST_LOG(m_lg) << m_client->is_enabled() << " is enabled";
         connect_to_a_peer();
     }
     BOOST_LOG(m_lg) << "[BitTorrent] Current connections " << m_connected << "(" << m_max_peers << ")";

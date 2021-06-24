@@ -2,8 +2,11 @@
 #include "persist/torrent_model.h"
 #include "sqlite_orm/sqlite_orm.h"
 #include "torrent/Torrent.h"
+#include <cstdlib>
+#include <fstream>
 #include <mutex>
 #include <optional>
+#include <system_error>
 
 Storage::Storage() {};
 
@@ -26,8 +29,9 @@ void Storage::add_torrent(const TorrentModel &tm) {
     m_storage->insert(tm);
 }
 
-std::optional<TorrentModel> Storage::load_torrent(std::string name) const {
+std::optional<TorrentModel> Storage::load_torrent(std::string name) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> l(m_update_mutex);
     auto tms = m_storage->get_all<TorrentModel>(
             where(c(&TorrentModel::name) == name)
     );
@@ -39,9 +43,11 @@ std::optional<TorrentModel> Storage::load_torrent(std::string name) const {
     }
 }
 
-std::vector<TorrentModel> Storage::load_torrents() const {
+std::vector<TorrentModel> Storage::load_torrents() {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> l(m_update_mutex);
     return m_storage->get_all<TorrentModel>();
+
 }
 
 void Storage::delete_torrent(const TorrentModel &t) {
@@ -56,8 +62,9 @@ void Storage::add_piece(const PieceModel &pm) {
     m_storage->insert(pm);
 }
 
-std::vector<PieceModel> Storage::load_pieces(const TorrentModel &t) const {
+std::vector<PieceModel> Storage::load_pieces(const TorrentModel &t) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> l(m_update_mutex);
     return m_storage->get_all<PieceModel>(
         where(c(&PieceModel::torrent_id) == t.id)
     );
@@ -77,8 +84,9 @@ void Storage::delete_announces(const TorrentModel &tm) {
     );
 }
 
-std::vector<AnnounceModel> Storage::load_announce(const TorrentModel &t) const {
+std::vector<AnnounceModel> Storage::load_announce(const TorrentModel &t) {
     using namespace sqlite_orm;
+    std::unique_lock<std::mutex> l(m_update_mutex);
     return m_storage->get_all<AnnounceModel>(
         where(c(&AnnounceModel::torrent_id) == t.id)
     );

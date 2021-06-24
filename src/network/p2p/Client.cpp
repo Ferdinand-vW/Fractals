@@ -56,6 +56,10 @@ void Client::close_connections() {
     m_peers.disable();
 }
 
+bool Client::is_enabled() {
+    return m_peers.is_enabled();
+}
+
 bool Client::has_all_pieces() {
     return m_existing_pieces.size() == m_torrent->m_mi.info.number_of_pieces();
 }
@@ -65,7 +69,11 @@ bool Client::is_choked_by(PeerId p) {
 }
 
 bool Client::is_connected_to(PeerId p) {
-    return m_peers.is_connected_to(p) && m_peers[p]->is_open();
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return false; }
+    auto conn = mconn.value();
+
+    return m_peers.is_connected_to(p) && conn->is_open();
 }
 
 void Client::connect_to_peer(PeerId p) {
@@ -95,15 +103,18 @@ void Client::connect_to_peer(PeerId p) {
     
     //set up timeout of 5 seconds
     auto &timer = conn->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(5));
-    timer.async_wait(boost::bind(&Client::connect_timeout,this,p,boost::asio::placeholders::error));
+    timer.async_wait(boost::posix_time::seconds(5)
+                    ,boost::bind(&Client::connect_timeout,this,p
+                    ,boost::asio::placeholders::error));
     
 }
 
 void Client::connected(PeerId p,const boost_error &error) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
     if(!error) {
         BOOST_LOG(m_lg) << "[Client] connected to " << p.m_ip;
-        m_peers[p]->get_timer().cancel();
+        mconn.value()->get_timer().cancel();
         //report that we've successfully connected to a peer
         m_on_change_peers(p,PeerChange::Added);
     }
@@ -186,12 +197,14 @@ void Client::received_choke(PeerId p) {
 }
 
 void Client::received_unchoke(PeerId p) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
     auto& ps = m_peer_status[p];
     //Check condition to ensure we don't cancel timer if
     //client had already been unchoked by peer
     if(ps.m_peer_choking) {
         ps.m_peer_choking = false;
-        m_peers[p]->get_timer().cancel();
+        mconn.value()->get_timer().cancel();
         write_messages(p); // start write message loop
     }
     BOOST_LOG(m_lg) << "received unchoked: " << ps.m_peer_choking;
@@ -229,22 +242,24 @@ void Client::received_request(PeerId p, Request &r) {
 }
 
 void Client::received_piece(PeerId p, Piece &pc) {
+    auto mconn = m_peers.lookup(p);
+    auto mwork = m_peers.lookup_work(p);
+    //if we can't find the work for this peer then we should assume peer manager has been canceled
+    if(!mwork.has_value() || !mconn.has_value()) { return; }
+    auto conn = mconn.value();
+    auto work = mwork.value();
+    
     BOOST_LOG(m_lg) << "[Client] received piece " << pc.m_index << " from " << p.m_ip;
     Block b = Block { pc.m_begin, pc.m_block };
-    m_peers[p]->get_timer().cancel();
-
-    auto mwork = m_peers.lookup_work(p);
-    //if we can't find the work for this peer thenwe should assume peer manager has been canceled
-    if(!mwork.has_value()) { return; }
-    auto work = mwork.value();
+    conn->get_timer().cancel();
 
     work->m_data.add_block(b);
     if(work->m_data.is_complete()) {
         
-        BOOST_LOG(m_lg) << "[BitTorrent] received all data from " << p.m_ip << " for " << pc.pprint();
-        
+        BOOST_LOG(m_lg) << "[Client] received all data from " << p.m_ip << " for " << pc.pprint();
         PieceData piece = work->m_data;
-        m_torrent->write_data(std::move(piece));
+        BOOST_LOG(m_lg) << piece.m_piece_index;
+        m_torrent->write_data(piece);
 
         // update internal state of required pieces
         m_missing_pieces.erase(piece.m_piece_index);
@@ -274,12 +289,19 @@ void Client::received_garbage(PeerId p) {
 }
 
 void Client::send_handshake(PeerId p,HandShake &&hs) {
-    m_peers[p]->write_message(std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){});
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    mconn.value()->write_message(
+            std::make_unique<HandShake>(hs),[](boost_error _err,size_t _size){}
+            );
 }
 
 void Client::handle_peer_handshake(PeerId p,const boost_error &error,int length, std::deque<char> &&deq_buf) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    
     if(!error) {
-        m_peers[p]->get_timer().cancel();
+        mconn.value()->get_timer().cancel();
         auto hs = HandShake::from_bytes_repr(length, deq_buf);
         //TODO : check integrity of hs
         BOOST_LOG(m_lg) << hs->pprint() << " <<< " << p.m_ip;
@@ -312,8 +334,9 @@ void Client::await_handshake(PeerId p) {
     auto peer = mpeer.value();
 
     auto &timer = peer->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(10));
-    timer.async_wait(boost::bind(&Client::handshake_timeout,this,p,boost::asio::placeholders::error));
+    timer.async_wait(boost::posix_time::seconds(10)
+                    ,boost::bind(&Client::handshake_timeout,this,p
+                                ,boost::asio::placeholders::error));
 
     peer->on_handshake(f);
     peer->read_handshake();
@@ -322,22 +345,29 @@ void Client::await_handshake(PeerId p) {
 
 
 void Client::await_messages(PeerId p) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    auto conn = mconn.value();
+
     auto f = [this,p](auto err,auto l,auto &&d) {
         handle_peer_message(p, err, l, std::move(d));
     };
-    m_peers[p]->on_receive(f);
-    m_peers[p]->read_messages();
+    conn->on_receive(f);
+    conn->read_messages();
 }
 
 void Client::write_messages(PeerId p) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    auto conn = mconn.value();
+
     auto ps = m_peer_status[p];
     
     if(ps.m_peer_choking) {
         send_bitfield(p);
-        auto &timer = m_peers[p]->get_timer();
-        timer.expires_from_now(boost::posix_time::millisec(15000));
-        timer.async_wait(
-            boost::bind(
+        auto &timer = conn->get_timer();
+        timer.async_wait(boost::posix_time::seconds(15)
+            ,boost::bind(
                 &Client::unchoke_timeout,this,p
                 ,boost::asio::placeholders::error()
                 )
@@ -349,6 +379,10 @@ void Client::write_messages(PeerId p) {
 }
 
 void Client::send_bitfield(PeerId p) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    auto conn = mconn.value();
+
     std::vector<bool> bf;
     //pieces is a byte string consisting of consecutive 20length SHA1 hashes
     //thus the number of pieces is the length of the byte string divided by 20
@@ -365,7 +399,7 @@ void Client::send_bitfield(PeerId p) {
 
     BOOST_LOG(m_lg) << p.m_ip << " >>> " << msg.pprint();
 
-    m_peers[p]->write_message(
+    conn->write_message(
           std::move(msg_ptr)
         , boost::bind(&Client::sent_bitfield,this,p
                     ,boost::asio::placeholders::error
@@ -373,18 +407,27 @@ void Client::send_bitfield(PeerId p) {
 }
 
 void Client::sent_bitfield(PeerId p,const boost_error &error,size_t size) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    auto conn = mconn.value();
+
     if(error) {
         BOOST_LOG(m_lg) << "[Client] sending bitfield to " << p.m_ip << " failed with " << error.message();
-        m_peers[p]->cancel();
+        conn->cancel();
         return;
     }
 }
 
 void Client::send_interested(PeerId p) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    auto conn = mconn.value();
+
+
     if(!m_peer_status[p].m_am_interested && m_peer_status[p].m_available_pieces.size() > 0) {
         auto msg_ptr = std::make_unique<Interested>(Interested());
         BOOST_LOG(m_lg) << p.m_ip << " >>> " << msg_ptr->pprint();
-        m_peers[p]->write_message(std::move(msg_ptr)
+        conn->write_message(std::move(msg_ptr)
             ,boost::bind(&Client::sent_interested,this,p
                     ,boost::asio::placeholders::error
                     ,boost::asio::placeholders::bytes_transferred));
@@ -392,9 +435,13 @@ void Client::send_interested(PeerId p) {
 }
 
 void Client::sent_interested(PeerId p,const boost_error &error,size_t size) {
+    auto mconn = m_peers.lookup(p);
+    if(!mconn.has_value()) { return; }
+    auto conn = mconn.value();
+
     if(error) {
         BOOST_LOG(m_lg) << "[Client] sending interested to " << p.m_ip << " failed with " << error.message();
-        m_peers[p]->cancel();
+        conn->cancel();
         return;
     } else {
         m_peer_status[p].m_am_interested = true;
@@ -449,7 +496,7 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
     }
     
     auto mwork = m_peers.lookup_work(p);
-    if(mwork.has_value()) {
+    if(!mwork.has_value()) {
         BOOST_LOG(m_lg) << "will segment fault due to progress " << p.m_ip;
         return;
     }
@@ -463,9 +510,8 @@ void Client::sent_piece_request(PeerId p,const boost_error &error, size_t size) 
     mwork.value()->m_progress = PieceProgress::Requested;
 
     auto &timer = mpeer.value()->get_timer();
-    timer.expires_from_now(boost::posix_time::seconds(15));
-    timer.async_wait(
-        boost::bind(
+    timer.async_wait(boost::posix_time::seconds(15)
+        ,boost::bind(
             &Client::piece_response_timeout,this,p
             ,boost::asio::placeholders::error));
 }

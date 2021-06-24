@@ -23,6 +23,7 @@ class PeerManager {
         //disable or enable the connection manager
         void disable(); //stop accepting new connections and drop current ones
         void enable(); //accept new connections again
+        bool is_enabled();
 
         void new_work(PeerId p,std::shared_ptr<PeerWork> work);
         std::optional<std::shared_ptr<PeerWork>> lookup_work(PeerId p);

@@ -24,7 +24,7 @@ class Torrent {
 
         Torrent(MetaInfo &mi,std::string fileName,std::set<int> pieces);
 
-        void write_data(PieceData && pd);
+        void write_data(PieceData & pd);
         static Either<std::string,Torrent> read_torrent(std::string fp);
         long long size_of_piece(int piece);
         long long size_of_pieces(std::set<int> pieces);

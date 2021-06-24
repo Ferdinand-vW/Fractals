@@ -15,7 +15,7 @@ void save_torrent(Storage &st, std::string mi,const Torrent &t) {
     st.add_torrent(tm);
 }
 
-std::vector<std::shared_ptr<Torrent>> load_torrents(const Storage &st) {
+std::vector<std::shared_ptr<Torrent>> load_torrents(Storage &st) {
     auto tms = st.load_torrents();
 
     std::vector<std::shared_ptr<Torrent>> torrs;
@@ -30,7 +30,7 @@ std::vector<std::shared_ptr<Torrent>> load_torrents(const Storage &st) {
     return torrs;
 }
 
-bool has_torrent(const Storage &st, const Torrent &t) {
+bool has_torrent(Storage &st, const Torrent &t) {
     return st.load_torrent(t.m_name).has_value();
 }
 
@@ -49,7 +49,7 @@ void save_piece(Storage &st, const Torrent &t,int piece) {
     }
 }
 
-std::set<int> load_pieces(const Storage &st, const Torrent &t) {
+std::set<int> load_pieces(Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
     std::set<int> pieces;
     if(tm.has_value()) {
@@ -83,7 +83,7 @@ void delete_announces(Storage &st, const Torrent &t) {
     }
 }
 
-std::optional<Announce> load_announce(const Storage &st, const Torrent &t) {
+std::optional<Announce> load_announce(Storage &st, const Torrent &t) {
     auto tm_opt = st.load_torrent(t.m_name);
     if(!tm_opt.has_value()) { return {}; }
     auto tm = tm_opt.value();

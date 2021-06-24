@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "network/p2p/Message.h"
+#include "network/p2p/ConcurrentTimer.h"
 #include "network/http/Peer.h"
 #include "common/logger.h"
 
@@ -26,7 +27,7 @@ typedef std::function<void(const boost_error&,int length,std::deque<char> &&deq_
 
 class Connection : public std::enable_shared_from_this<Connection> {
     boost::asio::io_context & m_io;
-    boost::asio::deadline_timer m_timer;
+    ConcurrentTimer m_timer;
 
     boost::asio::streambuf m_buf;
     PeerId m_peer;
@@ -47,7 +48,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
             return m_io;
         }
 
-        boost::asio::deadline_timer& get_timer() {
+        ConcurrentTimer& get_timer() {
             return m_timer;
         }
         // Connection(Connection &&conn);

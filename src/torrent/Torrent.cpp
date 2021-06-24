@@ -163,8 +163,8 @@ long long Torrent::size_of_pieces(std::set<int> pieces) {
 
 long long Torrent::size_of_piece(int piece) {
     auto info = m_mi.info;
-    int piece_length = info.piece_length;
-    int num_pieces = info.number_of_pieces();
+    long long piece_length = info.piece_length;
+    long long num_pieces = info.number_of_pieces();
 
     // All pieces but last have uniform size as specified in the info dict
     if(piece != num_pieces - 1) { return piece_length; }
@@ -172,12 +172,12 @@ long long Torrent::size_of_piece(int piece) {
     // For the last piece we need to compute the total file size (sum of all file lengths)
     if(info.file_mode.isLeft) {
         //if single file mode then it's simple
-        int file_length = info.file_mode.leftValue.length;
+        long long file_length = info.file_mode.leftValue.length;
         //last piece has size of remainder of file
         return file_length - (num_pieces - 1) * info.piece_length;
     } else {
         //In multi file mode we need to traverse over each file and sum
-        int sum_file_lengths = 0;
+        long long sum_file_lengths = 0;
         for(auto &f : info.file_mode.rightValue.files) {
             sum_file_lengths += f.length;
         }
@@ -200,14 +200,14 @@ std::set<int> Torrent::get_pieces() {
 
 long long Torrent::cumulative_size_of_pieces(int piece) {
     int sum = 0;
-    for(int i = 0; i < piece + 1;i++) { // piece is zero based index
+    for(int i = 0; i <= piece;i++) { // piece is zero based index
         sum += size_of_piece(i);
     }
 
     return sum;
 }
 
-void Torrent::write_data(PieceData &&pd) {
+void Torrent::write_data(PieceData &pd) {
     BOOST_LOG(m_lg) << "[Torrent] writing piece " << pd.m_piece_index;
     auto fds = divide_over_files(pd.m_piece_index);
 

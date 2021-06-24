@@ -54,15 +54,15 @@ class Storage {
         void sync_schema();
 
         void add_torrent(const TorrentModel &t);
-        std::optional<TorrentModel> load_torrent(std::string name) const;
-        std::vector<TorrentModel> load_torrents() const;
+        std::optional<TorrentModel> load_torrent(std::string name);
+        std::vector<TorrentModel> load_torrents();
         void delete_torrent(const TorrentModel &t);
 
         void add_piece(const PieceModel &pm);
-        std::vector<PieceModel> load_pieces(const TorrentModel &t) const;
+        std::vector<PieceModel> load_pieces(const TorrentModel &t);
 
         void save_announce(const AnnounceModel &ann);
         void delete_announces(const TorrentModel &tm);
-        std::vector<AnnounceModel> load_announce(const TorrentModel &t) const;
+        std::vector<AnnounceModel> load_announce(const TorrentModel &t);
 
 };

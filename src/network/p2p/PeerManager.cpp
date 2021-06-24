@@ -6,10 +6,12 @@ PeerManager::PeerManager(int max_conn) : m_max_conn(max_conn) {};
 
 bool PeerManager::add_new_connection(PeerId p, std::shared_ptr<Connection> conn) {
     std::unique_lock<std::mutex> _lock(m_mutex);
-    if(m_enabled) {
+    if(m_enabled && m_conns.size() < m_max_conn) {
         m_conns.insert({p,conn});
+        return true;
+    } else {
+        return false;
     }
-    return m_enabled;
 }
 
 void PeerManager::remove_connection(PeerId p) {
@@ -22,17 +24,19 @@ void PeerManager::remove_connection(PeerId p) {
 void PeerManager::disable() {
     std::unique_lock<std::mutex> _lock(m_mutex);
     m_enabled = false;
-    for(auto it = m_conns.begin() ; it != m_conns.end() ;) {
-        it->second->cancel();
-        m_conns.erase(it);
+    for(auto &e : m_conns) {
+        e.second->cancel();
     }
-    for(auto it = m_work.begin() ; it != m_work.end() ;) {
-        m_work.erase(it);
-    }
+    // m_conns.clear();
+    // m_work.clear();
 }
 
 void PeerManager::enable() {
     m_enabled = true;
+}
+
+bool PeerManager::is_enabled() {
+    return m_enabled;
 }
 
 void PeerManager::new_work(PeerId p,std::shared_ptr<PeerWork> work) {

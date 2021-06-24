@@ -41,8 +41,12 @@ void TorrentController::run() {
 void TorrentController::exit() {
     stop_torrents();
     m_work.reset(); //release m_io.run from threads
+    BOOST_LOG(m_lg) << "before";
     m_threads.join(); //wait for torrents to be fully stopped
+    BOOST_LOG(m_lg) << "in between";
     m_io.stop();
+
+    BOOST_LOG(m_lg) << "done";
 
     //Appears that the terminal output library cleans up after a screen loop exit
     //we need to make sure that we remove any dependencies to components owned by this class

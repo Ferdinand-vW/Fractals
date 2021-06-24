@@ -19,6 +19,7 @@
 #include <cstdlib>       // std::abort
 #include <exception>     // std::set_terminate
 #include <iostream>      // std::cerr
+#include <system_error>
 
 // useful for debugging
 void my_terminate_handler() {
@@ -40,6 +41,7 @@ void my_segfault_handler(int sig) {
 }
 
 int main(int argc, const char* argv[]) {
+    boost::filesystem::path::imbue(std::locale("C"));
     std::set_terminate(&my_terminate_handler);
     signal(SIGSEGV,my_segfault_handler);
     //init and connect to local db
@@ -62,10 +64,22 @@ int main(int argc, const char* argv[]) {
         // https://github.com/boostorg/log/issues/104
         boost::log::keywords::target_file_name = "log.txt",
         boost::log::keywords::auto_flush = true,
-        boost::log::keywords::format = "[%ThreadID%][%TimeStamp%] %Message%"
+        boost::log::keywords::format = "[%ThreadID%][%TimeStamp%] %Message%",
+        boost::log::keywords::enable_final_rotation = false
     );
+
+    //enables ThreadID and TimeStamp to appear in log
+    boost::log::add_common_attributes();
 
     boost::asio::io_context io;
     TorrentController tc(io,storage);
-    tc.run();
+    try {
+        tc.run();
+    } catch (std::system_error e) {
+        std::ofstream ofs("err.txt");
+        ofs << e.what();
+        ofs.close();
+    }
+
+    boost::log::core::get()->remove_all_sinks();
 }
