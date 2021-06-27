@@ -10,6 +10,7 @@
 #include <sstream>
 #include <filesystem>
 #include <neither/neither.hpp>
+#include <utility>
 
 std::string str_concat_vector(const std::vector<std::string> &v) {
     std::string out("");
@@ -169,6 +170,39 @@ std::wstring pp_bytes(long long bytes) {
 
 std::wstring pp_bytes_per_second(long long bytes) {
     return pp_bytes(bytes) + L"/s";
+}
+
+std::wstring pp_time(long long seconds) {
+    // >= 3 years
+    if(seconds >= 279936000) {
+        return L"inf";
+    }
+
+    //not entirely correct, but we don't need it to be
+    std::list<std::pair<std::wstring,int>> units = 
+        { {L"m",60}, {L"h",60}, {L"d",24}, {L"m",30}, {L"y",12} };
+
+    std::list<std::pair<std::wstring,int>> measurements;
+
+    std::pair<std::wstring,long long> prev(L"s",seconds);
+    for(auto &u : units) {
+        auto nat = prev.second / u.second; //number of minutes/hours/days/..
+        auto prev_units = prev.second - nat*u.second;
+        if(nat > 0) {
+            measurements.push_front({prev.first,prev_units});
+            prev = std::make_pair(u.first,nat);
+        } else {
+            break;
+        }
+    }
+    measurements.push_front(prev);
+
+    std::wstring ws;
+    for(auto &m : measurements) {
+        ws = ws + std::to_wstring(m.second) + m.first;
+    }
+
+    return ws;
 }
 
 std::wstring make_wide(const std::string &s) {

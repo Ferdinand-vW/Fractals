@@ -47,5 +47,6 @@ std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bitfields);
 
 std::wstring pp_bytes(long long bytes);
 std::wstring pp_bytes_per_second(long long bytes);
+std::wstring pp_time(long long seconds);
 std::wstring make_wide(const std::string &s);
 std::string unwide(const std::wstring &ws);

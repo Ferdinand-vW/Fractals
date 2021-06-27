@@ -19,6 +19,7 @@ class TorrentView {
         int get_connected_seeders();
         int get_total_leechers();
         int get_connected_leechers();
+        long long get_eta();
 
     private:
         std::shared_ptr<BitTorrent> m_model;

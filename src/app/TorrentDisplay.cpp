@@ -196,7 +196,7 @@ Element TorrentDisplayBase::Render() {
             };
             seederElems.push_back(cell(connects(tv.get_connected_seeders(),tv.get_total_seeders())));
             leecherElems.push_back(cell(connects(tv.get_connected_leechers(),tv.get_connected_leechers())));
-            etaElems.push_back(cell(L"0"));
+            etaElems.push_back(cell(pp_time(tv.get_eta())));
         }
     };
 

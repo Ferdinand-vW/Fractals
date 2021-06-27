@@ -1,6 +1,7 @@
 #include "network/p2p/BitTorrent.h"
 #include "app/TorrentView.h"
 #include <bits/types/time_t.h>
+#include <climits>
 #include <numeric>
 
 TorrentView::TorrentView(int id,std::shared_ptr<BitTorrent> t) : m_id(id),m_model(t) {};
@@ -88,3 +89,14 @@ int TorrentView::get_connected_leechers() {
     return 0;
 }
 
+long long TorrentView::get_eta() {
+    auto total = get_size();
+    auto downloaded = get_downloaded();
+    auto speed = get_download_speed();
+
+    if (speed <= 0) {
+        return LLONG_MAX;
+    }
+
+    return (total - downloaded) / speed;
+}
