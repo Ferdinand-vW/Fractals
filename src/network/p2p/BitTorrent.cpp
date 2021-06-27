@@ -34,6 +34,19 @@ BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent
                     , m_storage(st)
                     {};
 
+int BitTorrent::connected_peers() {
+    if(m_client == nullptr) {
+        return 0;
+    } else {
+        return m_client->num_connections();
+    }
+}
+int BitTorrent::available_peers() {
+    return m_available_peers.size();
+}
+int BitTorrent::known_leecher_count() {
+    return m_leecher_count;
+}
 
 std::optional<Announce> get_recent_announce(Storage &st,const Torrent &t) {
     auto mann = load_announce(st, t);
@@ -104,28 +117,15 @@ void BitTorrent::request_peers() {
     }
 }
 
-std::optional<PeerId> BitTorrent::connect_to_a_peer() {
-    auto opt_p = choose_peer();
+void BitTorrent::connect_to_a_peer() {
 
-    if(opt_p.has_value()) {
-        auto p = opt_p.value();
-        attempt_connect(p);
-
-        while(!m_client->is_connected_to(p) && m_client->is_enabled()) {
-            opt_p = choose_peer();
-            if(opt_p.has_value()){
-                p = opt_p.value();
-                attempt_connect(p);
-            } else {
-                return {};
-            }
+    while(m_client->is_enabled()) {
+        auto opt_p = choose_peer();
+        if(opt_p.has_value()) {
+            attempt_connect(opt_p.value());
+            return;
         }
-
-        return p;
-    } else {
-        return {};
     }
-    
 }
 
 void BitTorrent::perform_handshake(PeerId p) {
@@ -170,17 +170,14 @@ void BitTorrent::attempt_connect(PeerId p) {
 }
 
 void BitTorrent::peer_change(PeerId p,PeerChange pc) {
-    BOOST_LOG(m_lg) << "peer change";
     //ensure only one thread can at a time add or remove a connection
     if (pc == PeerChange::Added) {
         perform_handshake(p);
     }
 
     if(!m_client->has_all_pieces() && m_client->is_enabled()) {
-        BOOST_LOG(m_lg) << m_client->is_enabled() << " is enabled";
         connect_to_a_peer();
     }
-    BOOST_LOG(m_lg) << "[BitTorrent] Current connections " << m_connected << "(" << m_max_peers << ")";
 }
 
 void BitTorrent::run() {

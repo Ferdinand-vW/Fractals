@@ -73,11 +73,11 @@ long long TorrentView::get_upload_speed() {
 }
 
 int TorrentView::get_total_seeders() {
-    return 0;
+    return m_model->available_peers() + m_model->connected_peers();
 }
 
 int TorrentView::get_connected_seeders() {
-    return m_model->m_connected;
+    return m_model->connected_peers();
 }
 
 int TorrentView::get_total_leechers() {

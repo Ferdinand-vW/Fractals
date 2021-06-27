@@ -76,6 +76,10 @@ bool Client::is_connected_to(PeerId p) {
     return m_peers.is_connected_to(p) && conn->is_open();
 }
 
+int Client::num_connections() {
+    return m_peers.num_connections();
+}
+
 void Client::connect_to_peer(PeerId p) {
     //if provided peer id is a peer we have already established connections with
     //then we should try anew
@@ -327,7 +331,6 @@ void Client::await_handshake(PeerId p) {
     //peer has already been removed
     if(!mpeer.has_value()) { return; }
     auto f = [this,p](auto err,auto l, auto &&d) {
-        BOOST_LOG(m_lg) << "handle peer f";
         handle_peer_handshake(p, err, l, std::move(d));
     };
 

@@ -67,6 +67,7 @@ class Client : public enable_shared_from_this<Client> {
         bool has_all_pieces();
         bool is_choked_by(PeerId p);
         bool is_connected_to(PeerId p);
+        int num_connections();
         void connect_to_peer(PeerId p);
         void connected(PeerId,const boost_error &error);
         void drop_connection(PeerId p);

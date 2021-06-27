@@ -178,6 +178,8 @@ Element TorrentDisplayBase::Render() {
     std::vector<ftxui::Element> progressElems;
     std::vector<ftxui::Element> downElems;
     std::vector<ftxui::Element> upElems;
+    std::vector<ftxui::Element> seederElems;
+    std::vector<ftxui::Element> leecherElems;
     std::vector<ftxui::Element> etaElems;
 
     auto populate = [&](auto &s,auto &collection) {
@@ -189,6 +191,11 @@ Element TorrentDisplayBase::Render() {
             progressElems.push_back(cell(pp_bytes(tv.get_downloaded())));
             downElems.push_back(cell(pp_bytes_per_second(tv.get_download_speed())));
             upElems.push_back(cell(pp_bytes_per_second(tv.get_upload_speed())));
+            auto connects = [](auto act,auto tot) { 
+                return std::to_wstring(act) + L"(" + std::to_wstring(tot) + L")";
+            };
+            seederElems.push_back(cell(connects(tv.get_connected_seeders(),tv.get_total_seeders())));
+            leecherElems.push_back(cell(connects(tv.get_connected_leechers(),tv.get_connected_leechers())));
             etaElems.push_back(cell(L"0"));
         }
     };
@@ -208,6 +215,10 @@ Element TorrentDisplayBase::Render() {
     downElems.push_back(separator() | color(Color::GreenLight));
     upElems.push_back(colOfSize(L"Up", 12));
     upElems.push_back(separator() | color(Color::GreenLight));
+    seederElems.push_back(colOfSize(L"Seeders",12));
+    seederElems.push_back(separator() | color(Color::GreenLight));
+    leecherElems.push_back(colOfSize(L"Leechers",12));
+    leecherElems.push_back(separator() | color(Color::GreenLight));
     etaElems.push_back(column(L"ETA"));
     etaElems.push_back(separator() | color(Color::GreenLight));
 
@@ -232,6 +243,10 @@ Element TorrentDisplayBase::Render() {
                     vbox(downElems),
                     vbox({separator()}),
                     vbox(upElems),
+                    vbox({separator()}),
+                    vbox(seederElems),
+                    vbox({separator()}),
+                    vbox(leecherElems),
                     vbox({separator()}),
                     vbox(etaElems) | xflex
                     }) | flex,

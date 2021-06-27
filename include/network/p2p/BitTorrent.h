@@ -27,7 +27,7 @@ Protocol should accept torrent identifier, present pieces and a list of peers
 
 */
 class BitTorrent {
-    int m_max_peers = 7;
+    int m_max_peers = 10;
     
     boost::asio::io_context &m_io;
     std::recursive_mutex m_mutex;
@@ -47,15 +47,19 @@ class BitTorrent {
         std::shared_ptr<Torrent> m_torrent;
         std::shared_ptr<Client> m_client;
         std::set<PeerId> m_available_peers;
-        std::atomic<int> m_connected = 0;
+        int m_leecher_count;
+        int connected_peers();
+        int available_peers();
+        int known_leecher_count();
 
     private:
+
         void request_peers();
         std::optional<PeerId> choose_peer();
         void setup_client();
         void attempt_connect(PeerId p);
         void peer_change(PeerId p,PeerChange pc);
-        std::optional<PeerId> connect_to_a_peer();
+        void connect_to_a_peer();
 
         void perform_handshake(PeerId p);
 };

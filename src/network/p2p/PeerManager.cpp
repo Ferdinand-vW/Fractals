@@ -58,6 +58,11 @@ void PeerManager::finished_work(PeerId p) {
     m_work.erase(p);
 }
 
+int PeerManager::num_connections() {
+    std::unique_lock<std::mutex> _lock(m_mutex);
+    return m_conns.size();
+}
+
 bool PeerManager::is_connected_to(PeerId p) {
     std::unique_lock<std::mutex> _lock(m_mutex);
     return m_conns.find(p) != m_conns.end();

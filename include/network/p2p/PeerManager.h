@@ -30,6 +30,7 @@ class PeerManager {
         void finished_work(PeerId p);
 
         //queries
+        int num_connections();
         bool is_connected_to(PeerId p);
         std::optional<std::shared_ptr<Connection>> lookup(PeerId p);
         std::shared_ptr<Connection> const& operator[](PeerId p);

@@ -55,18 +55,10 @@ void Connection::cancel() {
 }
 
 void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
-    BOOST_LOG(m_lg) << "write message";
     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
 }
 
 void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
-    if(size == 0) {
-        BOOST_LOG(m_lg) << "Message Stats:";
-        BOOST_LOG(m_lg) << "size =" << size;
-        BOOST_LOG(m_lg) << "length =" << length;
-        BOOST_LOG(m_lg) << "remaining =" << remaining;
-        BOOST_LOG(m_lg) << "error = " << error.message();
-    }
     if (size < remaining && !error) {
         boost::asio::async_read(m_socket,m_buf
                                 ,boost::asio::transfer_exactly(remaining - size)
@@ -94,7 +86,6 @@ void Connection::read_message_body(const boost_error& error,size_t size,int leng
 }
 
 void Connection::read_messages() {
-    BOOST_LOG(m_lg) << "read messages";
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
@@ -120,7 +111,6 @@ void Connection::read_messages() {
 }
 
 void Connection::read_handshake_body(const boost_error& error,size_t size,unsigned char pstrlen,int length,int remaining) {
-    BOOST_LOG(m_lg) << "read handshake body";
     if (size < remaining && !error) {
         boost::asio::async_read(m_socket,m_buf
                                 ,boost::asio::transfer_exactly(remaining - size)
@@ -140,7 +130,6 @@ void Connection::read_handshake_body(const boost_error& error,size_t size,unsign
 }
 
 void Connection::read_handshake() {
-    BOOST_LOG(m_lg) << "read handshake";
     auto read_length_handler = [&](const boost_error &err, size_t size) {
         // Abort on error
         if (err) {
