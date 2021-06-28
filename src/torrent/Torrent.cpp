@@ -80,7 +80,7 @@ std::vector<FileData> Torrent::divide_over_files(int piece) {
             auto file_remaining = next_file_begin - bytes_begin; // bytes left in remainder of current file
             
             // How much can we write/is there to write
-            int to_write;
+            long long to_write;
             if (file_remaining < piece_len) {
                 to_write = file_remaining;
             } else {
@@ -199,7 +199,7 @@ std::set<int> Torrent::get_pieces() {
 }
 
 long long Torrent::cumulative_size_of_pieces(int piece) {
-    int sum = 0;
+    long long sum = 0;
     for(int i = 0; i <= piece;i++) { // piece is zero based index
         sum += size_of_piece(i);
     }
@@ -220,7 +220,7 @@ void Torrent::write_data(PieceData &pd) {
 
     BOOST_LOG(m_lg) << "[Torrent] To write " << bytes.size() << " number of bytes";
     BOOST_LOG(m_lg) << "[Torrent] Spanning over " << fds.size() << " file(s)";
-    int bytes_pos = 0;
+    long long bytes_pos = 0;
     for(auto fd : fds) {
         std::fstream fstream;
 

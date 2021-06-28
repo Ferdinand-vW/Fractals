@@ -27,8 +27,8 @@ void PeerManager::disable() {
     for(auto &e : m_conns) {
         e.second->cancel();
     }
-    // m_conns.clear();
-    // m_work.clear();
+    m_conns.clear();
+    m_work.clear();
 }
 
 void PeerManager::enable() {
