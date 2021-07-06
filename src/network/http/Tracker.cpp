@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 
 #include "app/Client.h"
+#include "bencode/decode.h"
 #include "bencode/encode.h"
 #include "common/maybe.h"
 #include "common/utils.h"
@@ -40,6 +41,12 @@ TrackerRequest makeTrackerRequest(const MetaInfo &mi) {
     
     auto info_hash = sha1_encode(encoded);
     auto uri_info  = url_encode(info_hash);
+    ofstream fs("info.txt");
+    fs << bytes_to_hex(info_hash);
+    fs.close();
+    ofstream fs2("encoded.txt");
+    fs2 << encoded;
+    fs2.close();
     auto peer_id   = generate_peerId();
     auto str_peer_id = url_encode(peer_id);
     int port = 6882;
@@ -107,7 +114,7 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) 
 
 neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
     if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
-    
+
     std::vector<Peer> peers;
     for(int i = 0; i < bytes.size() - 6; i+=6) {
         struct sockaddr_in sa;
@@ -129,6 +136,9 @@ neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes
 
 neither::Either<std::string, TrackerResponse> parseTrackerReponse(const bdict &bd) {
     //
+    std::ofstream fs("err2.txt");
+    fs << bd;
+    fs.close();
     auto optfailure = bd.find("failure reason");
     std::string failure_reason;
     if(optfailure.has_value()) { 

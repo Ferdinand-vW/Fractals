@@ -482,7 +482,7 @@ void Client::send_piece_requests(PeerId p) {
     int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
 
     Request request(work->m_data.m_piece_index
-                    ,0
+                    ,work->m_data.next_block_begin()
                     ,std::min(remaining,std::min(piece_length,request_size)));
     BOOST_LOG(m_lg) << p.m_ip + " >>> " + request.pprint();
     auto req_ptr = std::make_unique<Request>(request);

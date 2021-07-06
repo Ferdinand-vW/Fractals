@@ -59,7 +59,8 @@ Either<std::string,TorrentName> TorrentController::on_add(std::string filepath) 
         //provide error message to view
         return left<std::string>(eth_torr.leftValue);
     } else {
-        auto torr = std::move(eth_torr.rightValue);
+        auto torr_ptr = eth_torr.rightValue;
+        auto &torr = *torr_ptr.get();
         if(has_torrent(m_storage, torr)) {
             return left<std::string>("torrent " + torr.m_name + " already exists!");
         }
@@ -67,7 +68,7 @@ Either<std::string,TorrentName> TorrentController::on_add(std::string filepath) 
         save_torrent(m_storage, filepath,torr);
 
         //add torrent to program state
-        auto bt = to_bit_torrent(torr);
+        auto bt = to_bit_torrent(torr_ptr);
         add_torrent(bt);
 
         //provide name of torrent to view
@@ -216,11 +217,6 @@ void TorrentController::runUI() {
     auto renderer = Renderer(terminal,[&] { return m_display.value()->Render(); });
     m_ticker.start();
     m_screen.Loop(renderer);
-}
-
-std::shared_ptr<BitTorrent> TorrentController::to_bit_torrent(Torrent &torr) {
-    auto torr_shared = std::make_shared<Torrent>(torr);
-    return to_bit_torrent(torr_shared);
 }
 
 std::shared_ptr<BitTorrent> TorrentController::to_bit_torrent(std::shared_ptr<Torrent> torr) {

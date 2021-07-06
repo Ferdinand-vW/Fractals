@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <mutex>
 
 #include "bencode/bencode.h"
 #include "common/encode.h"
@@ -38,7 +39,7 @@ Torrent::Torrent(MetaInfo &mi,std::string fileName,std::set<int> pieces)
     m_info_hash = sha1_encode(bencode::encode(BencodeConvert::to_bdict(m_mi.info)));
 }
 
-neither::Either<std::string,Torrent> Torrent::read_torrent(std::string fp) {
+neither::Either<std::string,std::shared_ptr<Torrent>> Torrent::read_torrent(std::string fp) {
     std::ifstream fstream;
     fstream.open(fp, std::ifstream::binary);
     
@@ -55,7 +56,8 @@ neither::Either<std::string,Torrent> Torrent::read_torrent(std::string fp) {
     if(bd.isLeft) {
         return left<std::string>(bd.leftValue);
     } else {
-        return right(Torrent(bd.rightValue,p.stem().string(),{}));
+        auto torr_ptr = std::shared_ptr<Torrent>(new Torrent(bd.rightValue,p.stem().string(),{}));
+        return right<std::shared_ptr<Torrent>>(torr_ptr);
     }
 }
 
@@ -224,6 +226,7 @@ void Torrent::write_data(PieceData &pd) {
     for(auto fd : fds) {
         std::fstream fstream;
 
+        std::unique_lock<std::mutex> l(m_mutex);
         fstream.open(fd.full_path, std::fstream::out | std::fstream::in | std::fstream::binary);
 
         fstream.seekp(fd.begin); // set the correct offset to start write

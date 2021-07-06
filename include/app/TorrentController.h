@@ -56,6 +56,5 @@ class TorrentController {
 
         void runUI();
 
-        std::shared_ptr<BitTorrent> to_bit_torrent(Torrent &torr);
         std::shared_ptr<BitTorrent> to_bit_torrent(std::shared_ptr<Torrent> torr);
 };

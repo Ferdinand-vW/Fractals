@@ -24,7 +24,7 @@ std::vector<std::shared_ptr<Torrent>> load_torrents(Storage &st) {
     for(auto &tm : tms) {
         auto t = Torrent::read_torrent(tm.meta_info_path);
         if(!t.isLeft) {
-            torrs.push_back(std::make_shared<Torrent>(t.rightValue));
+            torrs.push_back(t.rightValue);
         }
     }
 

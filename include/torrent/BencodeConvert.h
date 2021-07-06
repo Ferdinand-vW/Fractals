@@ -281,6 +281,12 @@ class BencodeConvert {
             fm.insert({key_pl,val_pl});
             fm.insert({key_pcs,val_pcs});
 
+            if(id.publish.hasValue) {
+                string key_prvt("private");
+                bint val_prvt(id.publish.value);
+                fm.insert({key_prvt,val_prvt});
+            }
+
             return fm;
         }
 

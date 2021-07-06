@@ -21,11 +21,12 @@ class Torrent {
         std::vector<char> m_info_hash;
         std::vector<FileInfo> m_files;
         boost::log::sources::logger_mt &m_lg;
+        std::mutex m_mutex;
 
         Torrent(MetaInfo &mi,std::string fileName,std::set<int> pieces);
 
         void write_data(PieceData & pd);
-        static Either<std::string,Torrent> read_torrent(std::string fp);
+        static Either<std::string,std::shared_ptr<Torrent>> read_torrent(std::string fp);
         long long size_of_piece(int piece);
         long long size_of_pieces(std::set<int> pieces);
         void add_piece(int p);
