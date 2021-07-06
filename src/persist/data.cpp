@@ -37,9 +37,9 @@ bool has_torrent(Storage &st, const Torrent &t) {
 
 void delete_torrent(Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
-    delete_announces(st, t);
-    delete_pieces(st, t);
     if(tm.has_value()) {
+        delete_announces(st, t);
+        delete_pieces(st, t);
         st.delete_torrent(tm.value());
     }
 }

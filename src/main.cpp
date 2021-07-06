@@ -11,6 +11,7 @@
 
 
 #include "app/TorrentController.h"
+#include "common/utils.h"
 #include "persist/data.h"
 #include <filesystem>
 #include <fstream>
@@ -73,6 +74,7 @@ int main(int argc, const char* argv[]) {
 
     boost::asio::io_context io;
     TorrentController tc(io,storage);
+    
     tc.run();
     boost::log::core::get()->remove_all_sinks();
 }

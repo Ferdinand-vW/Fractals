@@ -41,23 +41,16 @@ void TorrentController::run() {
 void TorrentController::exit() {
     stop_torrents();
     m_work.reset(); //release m_io.run from threads
-    BOOST_LOG(m_lg) << "before";
     m_threads.join(); //wait for torrents to be fully stopped
-    BOOST_LOG(m_lg) << "in between";
     m_io.stop();
-
-    BOOST_LOG(m_lg) << "done";
 
     //Appears that the terminal output library cleans up after a screen loop exit
     //we need to make sure that we remove any dependencies to components owned by this class
     //before the library attempts to clean up the components when we still have an existing pointer to one
     //removal of this line may cause segfaults
-    m_display.reset();
     m_ticker.stop();
-    
-    //this doesn't actually do anything
-    //for some reason we need to exit the loop from within runUI function
-    // m_screen.ExitLoopClosure();
+    m_display->reset();
+    m_terminal->reset();
 }
 
 Either<std::string,TorrentName> TorrentController::on_add(std::string filepath) {
