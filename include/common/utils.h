@@ -50,3 +50,5 @@ std::wstring pp_bytes_per_second(long long bytes);
 std::wstring pp_time(long long seconds);
 std::wstring make_wide(const std::string &s);
 std::string unwide(const std::wstring &ws);
+
+void print_err(std::string &&s);

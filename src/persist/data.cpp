@@ -1,5 +1,6 @@
 #include "persist/data.h"
 #include "common/maybe.h"
+#include "common/utils.h"
 #include "network/http/Peer.h"
 #include <algorithm>
 #include <filesystem>
@@ -36,6 +37,8 @@ bool has_torrent(Storage &st, const Torrent &t) {
 
 void delete_torrent(Storage &st, const Torrent &t) {
     auto tm = st.load_torrent(t.m_name);
+    delete_announces(st, t);
+    delete_pieces(st, t);
     if(tm.has_value()) {
         st.delete_torrent(tm.value());
     }
@@ -61,6 +64,16 @@ std::set<int> load_pieces(Storage &st, const Torrent &t) {
     }
 
     return pieces;
+}
+
+void delete_pieces(Storage &st,const Torrent &t) {
+    auto tm = st.load_torrent(t.m_name);
+    if(tm.has_value()) {
+        auto pms = st.load_pieces(tm.value());
+        for(auto &pm : pms) {
+            st.delete_piece(pm);
+        }
+    }
 }
 
 void save_announce(Storage &st, const Torrent &t, const Announce &ann) {

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "persist/announce_model.h"
 #include "persist/storage.h"
 #include "torrent/Torrent.h"
 #include "network/http/Announce.h"
@@ -13,6 +14,7 @@ void delete_torrent (Storage &st,const Torrent &t);
 
 void save_piece(Storage &st,const Torrent &t,int piece);
 std::set<int> load_pieces(Storage &st,const Torrent &t);
+void delete_pieces(Storage &st,const Torrent &t);
 
 void save_announce(Storage &st,const Torrent &t,const Announce &ann);
 void delete_announces(Storage &st,const Torrent &t);

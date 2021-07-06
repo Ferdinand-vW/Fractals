@@ -1,4 +1,5 @@
 #include "persist/storage.h"
+#include "common/utils.h"
 #include "persist/torrent_model.h"
 #include "sqlite_orm/sqlite_orm.h"
 #include "torrent/Torrent.h"
@@ -36,6 +37,7 @@ std::optional<TorrentModel> Storage::load_torrent(std::string name) {
             where(c(&TorrentModel::name) == name)
     );
 
+    print_err("load torrent"+std::to_string(tms.size()));
     if(tms.begin() != tms.end()) {
         return tms.front();
     } else {
@@ -68,6 +70,12 @@ std::vector<PieceModel> Storage::load_pieces(const TorrentModel &t) {
     return m_storage->get_all<PieceModel>(
         where(c(&PieceModel::torrent_id) == t.id)
     );
+}
+
+void Storage::delete_piece(const PieceModel &pm) {
+    using namespace sqlite_orm;
+    std::unique_lock<std::mutex> l(m_update_mutex);
+    m_storage->remove<PieceModel>(pm.id);
 }
 
 void Storage::save_announce(const AnnounceModel &ann) {

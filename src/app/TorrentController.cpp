@@ -99,6 +99,8 @@ Either<std::string,TorrentName> TorrentController::on_remove(int torr_id) {
 
     auto bt = m_torrents[torr_id];
     bt->stop();
+    auto &torr = *bt->m_torrent.get();
+    delete_torrent(m_storage, torr);
     m_torrents.erase(torr_id);
 
     auto tdb = TorrentDisplayBase::From(m_display.value());

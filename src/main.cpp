@@ -73,13 +73,6 @@ int main(int argc, const char* argv[]) {
 
     boost::asio::io_context io;
     TorrentController tc(io,storage);
-    try {
-        tc.run();
-    } catch (std::system_error e) {
-        std::ofstream ofs("err.txt");
-        ofs << e.what();
-        ofs.close();
-    }
-
+    tc.run();
     boost::log::core::get()->remove_all_sinks();
 }

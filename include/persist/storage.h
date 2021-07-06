@@ -60,6 +60,7 @@ class Storage {
 
         void add_piece(const PieceModel &pm);
         std::vector<PieceModel> load_pieces(const TorrentModel &t);
+        void delete_piece(const PieceModel &pm);
 
         void save_announce(const AnnounceModel &ann);
         void delete_announces(const TorrentModel &tm);

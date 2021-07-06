@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <neither/neither.hpp>
 #include <utility>
+#include <fstream>
 
 std::string str_concat_vector(const std::vector<std::string> &v) {
     std::string out("");
@@ -211,4 +212,10 @@ std::wstring make_wide(const std::string &s) {
 
 std::string unwide(const std::wstring &ws) {
     return std::string(ws.begin(),ws.end());
+}
+
+void print_err(std::string &&s) {
+    std::ofstream ofs("err2.txt");
+    ofs << s;
+    ofs.close();
 }
