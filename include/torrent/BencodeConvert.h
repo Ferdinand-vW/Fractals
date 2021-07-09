@@ -203,7 +203,6 @@ class BencodeConvert {
 
             const auto e_single_file = from_bdict<SingleFile>(bd);
             const auto e_multi_file  = from_bdict<MultiFile>(bd);
-            typedef Either<string,Either<SingleFile,MultiFile>> file_mode_type;
 
             const auto e_file_mode = either_of(e_single_file,e_multi_file);
 

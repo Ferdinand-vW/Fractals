@@ -15,7 +15,7 @@ bool PieceData::is_complete() {
 
 void PieceData::add_block(const Block &incoming) {
     bool overlaps = false;
-    for(auto &existing : m_blocks) {
+    for(const auto &existing : m_blocks) {
         auto o = incoming.m_begin < (existing.m_begin + existing.m_data.size()) 
                 && incoming.m_begin > existing.m_begin;
         overlaps = overlaps || o;

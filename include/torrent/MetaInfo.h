@@ -21,7 +21,7 @@ struct FileInfo {
         std::vector<string> path;
 
 
-        string to_string(int len = 100) {
+        string to_string(int /* len = 100 */) {
             Maybe<string> md5sum_s = md5sum.map([](const auto &v) { return string(v.begin(),v.end()); });
             return "{ length =  "s + std::to_string(length)+ ", path = [" + intercalate(",",path) + "], md5sum = " + from_maybe(md5sum_s,"<empty>"s) + "}";
         }

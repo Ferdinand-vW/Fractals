@@ -1,13 +1,14 @@
 #pragma once
 
-#include <string>
+#include "Peer.h"
+
 #include <neither/neither.hpp>
 #include <bencode/bencode.h>
 
-#include "torrent/MetaInfo.h"
-#include "torrent/BencodeConvert.h"
-#include "Announce.h"
-#include "Peer.h"
+#include <string>
+
+class MetaInfo;
+struct Announce;
 
 using namespace neither;
 

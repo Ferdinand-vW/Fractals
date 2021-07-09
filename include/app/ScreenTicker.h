@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ftxui/component/screen_interactive.hpp"
+#include <ftxui/component/screen_interactive.hpp>
 #include <thread>
 
 class ScreenTicker {

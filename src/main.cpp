@@ -1,15 +1,3 @@
-// #include "ftxui/screen/string.hpp"
-// #include "persist/data.h"
-// #include "torrent/Torrent.h"
-// #include "network/p2p/BitTorrent.h"
-// #include "common/logger.h"
-// #include "persist/storage.h"
-// #include "sqlite_orm/sqlite_orm.h"
-
-// using namespace boost::asio;
-
-
-
 #include "app/TorrentController.h"
 #include "common/utils.h"
 #include "persist/data.h"
@@ -32,7 +20,7 @@ void my_terminate_handler() {
     std::abort();
 }
 
-void my_segfault_handler(int sig) {
+void my_segfault_handler(int /* sig */) {
     try {
         std::ofstream ofs("err.txt");
         ofs << boost::stacktrace::stacktrace();
@@ -41,7 +29,7 @@ void my_segfault_handler(int sig) {
     std::abort();
 }
 
-int main(int argc, const char* argv[]) {
+int main(int /* argc */, const char* /* argv */[]) {
     boost::filesystem::path::imbue(std::locale("C"));
     std::set_terminate(&my_terminate_handler);
     signal(SIGSEGV,my_segfault_handler);

@@ -2,6 +2,7 @@
 #include "network/http/Tracker.h"
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
+#include "network/p2p/Client.h"
 #include "network/http/Peer.h"
 #include "common/logger.h"
 #include "persist/data.h"

@@ -1,9 +1,7 @@
 #pragma once
 
 #include <bencode/bencode.h>
-#include <memory>
 #include <neither/neither.hpp>
-#include <optional>
 
 using namespace neither;
 

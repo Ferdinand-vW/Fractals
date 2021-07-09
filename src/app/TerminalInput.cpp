@@ -1,4 +1,6 @@
 #include "app/TerminalInput.h"
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 
 Component TerminalInput(StringRef content, ConstStringRef placeholder) {
     return Make<TerminalInputBase>(content, placeholder);

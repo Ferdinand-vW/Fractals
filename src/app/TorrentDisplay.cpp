@@ -1,20 +1,25 @@
 #include "app/Feedback.h"
 #include "app/TorrentDisplay.h"
+#include "common/utils.h"
 #include "ftxui/screen/screen.hpp"
 #include <algorithm>
+#include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <filesystem>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <neither/either.hpp>
 #include <iterator>
 #include <sstream>
 #include <string>
 
-Component TorrentDisplay(Component terminal_input) {
+ftxui::Component TorrentDisplay(ftxui::Component terminal_input) {
     return Make<TorrentDisplayBase>(terminal_input);
 }
 
-TorrentDisplayBase::TorrentDisplayBase(Component terminal_input) : m_terminal_input(terminal_input) {};
+TorrentDisplayBase::TorrentDisplayBase(ftxui::Component terminal_input) : m_terminal_input(terminal_input) {};
 
-TorrentDisplayBase* TorrentDisplayBase::From(Component component) {
+TorrentDisplayBase* TorrentDisplayBase::From(ftxui::Component component) {
     return static_cast<TorrentDisplayBase*>(component.get());
 }
 
@@ -52,18 +57,18 @@ bool TorrentDisplayBase::parse_command(StringRef ws) {
     //parse string identifiers with format '#<integer>'
     //the integer *should* refer to a torrent id
     //return error messages on failure
-    auto parse_ident = [](auto &ident) -> Either<std::string,int> {
+    auto parse_ident = [](auto &ident) -> neither::Either<std::string,int> {
         if(ident.substr(0,1) != L"#") {
-            return left<std::string>("torrent identifier must start with #. Expected format is #<torrent id>.");
+            return neither::left<std::string>("torrent identifier must start with #. Expected format is #<torrent id>.");
         }
 
         auto s_num = ident.substr(1,ident.size() - 1);
         int num = -1;
         auto b = boost::conversion::try_lexical_convert<int>(s_num,num);
         if(!b) {
-            return left<std::string>("torrent identifier must contain number. Expected format is #<torrent id>.");
+            return neither::left<std::string>("torrent identifier must contain number. Expected format is #<torrent id>.");
         } else {
-            return right<int>(num);
+            return neither::right<int>(num);
         }
     };
 

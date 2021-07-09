@@ -461,9 +461,6 @@ void Client::unchoke_timeout(PeerId p,const boost_error &error) {
 void Client::send_piece_requests(PeerId p) {
     auto mpeer = m_peers.lookup(p);
     if(!mpeer.has_value()) { return; }
-    auto cb = [&](const boost_error &error,size_t size) {
-        sent_piece_request(p, error, size);
-    };
 
     auto peer = mpeer.value();
     if(!m_peers.lookup_work(p).has_value()) {

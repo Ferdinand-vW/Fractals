@@ -1,6 +1,5 @@
 #pragma once
 
-#include "neither/maybe.hpp"
 #include <algorithm>
 #include <deque>
 #include <iostream>

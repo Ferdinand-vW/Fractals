@@ -1,4 +1,5 @@
 #include "network/p2p/BitTorrent.h"
+#include "torrent/Torrent.h"
 #include "app/TorrentView.h"
 #include <bits/types/time_t.h>
 #include <climits>

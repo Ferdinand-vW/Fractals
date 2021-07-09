@@ -16,6 +16,8 @@
 #include "neither/either.hpp"
 #include "network/http/Tracker.h"
 #include "common/encode.h"
+#include "torrent/BencodeConvert.h"
+#include "network/http/Announce.h"
 
 std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
     auto peers_str = intercalate(", ",map_vector<Peer,std::string>(s.peers, [](const Peer &p) {
@@ -35,18 +37,12 @@ std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
 }
 
 TrackerRequest makeTrackerRequest(const MetaInfo &mi) {
-    bdict info_dict = BencodeConvert::to_bdict(mi.info);
+    bencode::bdict info_dict = BencodeConvert::to_bdict(mi.info);
     auto encoded = bencode::encode(info_dict);
 
     
     auto info_hash = sha1_encode(encoded);
     auto uri_info  = url_encode(info_hash);
-    ofstream fs("info.txt");
-    fs << bytes_to_hex(info_hash);
-    fs.close();
-    ofstream fs2("encoded.txt");
-    fs2 << encoded;
-    fs2.close();
     auto peer_id   = generate_peerId();
     auto str_peer_id = url_encode(peer_id);
     int port = 6882;

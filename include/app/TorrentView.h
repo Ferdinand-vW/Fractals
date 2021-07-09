@@ -1,7 +1,9 @@
 #pragma once
 
-#include "network/p2p/BitTorrent.h"
-#include "torrent/Torrent.h"
+#include <memory>
+#include <map>
+
+class BitTorrent;
 
 class TorrentView {
 

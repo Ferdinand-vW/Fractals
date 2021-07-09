@@ -1,15 +1,17 @@
 #pragma once
 
 #include "ftxui/component/screen_interactive.hpp"
-#include "neither/either.hpp"
-#include "network/p2p/BitTorrent.h"
-#include "persist/storage.h"
-#include "torrent/Torrent.h"
-#include "app/TorrentDisplay.h"
-#include "app/TerminalInput.h"
+#include <ftxui/component/component.hpp>
 #include "app/ScreenTicker.h"
 #include <boost/asio/detail/thread_group.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <neither/either.hpp>
+
+//forward declarations
+class BitTorrent;
+class Storage;
+class Torrent;
 
 typedef std::string TorrentName;
 
@@ -35,8 +37,8 @@ class TorrentController {
         //unique id for each torrent, displayed under # column
         std::map<int,std::shared_ptr<BitTorrent>> m_torrents;
         
-        std::optional<Component> m_display;
-        std::optional<Component> m_terminal;
+        std::optional<ftxui::Component> m_display;
+        std::optional<ftxui::Component> m_terminal;
         std::wstring m_terminal_input;
 
         ftxui::ScreenInteractive m_screen;
@@ -44,11 +46,11 @@ class TorrentController {
 
 
         //callback functions to be passed to view
-        Either<std::string, TorrentName> on_add(std::string filepath);
+        neither::Either<std::string, TorrentName> on_add(std::string filepath);
         void add_torrent(std::shared_ptr<BitTorrent> bt);
-        Either<std::string, TorrentName> on_remove(int torr_id);
-        Either<std::string, TorrentName> on_stop(int torr_id);
-        Either<std::string, TorrentName> on_resume(int torr_id);
+        neither::Either<std::string, TorrentName> on_remove(int torr_id);
+        neither::Either<std::string, TorrentName> on_stop(int torr_id);
+        neither::Either<std::string, TorrentName> on_resume(int torr_id);
         int list_torrent(std::shared_ptr<BitTorrent> torrent);
         void start_torrent(int torr_id);
         void stop_torrents();

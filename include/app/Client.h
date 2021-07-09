@@ -1,5 +1,5 @@
 #pragma once
 
-#include "common/utils.h"
+#include <vector>
 
 std::vector<char> generate_peerId();

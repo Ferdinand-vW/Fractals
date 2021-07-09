@@ -1,4 +1,5 @@
 #include "app/TorrentController.h"
+#include "app/TerminalInput.h"
 #include "app/TorrentDisplay.h"
 #include "ftxui/component/screen_interactive.hpp"
 #include "neither/either.hpp"
@@ -7,6 +8,7 @@
 #include "persist/storage.h"
 #include <boost/asio/io_context.hpp>
 #include <filesystem>
+#include <ftxui/component/component.hpp>
 #include <functional>
 #include <mutex>
 

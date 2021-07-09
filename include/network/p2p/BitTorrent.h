@@ -1,14 +1,15 @@
 #pragma once
 
-#include "network/p2p/Connection.h"
-#include "persist/storage.h"
-#include "persist/data.h"
-#include "torrent/Torrent.h"
-#include "network/p2p/Client.h"
 #include "network/http/Peer.h"
+#include "network/p2p/PeerWork.h"
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/log/sources/logger.hpp>
+
+class Storage;
+class Torrent;
+class Client;
+
 /*
 
 One Client class per Torrent
