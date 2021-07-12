@@ -1,7 +1,10 @@
 #include "persist/data.h"
+#include "persist/torrent_model.h"
+#include "persist/storage.h"
 #include "common/maybe.h"
 #include "common/utils.h"
 #include "network/http/Peer.h"
+#include "torrent/Torrent.h"
 #include <algorithm>
 #include <filesystem>
 #include <functional>

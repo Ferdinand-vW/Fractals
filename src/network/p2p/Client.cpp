@@ -1,4 +1,7 @@
 #include "network/p2p/Client.h"
+#include "torrent/Torrent.h"
+#include "persist/data.h"
+
 #include "boost/bind.hpp"
 #include "app/Client.h"
 #include "common/utils.h"

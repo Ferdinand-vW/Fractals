@@ -1,5 +1,6 @@
 #include "network/p2p/Message.h"
 #include "common/utils.h"
+#include "common/logger.h"
 #include "network/p2p/MessageType.h"
 #include <cmath>
 #include <cstring>

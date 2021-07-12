@@ -14,15 +14,18 @@
 #include "network/p2p/Connection.h"
 #include "network/http/Peer.h"
 #include "network/p2p/PeerManager.h"
-#include "network/p2p/Message.h"
-#include "network/http/Tracker.h"
-#include "common/logger.h"
-#include "persist/storage.h"
-#include "persist/data.h"
-#include "torrent/Torrent.h"
-#include "torrent/PieceData.h"
+#include "network/p2p/PeerWork.h"
 
 using namespace boost::asio;
+
+class HandShake;
+class Have;
+class Bitfield;
+class Request;
+class Piece;
+class Cancel;
+class Storage;
+class Torrent;
 
 struct P2PStatus {
     bool m_am_choking = true;
@@ -32,7 +35,7 @@ struct P2PStatus {
     std::set<int> m_available_pieces;
 };
 
-class Client : public enable_shared_from_this<Client> {
+class Client : public std::enable_shared_from_this<Client> {
     std::map<PeerId,P2PStatus> m_peer_status;
 
     //a piece must always be present in at least one of these 3 containers

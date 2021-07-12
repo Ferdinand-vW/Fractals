@@ -2,8 +2,8 @@
 
 #include <string>
 #include <memory>
+#include <mutex>
 
-#include "torrent/Torrent.h"
 #include "torrent_model.h"
 #include "piece_model.h"
 #include "announce_model.h"

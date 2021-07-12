@@ -1,10 +1,13 @@
 #include "app/TorrentController.h"
 #include "common/utils.h"
 #include "persist/data.h"
+#include "persist/storage.h"
 #include <filesystem>
 #include <fstream>
 #include <signal.h>
 #include <boost/stacktrace.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/log/sources/logger.hpp>
 #include <cstdlib>       // std::abort
 #include <exception>     // std::set_terminate
 #include <iostream>      // std::cerr

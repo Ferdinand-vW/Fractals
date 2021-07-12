@@ -1,5 +1,7 @@
 #include "network/p2p/PeerManager.h"
+#include "network/p2p/Connection.h"
 #include "network/http/Peer.h"
+
 #include <mutex>
 
 PeerManager::PeerManager(int max_conn) : m_max_conn(max_conn) {};

@@ -1,10 +1,13 @@
 #pragma once
 
 #include "network/http/Peer.h"
-#include "network/p2p/Connection.h"
-#include "network/p2p/PeerWork.h"
 
 #include <mutex>
+#include <map>
+#include <memory>
+
+class Connection;
+class PeerWork;
 
 class PeerManager {
     int m_max_conn;

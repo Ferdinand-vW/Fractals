@@ -1,11 +1,13 @@
 #pragma once
 
 #include <filesystem>
+#include <vector>
+#include <optional>
+#include <set>
 
-#include "persist/announce_model.h"
-#include "persist/storage.h"
-#include "torrent/Torrent.h"
-#include "network/http/Announce.h"
+class Storage;
+class Torrent;
+class Announce;
 
 void save_torrent(Storage &st, std::string mi,const Torrent &t);
 std::vector<std::shared_ptr<Torrent>> load_torrents(Storage &st);

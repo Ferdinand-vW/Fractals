@@ -13,13 +13,13 @@
 #include <future>
 #include <iostream>
 
-#include "network/p2p/Message.h"
 #include "network/p2p/ConcurrentTimer.h"
 #include "network/http/Peer.h"
-#include "common/logger.h"
 
 using namespace boost::asio;
 using ip::tcp;
+
+class IMessage;
 
 typedef boost::system::error_code boost_error;
 typedef std::shared_ptr<boost_error> shared_error;
