@@ -10,9 +10,9 @@
 #include <boost/log/sources/logger.hpp>
 
 #include "network/p2p/MessageType.h"
-#include "network/http/Peer.h"
 
 class Peer;
+class PeerId;
 
 class IMessage {
     public:

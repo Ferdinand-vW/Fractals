@@ -8,6 +8,10 @@
 #include <boost/stacktrace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/log/sources/logger.hpp>
+#include <boost/log/expressions.hpp> // import keywords
+#include <boost/log/core.hpp>
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
 #include <cstdlib>       // std::abort
 #include <exception>     // std::set_terminate
 #include <iostream>      // std::cerr

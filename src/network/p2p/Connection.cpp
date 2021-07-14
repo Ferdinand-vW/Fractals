@@ -2,6 +2,7 @@
 #include "common/utils.h"
 #include "common/logger.h"
 #include "network/p2p/MessageType.h"
+#include "network/p2p/Message.h"
 #include <bits/c++config.h>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/completion_condition.hpp>

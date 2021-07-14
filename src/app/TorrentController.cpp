@@ -1,16 +1,19 @@
 #include "app/TorrentController.h"
 #include "app/TerminalInput.h"
 #include "app/TorrentDisplay.h"
-#include "ftxui/component/screen_interactive.hpp"
-#include "neither/either.hpp"
+#include "torrent/Torrent.h"
 #include "network/p2p/BitTorrent.h"
 #include "persist/data.h"
 #include "persist/storage.h"
+#include "common/logger.h"
+
 #include <boost/asio/io_context.hpp>
 #include <filesystem>
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <functional>
 #include <mutex>
+#include <neither/neither.hpp>
 
 TorrentController::TorrentController(boost::asio::io_context &io,Storage &st) 
                                   : m_io(io),m_storage(st),m_lg(logger::get())

@@ -4,6 +4,8 @@
 #include "network/p2p/Message.h"
 #include "network/p2p/Client.h"
 #include "network/http/Peer.h"
+#include "network/http/Announce.h"
+#include "torrent/Torrent.h"
 #include "common/logger.h"
 #include "persist/data.h"
 #include <bits/types/time_t.h>

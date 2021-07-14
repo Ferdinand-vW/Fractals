@@ -2,6 +2,7 @@
 #include "common/utils.h"
 #include "common/logger.h"
 #include "network/p2p/MessageType.h"
+#include "network/http/Peer.h"
 #include <cmath>
 #include <cstring>
 #include <memory>

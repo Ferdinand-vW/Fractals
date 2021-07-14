@@ -4,7 +4,9 @@
 #include "common/maybe.h"
 #include "common/utils.h"
 #include "network/http/Peer.h"
+#include "network/http/Announce.h"
 #include "torrent/Torrent.h"
+
 #include <algorithm>
 #include <filesystem>
 #include <functional>
