@@ -5,6 +5,7 @@
 #include "boost/bind.hpp"
 #include "app/Client.h"
 #include "common/utils.h"
+#include "common/logger.h"
 #include "network/p2p/Connection.h"
 #include "network/p2p/Message.h"
 #include "network/http/Peer.h"

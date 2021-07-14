@@ -1,10 +1,10 @@
 #pragma once
 
 #include "torrent/MetaInfo.h"
-#include "torrent/PieceData.h"
-#include "common/logger.h"
 #include <boost/log/sources/logger.hpp>
 #include <string>
+
+struct PieceData;
 
 struct FileData {
     FileInfo fi;

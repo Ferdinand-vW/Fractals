@@ -10,7 +10,6 @@
 #include <neither/neither.hpp>
 
 #include "torrent/MetaInfo.h"
-#include "common/maybe.h"
 #include "common/utils.h"
 
 using namespace std;

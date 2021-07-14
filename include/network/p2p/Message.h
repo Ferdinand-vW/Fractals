@@ -11,7 +11,6 @@
 
 #include "network/p2p/MessageType.h"
 
-class Peer;
 class PeerId;
 
 class IMessage {

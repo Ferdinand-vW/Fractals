@@ -13,7 +13,7 @@
 #include "bencode/encode.h"
 #include "common/maybe.h"
 #include "common/utils.h"
-#include "neither/either.hpp"
+#include "neither/neither.hpp"
 #include "network/http/Tracker.h"
 #include "common/encode.h"
 #include "torrent/BencodeConvert.h"
