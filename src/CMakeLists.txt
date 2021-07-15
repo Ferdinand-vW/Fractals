@@ -45,6 +45,7 @@ target_link_libraries(Fractals pthread dl)
 set_target_properties(Fractals PROPERTIES
             CXX_STANDARD 17
             CXX_EXTENSIONS OFF
+            CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path}
             )
 
 # set_target_properties(Fractals_lib PROPERTIES

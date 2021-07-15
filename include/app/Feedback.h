@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
 
 using namespace ftxui;
 

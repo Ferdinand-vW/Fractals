@@ -1,17 +1,20 @@
-#include "app/Feedback.h"
-#include "app/TorrentDisplay.h"
-#include "common/utils.h"
-#include "ftxui/screen/screen.hpp"
-#include <algorithm>
-#include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <filesystem>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
+#include <ftxui/screen/string.hpp>
 #include <neither/either.hpp>
-#include <iterator>
-#include <sstream>
-#include <string>
+
+#include "app/Feedback.h"
+#include "app/TorrentDisplay.h"
+#include "common/utils.h"
 
 ftxui::Component TorrentDisplay(ftxui::Component terminal_input) {
     return Make<TorrentDisplayBase>(terminal_input);

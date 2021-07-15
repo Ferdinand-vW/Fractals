@@ -1,16 +1,17 @@
-#include "persist/data.h"
-#include "persist/torrent_model.h"
-#include "persist/storage.h"
-#include "common/maybe.h"
-#include "common/utils.h"
-#include "network/http/Peer.h"
-#include "network/http/Announce.h"
-#include "torrent/Torrent.h"
-
 #include <algorithm>
 #include <filesystem>
-#include <functional>
 #include <iterator>
+
+#include <neither/either.hpp>
+
+#include "network/http/Peer.h"
+#include "network/http/Announce.h"
+#include "persist/announce_model.h"
+#include "persist/data.h"
+#include "persist/piece_model.h"
+#include "persist/storage.h"
+#include "persist/torrent_model.h"
+#include "torrent/Torrent.h"
 
 void save_torrent(Storage &st, std::string mi,const Torrent &t) {
     auto mi_path = "./metainfo/" + t.m_name + ".torrent";

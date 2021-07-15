@@ -1,14 +1,16 @@
 #pragma once
 
+#include <functional>
+#include <map>
+#include <string>
+
+#include <ftxui/component/component_base.hpp>  // for ComponentBase
+#include <ftxui/dom/elements.hpp>
+
 #include "app/Feedback.h"
 #include "app/TorrentView.h"
 
-#include <ftxui/component/component_base.hpp>  // for ComponentBase
-#include <neither/either.hpp>
-
-#include <string>
-#include <functional>
-
+namespace neither { template <class L, class R> struct Either; }
 namespace ftxui {class StringRef; }
 
 class TorrentDisplayBase : public ftxui::ComponentBase {

@@ -1,6 +1,10 @@
-#include "app/ScreenTicker.h"
-#include "ftxui/component/screen_interactive.hpp"
 #include <thread>
+#include <chrono>
+
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+
+#include "app/ScreenTicker.h"
 
 ScreenTicker::ScreenTicker(ftxui::ScreenInteractive &screen) : m_screen(screen) {};
 ScreenTicker::~ScreenTicker() {

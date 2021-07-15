@@ -1,7 +1,10 @@
+#include <string>
+
+#include <unistd.h>
+
 #include "app/Client.h"
 #include "common/utils.h"
 
-#include <unistd.h>
 
 std::vector<char> generate_peerId(){
     std::string processId = std::to_string(::getpid());

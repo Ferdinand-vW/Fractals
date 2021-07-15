@@ -1,7 +1,9 @@
 #pragma once
 
-#include <ftxui/component/screen_interactive.hpp>
 #include <thread>
+#include <optional>
+
+namespace ftxui { class ScreenInteractive; }
 
 class ScreenTicker {
     ftxui::ScreenInteractive &m_screen;

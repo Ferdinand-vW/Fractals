@@ -1,11 +1,9 @@
-#include "common/encode.h"
-#include <cstring>
-#include <curl/curl.h>
-#include <curl/easy.h>
-#include <memory>
-#include <iostream>
-#include <openssl/sha.h>
 #include <vector>
+
+#include <curl/curl.h>
+#include <openssl/sha.h>
+
+#include "common/encode.h"
 
 std::vector<char> sha1_encode(std::string bytes) {
     unsigned char info_hash[SHA_DIGEST_LENGTH];

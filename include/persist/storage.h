@@ -1,14 +1,18 @@
 #pragma once
 
-#include <string>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
+#include <sys/types.h>
 
-#include "torrent_model.h"
-#include "piece_model.h"
+#include <sqlite_orm/sqlite_orm.h>
+
 #include "announce_model.h"
 #include "announce_peer_model.h"
-#include "sqlite_orm/sqlite_orm.h"
+#include "piece_model.h"
+#include "torrent_model.h"
 
 // defined here such that we can construct a type alias (e.g. 'InternalStorage') for the 'storage' type
 inline auto init_storage(std::string db) {

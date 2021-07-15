@@ -1,23 +1,32 @@
-#include <cstring>
 #include <fstream>
 #include <functional>
-#include <iterator>
 #include <netinet/in.h>
-#include <openssl/sha.h>
 #include <curl/curl.h>
 #include <string>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <algorithm>
+#include <optional>
+
+#include <boost/outcome/basic_result.hpp>
+#include <bencode/bdata.h>
+#include <bencode/bdict.h>
+#include <bencode/bint.h>
+#include <bencode/blist.h>
+#include <bencode/bstring.h>
+#include <bencode/error.h>
+#include <bencode/decode.h>
+#include <bencode/encode.h>
 
 #include "app/Client.h"
-#include "bencode/decode.h"
-#include "bencode/encode.h"
+#include "common/encode.h"
 #include "common/maybe.h"
 #include "common/utils.h"
-#include "neither/neither.hpp"
-#include "network/http/Tracker.h"
-#include "common/encode.h"
-#include "torrent/BencodeConvert.h"
 #include "network/http/Announce.h"
+#include "network/http/Tracker.h"
+#include "network/http/Peer.h"
+#include "torrent/BencodeConvert.h"
+#include "torrent/MetaInfo.h"
 
 std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
     auto peers_str = intercalate(", ",map_vector<Peer,std::string>(s.peers, [](const Peer &p) {

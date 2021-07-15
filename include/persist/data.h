@@ -1,9 +1,10 @@
 #pragma once
 
-#include <filesystem>
-#include <vector>
+#include <memory>
 #include <optional>
 #include <set>
+#include <string>
+#include <vector>
 
 class Storage;
 class Torrent;

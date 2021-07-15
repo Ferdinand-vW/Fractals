@@ -1,19 +1,29 @@
+#include <functional>
+#include <mutex>
+#include <iosfwd>
+#include <new>
+#include <utility>
+#include <vector>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/log/core/record.hpp>
+#include <boost/log/detail/attachable_sstream_buf.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+#include <ftxui/component/captured_mouse.hpp>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
+#include <neither/either.hpp>
+
 #include "app/TorrentController.h"
 #include "app/TerminalInput.h"
 #include "app/TorrentDisplay.h"
-#include "torrent/Torrent.h"
+#include "app/TorrentView.h"
+#include "common/logger.h"
 #include "network/p2p/BitTorrent.h"
 #include "persist/data.h"
-#include "persist/storage.h"
-#include "common/logger.h"
-
-#include <boost/asio/io_context.hpp>
-#include <filesystem>
-#include <ftxui/component/component.hpp>
-#include <ftxui/component/screen_interactive.hpp>
-#include <functional>
-#include <mutex>
-#include <neither/neither.hpp>
+#include "torrent/Torrent.h"
 
 TorrentController::TorrentController(boost::asio::io_context &io,Storage &st) 
                                   : m_io(io),m_storage(st),m_lg(logger::get())

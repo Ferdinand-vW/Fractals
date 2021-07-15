@@ -1,9 +1,15 @@
-#include "network/p2p/BitTorrent.h"
-#include "torrent/Torrent.h"
-#include "app/TorrentView.h"
-#include <bits/types/time_t.h>
+#include <ctime>
 #include <climits>
 #include <numeric>
+#include <vector>
+#include <utility>
+
+#include <neither/either.hpp>
+
+#include "app/TorrentView.h"
+#include "network/p2p/BitTorrent.h"
+#include <torrent/MetaInfo.h>
+#include "torrent/Torrent.h"
 
 TorrentView::TorrentView(int id,std::shared_ptr<BitTorrent> t) : m_id(id),m_model(t) {};
 

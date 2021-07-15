@@ -1,12 +1,19 @@
 #pragma once
 
-#include "ftxui/component/screen_interactive.hpp"
-#include <ftxui/component/component.hpp>
-#include "app/ScreenTicker.h"
+#include <map>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+
+#include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/detail/thread_group.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/log/sources/logger.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <neither/either.hpp>
+
+#include "app/ScreenTicker.h"
 
 //forward declarations
 class BitTorrent;

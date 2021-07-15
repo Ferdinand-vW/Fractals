@@ -1,7 +1,9 @@
 #pragma once
 
 #include <memory>
-#include <map>
+#include <optional>
+#include <string>
+#include <sys/types.h>
 
 class BitTorrent;
 

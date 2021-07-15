@@ -1,11 +1,8 @@
 #pragma once
 
-#include <algorithm>
+#include <string>
 #include <deque>
-#include <iostream>
 #include <iterator>
-#include <memory>
-#include <ostream>
 #include <vector>
 #include <functional>
 

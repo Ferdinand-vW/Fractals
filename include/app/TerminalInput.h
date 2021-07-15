@@ -1,8 +1,15 @@
 #pragma once
 
-#include "ftxui/component/component_base.hpp"  // for ComponentBase
-#include "ftxui/screen/box.hpp"                // for Box
-#include "ftxui/screen/string.hpp"             // for ConstStringRef, StringRef
+#include <functional>
+
+#include <ftxui/component/captured_mouse.hpp>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>  // for ComponentBase
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/box.hpp>                // for Box
+#include <ftxui/screen/string.hpp>             // for ConstStringRef, StringRef
+
+namespace ftxui { struct Event; }
 
 using namespace ftxui;
 

@@ -1,3 +1,5 @@
+#include <ftxui/screen/color.hpp>
+
 #include "app/Feedback.h"
 
 Color feedBackTypeColor(FeedbackType fbt) {

@@ -1,7 +1,6 @@
-#include "torrent/PieceData.h"
-#include <functional>
-#include <numeric>
 #include <iostream>
+
+#include "torrent/PieceData.h"
 
 PieceData::PieceData(int piece_index,long long length) : m_piece_index(piece_index),m_length(length) {}
 

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <map>
 #include <memory>
+#include <optional>
 
 class Connection;
 class PeerWork;

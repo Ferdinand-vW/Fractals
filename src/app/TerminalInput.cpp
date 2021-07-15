@@ -1,6 +1,16 @@
-#include "app/TerminalInput.h"
+#include <algorithm>
+#include <string>
+
+#include <ftxui/component/captured_mouse.hpp>
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/mouse.hpp>
 #include <ftxui/component/event.hpp>
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/box.hpp>
+#include <ftxui/screen/color.hpp>
+#include <ftxui/screen/string.hpp>
+
+#include "app/TerminalInput.h"
 
 Component TerminalInput(StringRef content, ConstStringRef placeholder) {
     return Make<TerminalInputBase>(content, placeholder);

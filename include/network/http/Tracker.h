@@ -1,11 +1,15 @@
 #pragma once
 
-#include "Peer.h"
-
-#include <neither/neither.hpp>
-#include <bencode/bencode.h>
-
 #include <string>
+#include <sys/types.h>
+#include <iosfwd>
+#include <vector>
+
+#include <neither/either.hpp>
+#include <neither/maybe.hpp>
+#include <neither/traits.hpp>
+
+#include "network/http/Peer.h"
 
 class MetaInfo;
 struct Announce;
@@ -57,4 +61,4 @@ struct TrackerResponse {
 TrackerRequest makeTrackerRequest(const MetaInfo & mi);
 
 Announce toAnnounce(time_t now,const TrackerResponse &tr);
-neither::Either<string,TrackerResponse> sendTrackerRequest(const TrackerRequest &tr);
+neither::Either<std::string,TrackerResponse> sendTrackerRequest(const TrackerRequest &tr);
