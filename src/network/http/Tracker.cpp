@@ -17,6 +17,7 @@
 #include <bencode/error.h>
 #include <bencode/decode.h>
 #include <bencode/encode.h>
+#include <neither/neither.hpp>
 
 #include "app/Client.h"
 #include "common/encode.h"

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <thread>
 #include <optional>
+#include <thread>
 
 namespace ftxui { class ScreenInteractive; }
 

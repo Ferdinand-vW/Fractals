@@ -1,15 +1,9 @@
 #pragma once
 
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/system/error_code.hpp>
 #include <boost/log/sources/logger.hpp>
-#include <condition_variable>
-#include <fstream>
 #include <map>
 #include <memory>
 #include <set>
-#include <boost/asio.hpp>
 
 #include "network/p2p/Connection.h"
 #include "network/http/Peer.h"

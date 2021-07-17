@@ -1,13 +1,10 @@
 #pragma once
 
-#include <iterator>
+#include <deque>
 #include <memory>
-#include <neither/maybe.hpp>
+#include <optional>
 #include <string>
 #include <vector>
-#include <deque>
-#include <optional>
-#include <boost/log/sources/logger.hpp>
 
 #include "network/p2p/MessageType.h"
 

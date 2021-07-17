@@ -1,30 +1,22 @@
-#include "network/p2p/Connection.h"
-#include "common/utils.h"
-#include "common/logger.h"
-#include "network/p2p/MessageType.h"
-#include "network/p2p/Message.h"
-#include <bits/c++config.h>
-#include <boost/asio/buffers_iterator.hpp>
-#include <boost/asio/completion_condition.hpp>
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/error.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/placeholders.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/use_future.hpp>
-#include <boost/asio/write.hpp>
-#include <boost/bind/bind.hpp>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/system/error_code.hpp>
-#include <chrono>
 #include <deque>
-#include <exception>
-#include <future>
 #include <iterator>
 #include <memory>
-#include <mutex>
+
+#include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/completion_condition.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/placeholders.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
+#include <boost/bind/bind.hpp>
+#include <boost/system/error_code.hpp>
+
+#include "common/utils.h"
+#include "common/logger.h"
+#include "network/p2p/Connection.h"
+#include "network/p2p/Message.h"
+
 
 Connection::Connection(boost::asio::io_context &io,PeerId p)
                       : m_io(io)

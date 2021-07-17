@@ -1,21 +1,16 @@
-#include "app/TorrentController.h"
-#include "common/utils.h"
-#include "persist/data.h"
-#include "persist/storage.h"
+#include <cstdlib>       // std::abort
+#include <exception>     // std::set_terminate
 #include <filesystem>
 #include <fstream>
 #include <signal.h>
-#include <boost/stacktrace.hpp>
+
 #include <boost/filesystem.hpp>
-#include <boost/log/sources/logger.hpp>
-#include <boost/log/expressions.hpp> // import keywords
-#include <boost/log/core.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
-#include <cstdlib>       // std::abort
-#include <exception>     // std::set_terminate
-#include <iostream>      // std::cerr
-#include <system_error>
+#include <boost/stacktrace.hpp>
+
+#include "app/TorrentController.h"
+#include "persist/storage.h"
 
 // useful for debugging
 void my_terminate_handler() {

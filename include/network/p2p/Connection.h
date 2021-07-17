@@ -1,17 +1,13 @@
 #pragma once
 
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/buffers_iterator.hpp>
-#include <boost/system/error_code.hpp>
-#include <boost/log/sources/logger.hpp>
 #include <cstddef>
 #include <deque>
 #include <memory>
-#include <future>
-#include <iostream>
+
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/system/error_code.hpp>
+#include <boost/log/sources/logger.hpp>
 
 #include "network/p2p/ConcurrentTimer.h"
 #include "network/http/Peer.h"

@@ -1,32 +1,19 @@
-#include "network/p2p/BitTorrent.h"
-#include "network/http/Tracker.h"
-#include "network/p2p/Connection.h"
-#include "network/p2p/Message.h"
-#include "network/p2p/Client.h"
-#include "network/http/Peer.h"
-#include "network/http/Announce.h"
-#include "torrent/Torrent.h"
-#include "common/logger.h"
-#include "persist/data.h"
-#include <bits/types/time_t.h>
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/address.hpp>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time_duration.hpp>
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/log/sources/logger.hpp>
-#include <boost/system/error_code.hpp>
-#include <condition_variable>
 #include <cstdlib>
-#include <exception>
-#include <future>
 #include <memory>
 #include <mutex>
-#include <thread>
 #include <unistd.h>
+
+#include "common/logger.h"
+#include "persist/data.h"
+
+#include "network/http/Peer.h"
+#include "network/http/Announce.h"
+#include "network/http/Tracker.h"
+#include "network/p2p/BitTorrent.h"
+#include "network/p2p/Message.h"
+#include "network/p2p/Client.h"
+#include "torrent/Torrent.h"
+
 
 BitTorrent::BitTorrent(std::shared_ptr<Torrent> torrent
                       ,boost::asio::io_context &io

@@ -1,11 +1,17 @@
 #pragma once
 
-#include "network/http/Peer.h"
-#include "network/p2p/PeerWork.h"
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/io_service.hpp>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <set>
+
 #include <boost/log/sources/logger.hpp>
 
+#include "network/http/Peer.h"
+#include "network/p2p/PeerWork.h"
+
+
+namespace boost { namespace asio { class io_context; } }
 class Storage;
 class Torrent;
 class Client;
