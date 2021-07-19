@@ -9,8 +9,8 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/stacktrace.hpp>
 
-#include "app/TorrentController.h"
-#include "persist/storage.h"
+#include "fractals/app/TorrentController.h"
+#include "fractals/persist/storage.h"
 
 // useful for debugging
 void my_terminate_handler() {
@@ -36,7 +36,7 @@ int main(int /* argc */, const char* /* argv */[]) {
     std::set_terminate(&my_terminate_handler);
     signal(SIGSEGV,my_segfault_handler);
     //init and connect to local db
-    Storage storage;
+    fractals::persist::Storage storage;
     storage.open_storage("torrents.db");
     storage.sync_schema();
 
@@ -63,8 +63,10 @@ int main(int /* argc */, const char* /* argv */[]) {
     boost::log::add_common_attributes();
 
     boost::asio::io_context io;
-    TorrentController tc(io,storage);
+    fractals::app::TorrentController tc(io,storage);
     
     tc.run();
     boost::log::core::get()->remove_all_sinks();
+
+    return 0;
 }

@@ -3,28 +3,28 @@ set(CMAKE_CXX_STANDARD 17)
 
 # file(GLOB SOURCES "*.cpp" "")
 set(SOURCES main.cpp 
-            app/Client.cpp
-            app/Feedback.cpp
-            app/ScreenTicker.cpp
-            app/TorrentController.cpp
-            app/TerminalInput.cpp
-            app/TorrentDisplay.cpp
-            app/TorrentView.cpp
-            common/encode.cpp 
-            common/utils.cpp
-            network/http/Tracker.cpp
-            network/http/Peer.cpp
-            network/p2p/Connection.cpp
-            network/p2p/PeerManager.cpp
-            network/p2p/BitTorrent.cpp
-            network/p2p/Client.cpp 
-            network/p2p/Message.cpp 
-            network/p2p/MessageType.cpp
-            network/http/Peer.cpp
-            torrent/PieceData.cpp
-            torrent/Torrent.cpp
-            persist/storage.cpp
-            persist/data.cpp)
+            fractals/app/Client.cpp
+            fractals/app/Feedback.cpp
+            fractals/app/ScreenTicker.cpp
+            fractals/app/TorrentController.cpp
+            fractals/app/TerminalInput.cpp
+            fractals/app/TorrentDisplay.cpp
+            fractals/app/TorrentView.cpp
+            fractals/common/encode.cpp 
+            fractals/common/utils.cpp
+            fractals/network/http/Tracker.cpp
+            fractals/network/http/Peer.cpp
+            fractals/network/p2p/Connection.cpp
+            fractals/network/p2p/PeerManager.cpp
+            fractals/network/p2p/BitTorrent.cpp
+            fractals/network/p2p/Client.cpp 
+            fractals/network/p2p/Message.cpp 
+            fractals/network/p2p/MessageType.cpp
+            fractals/network/http/Peer.cpp
+            fractals/torrent/PieceData.cpp
+            fractals/torrent/Torrent.cpp
+            fractals/persist/storage.cpp
+            fractals/persist/data.cpp)
 
 # Add source to this project's executable.
 add_executable (Fractals ${SOURCES})
