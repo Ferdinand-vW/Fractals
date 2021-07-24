@@ -53,7 +53,9 @@ create a build directory
 > $ mkdir build && cd build
 
 generate the Make file
-> $ cmake ..
+> $ cmake .. -DCMAKE_CXX_COMPILER=clang++
+
+(due to a bug in g++ compiler the code currently only compiles with clang++)
 
 run Make to generate the executable
 > $ make
@@ -67,3 +69,4 @@ This is a non-exhaustive list of tasks in random order that I wish to tackle in 
 - Add CI/CD infrastructure
 - Implement BitTorrent protocol extensions
 - Implement Optimisations (i.e. database queries, thread work load, generic pipeline improvements)
+- Rework part of the code to workaround the g++ compiler bug
