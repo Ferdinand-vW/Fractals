@@ -41,6 +41,7 @@ target_link_libraries(Fractals ${BOOST_LIBRARIES})
 target_link_libraries(Fractals sqlite3)
 target_link_libraries(Fractals Boost::log boost_log_setup)
 target_link_libraries(Fractals pthread dl)
+target_link_libraries(Fractals m)
 
 set_target_properties(Fractals PROPERTIES
             CXX_STANDARD 17
