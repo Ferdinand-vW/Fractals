@@ -9,6 +9,10 @@ namespace fractals::network::p2p { class BitTorrent; }
 
 namespace fractals::app {
 
+    /**
+    View of active BitTorrent connection.
+    Responsible for calculating various statistics (e.g. download speed)
+    */
     class TorrentView {
 
         public:

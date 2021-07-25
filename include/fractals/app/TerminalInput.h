@@ -15,6 +15,10 @@ namespace fractals::app {
 
     using namespace ftxui;
 
+    /**
+    Class for managing the (terminal) input box.
+    Commands provided by the user are parsed and acted upon by this class.
+    */
     class TerminalInputBase : public ComponentBase {
         private:
             StringRef content_;
@@ -25,26 +29,33 @@ namespace fractals::app {
             Box cursor_box_;
 
         public:
-            // Access this interface from a Component
+            /**
+            Access existing TerminalInputBase instance from a Component.
+            */
             static TerminalInputBase* From(Component component);
 
-            // Constructor.
             TerminalInputBase(StringRef content, ConstStringRef placeholder);
             ~TerminalInputBase() override = default;
 
-            // State.
             int cursor_position = 0;
 
-            // State update callback.
+            /**
+            Callbacks on user interactions.
+            */ 
             std::function<void()> on_change = [] {};
             std::function<void()> on_enter = [] {};
             std::function<void()> on_escape = [] {};
 
-            // Component implementation.
+            /**
+            Required implementation of ComponentBase
+            */
             Element Render() override;
             bool OnEvent(ftxui::Event) override;
     };
 
+    /**
+    Function to create new instances of @TerminalInputBase@.
+    */
     Component TerminalInput(StringRef content, ConstStringRef placeholder);
 
 }
