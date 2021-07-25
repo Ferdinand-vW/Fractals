@@ -164,7 +164,7 @@ namespace fractals::torrent {
                                 ,"Missing files field for structure MultiFile");
                 
                 auto e_files = e_bdfiles.rightFlatMap([](const auto &v) -> Either<string,vector<FileInfo>> {
-                    return mmap_vector<string,bdata,FileInfo>(v,from_bdata<FileInfo>);
+                    return mmap_vector<bdata,string,FileInfo>(v,from_bdata<FileInfo>);
                 });
 
 

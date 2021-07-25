@@ -12,7 +12,7 @@
 
 namespace fractals::common {
 
-    std::string str_concat_vector(const std::vector<std::string> &v) {
+    std::string concat(const std::vector<std::string> &v) {
         std::string out("");
         for(auto s : v) {
             out.append(s);
@@ -32,17 +32,6 @@ namespace fractals::common {
 
     std::string make_sized_line(std::string s,int len) {
         return s.substr(0,len) + "\n";
-    }
-
-    std::string concat_paths(std::vector<std::string> v) {
-        std::filesystem::path p = "";
-        for(auto s : v) {
-            if(s != "") {
-                p /= s;
-            }
-        }
-
-        return p.string();
     }
 
     std::string random_alphaNumerical(int length) {

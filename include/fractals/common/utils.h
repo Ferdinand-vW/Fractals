@@ -8,6 +8,9 @@
 
 namespace fractals::common {
 
+    /**
+    Apply function to each member of vector
+    */
     template <class A,class B>
     std::vector<B> map_vector(const std::vector<A> &v,std::function<B(A)> f) {
         std::vector<B> vec_out;
@@ -15,31 +18,67 @@ namespace fractals::common {
         return vec_out;
     }
 
-    std::string str_concat_vector(const std::vector<std::string> &v);
+    /**
+    Turns a vector of strings into a single string without delimiters 
+    */
+    std::string concat(const std::vector<std::string> &v);
 
+    /**
+    Turns a vector of strings into a single string delimited by @del
+    */
     std::string intercalate(std::string del,const std::vector<std::string> &v);
 
+    /**
+    Remove characters from string after a certain size
+    */
     std::string make_sized_line(std::string s,int len);
+
+    /**
+    Take the first @n characters
+    */
     std::wstring take_n(std::wstring s, int n);
+    
+    /**
+    Take the first @n characters
+    */
     std::string take_n(std::string s, int n);
 
-    std::string concat_paths(std::vector<std::string> v);
-
+    /**
+    Check whether @f is equal to one of @t
+    */
     template<typename First,typename ... T>
     bool elem(First &&f,T && ... t) {
         return ((f == t) || ...);
     }
 
+    /**
+    Returns a randomly generated alphanumerical string of length @length
+    */
     std::string random_alphaNumerical(int length);
 
+    /**
+    Convert bytes to hex format
+    */
     std::string bytes_to_hex(const std::vector<char> &bytes);
     std::string bytes_to_hex(const std::deque<char> &bytes);
 
+    /**
+    Convert int to bytes
+    */
     std::vector<char> int_to_bytes(int n);
 
+    /**
+    Parse bytes as int
+    */
     int bytes_to_int(std::deque<char> &d);
 
+    /**
+    BitTorrent bitfield to byte representation
+    */
     std::vector<char> bitfield_to_bytes(const std::vector<bool> &bitfields);
+    /**
+    Byte representation of BitTorrent bitfield to actual
+    */
     std::vector<bool> bytes_to_bitfield(int len,std::deque<char> &bitfields);
     std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bitfields);
 

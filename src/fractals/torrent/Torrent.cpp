@@ -128,7 +128,7 @@ namespace fractals::torrent {
             std::copy(fd.fi.path.begin(),fd.fi.path.end(),std::back_inserter(full_path));
 
             // concat file path as single string
-            auto fp = concat_paths(full_path);
+            auto fp = common::concat(full_path);
             std::filesystem::path p(fp);
 
             

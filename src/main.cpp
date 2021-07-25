@@ -33,13 +33,17 @@ void my_segfault_handler(int /* sig */) {
 
 int main(int /* argc */, const char* /* argv */[]) {
     boost::filesystem::path::imbue(std::locale("C"));
+    
+    // set up exceptions handlers
     std::set_terminate(&my_terminate_handler);
     signal(SIGSEGV,my_segfault_handler);
+    
     //init and connect to local db
     fractals::persist::Storage storage;
     storage.open_storage("torrents.db");
     storage.sync_schema();
 
+    //directory to which meta info torrent files will be copied
     if(!std::filesystem::exists("./metainfo")) {
         std::filesystem::create_directory("./metainfo");
     }
@@ -62,10 +66,12 @@ int main(int /* argc */, const char* /* argv */[]) {
     //enables ThreadID and TimeStamp to appear in log
     boost::log::add_common_attributes();
 
+    //start app
     boost::asio::io_context io;
     fractals::app::TorrentController tc(io,storage);
-    
     tc.run();
+
+    // ensure no resources for logging remain active at program exit
     boost::log::core::get()->remove_all_sinks();
 
     return 0;

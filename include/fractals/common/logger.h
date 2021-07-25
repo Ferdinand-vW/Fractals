@@ -11,6 +11,9 @@
 
 namespace fractals::common {
 
+    /**
+    Enable global logger to be called with 'logger::get()'
+    */
     BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, boost::log::sources::logger_mt)
 
 }

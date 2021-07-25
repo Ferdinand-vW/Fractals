@@ -80,7 +80,7 @@ namespace fractals::torrent {
                 auto s_end = "\n}\n"s;
                 auto v = {s_id,s_pl,s_pcs,s_pb};
                 auto to_line = [len](auto s) { return common::make_sized_line(s,len); };
-                return common::str_concat_vector(common::map_vector<string,string>(v,to_line)) + s_fm + s_end;
+                return common::concat(common::map_vector<string,string>(v,to_line)) + s_fm + s_end;
             }
 
             long long number_of_pieces() {
@@ -119,7 +119,7 @@ namespace fractals::torrent {
                 auto v = {s_mi,s_ann,s_ann_l,s_cd,s_cmm,s_cb,s_enc};
                 // shorten string to max size and add new lines then concat
                 auto to_line = [len](auto s) { return common::make_sized_line(s,len); };
-                return common::str_concat_vector(common::map_vector<string,string>(v,to_line)) + s_info + s_end;
+                return common::concat(common::map_vector<string,string>(v,to_line)) + s_info + s_end;
             }
     };
 
