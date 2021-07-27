@@ -88,6 +88,9 @@ namespace fractals::torrent {
             }
     };
 
+    /**
+    Structural representation of a Torrent file.
+    */
     struct MetaInfo {
         public:
             std::string announce;

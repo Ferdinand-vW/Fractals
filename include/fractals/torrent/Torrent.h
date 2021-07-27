@@ -10,13 +10,31 @@ namespace fractals::torrent {
 
     struct PieceData;
 
+    /**
+    Abstraction of each file contained in the torrent data.
+    */
     struct FileData {
         FileInfo fi;
+        
+        /**
+        Offset in the torrent data.
+        */
         long long begin;
+
+        /**
+        equals file size + begin
+        */
         long long end;
         std::string full_path;
     };
 
+    /**
+    This class represents both the MetaInfo file and the (partially) downloaded torrent data.
+    Responsibilities are:
+    1) Write new piece data to the torrent data files at the correct offsets.
+    2) Allow querying for piece meta information (size, offset, etc)
+    3) Parse torrent file to MetaInfo/Torrent
+    */
     class Torrent {
         public:
             std::string m_name;
@@ -38,8 +56,17 @@ namespace fractals::torrent {
             std::set<int> get_pieces();
 
         private:
+            /**
+            Add up size of each piece up to and including @piece.
+            Can be used to calculate offset of piece by cumulative_size_of_pieces(piece - 1)
+            */
             long long cumulative_size_of_pieces(int piece);
+            
             void create_files(std::vector<FileData> &fds);
+
+            /**
+            Generate files for which the piece must write data to
+            */
             std::vector<FileData> divide_over_files(int piece);
             std::set<int> m_pieces;
     };

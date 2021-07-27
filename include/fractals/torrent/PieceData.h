@@ -9,6 +9,10 @@ namespace fractals::torrent {
         std::vector<char> m_data;
     };
 
+    /**
+    Class containing actual piece byte data.
+    The piece data are often split up in blocks. Size of each block is determined by the MetaInfo.
+    */
     class PieceData {
 
         public:

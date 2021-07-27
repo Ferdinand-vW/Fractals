@@ -19,6 +19,9 @@ using namespace fractals::common;
 
 namespace fractals::torrent {
 
+    /**
+    Conversions between bencoded data and a more structural form in terms of the MetaInfo ADT.
+    */
     class BencodeConvert {
         public:
             template <class A>
