@@ -30,6 +30,7 @@ namespace fractals::app {
         return static_cast<TorrentDisplayBase*>(component.get());
     }
 
+    // @ws contains a by user written command. Here we attempt to parse it and call the relevant functions.
     bool TorrentDisplayBase::parse_command(StringRef ws) {
         std::wstringstream ss(ws->data());
         std::wstring com;
@@ -172,6 +173,8 @@ namespace fractals::app {
         auto column = [](std::wstring ws) { return text(ws) | color(Color::Red) | hcenter; };
         auto cell = [](std::wstring ws) { return text(ws) | color(Color::Blue) | xflex; };
         auto cols = [](Elements && e) { return vbox({e}) | xflex; };
+
+        //fills spaces before and after if string size smaller than int.
         auto colOfSize = [column](std::wstring name,int i) {
                 int rem = i - name.length();
                 int b_size = std::floor(rem / 2);
@@ -194,6 +197,7 @@ namespace fractals::app {
         std::vector<ftxui::Element> leecherElems;
         std::vector<ftxui::Element> etaElems;
 
+        // populate the columns given a set of torrents
         auto populate = [&](auto &s,auto &collection) {
             for(auto &[_,tv] : collection) {
                 idElems.push_back(cell(std::to_wstring(tv.m_id)));

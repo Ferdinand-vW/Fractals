@@ -38,14 +38,13 @@ namespace fractals::app {
         
         std::wstring part_before_cursor = content_->substr(0, cursor_position);
 
-        // clang-format off
         return
             hbox(
                 text(L"> "),
                 text(part_before_cursor),
-                text(L"\u2588")
+                text(L"\u2588") // block character
             ) | flex | frame | main_decorator | bold | color(Color::Blue) | reflect(input_box_);
-        // clang-format on
+            // sadly blinking didn't seem to work
     }
     
     bool TerminalInputBase::OnEvent(Event event) {
@@ -82,6 +81,7 @@ namespace fractals::app {
             return true;
         }
 
+        // Escape.
         if(event == Event::Escape) {
             on_escape();
             return true;
@@ -91,6 +91,7 @@ namespace fractals::app {
             return false;
         }
     
+        // Arrow keys
         if (event == Event::ArrowLeft && cursor_position > 0) {
             cursor_position--;
             return true;

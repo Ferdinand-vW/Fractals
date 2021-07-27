@@ -18,6 +18,7 @@ namespace fractals::app {
     void ScreenTicker::start() {
         if(!m_running) {
             m_running = true;
+            //spawn a new thread that refreshes the display every 50ms
             m_ticker = std::thread([this]() {
                 while(m_running) {
                     using namespace std::chrono_literals;

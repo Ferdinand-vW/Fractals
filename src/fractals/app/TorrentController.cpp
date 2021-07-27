@@ -43,14 +43,18 @@ namespace fractals::app {
         m_terminal = terminal_input;
         m_display = TorrentDisplay(terminal_input);
 
+        // spawn the work threads
         for( unsigned int i = 0; i < m_thread_count; i++ ) {
             m_threads.create_thread(
+                // work guard in constructor of TorrentController
+                // stops m_io.run() to stop early
                 [&]() { m_io.run(); }
             );
         }
 
         //load known torrents
         auto torrs = persist::load_torrents(m_storage);
+        //add torrents to display
         for(auto &torr : torrs) {
             BOOST_LOG(m_lg) << "loading torrent " << torr->m_name;
             add_torrent(to_bit_torrent(torr));
@@ -82,9 +86,11 @@ namespace fractals::app {
         } else {
             auto torr_ptr = eth_torr.rightValue;
             auto &torr = *torr_ptr.get();
+            //check database if torrent exists
             if(has_torrent(m_storage, torr)) {
                 return left<std::string>("torrent " + torr.m_name + " already exists!");
             }
+
             //write torrent to database
             save_torrent(m_storage, filepath,torr);
 
@@ -113,7 +119,7 @@ namespace fractals::app {
         }
 
         auto bt = m_torrents[torr_id];
-        bt->stop();
+        bt->stop(); //stop all connections
         auto &torr = *bt->m_torrent.get();
         delete_torrent(m_storage, torr);
         m_torrents.erase(torr_id);
@@ -224,7 +230,7 @@ namespace fractals::app {
         tdb->m_on_resume = std::bind(&TorrentController::on_resume,this,std::placeholders::_1);
 
         auto doExit = m_screen.ExitLoopClosure(); //had to move this outside of the on_enter definition
-                                                // as it would otherwise not trigger
+                                                  // as it would otherwise not trigger. Not sure why though..
         TerminalInputBase::From(terminal)->on_escape = [this,&doExit] () {
             exit();
             doExit();

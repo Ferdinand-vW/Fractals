@@ -73,10 +73,12 @@ namespace fractals::common {
 
     std::vector<char> int_to_bytes(int n)  {
         std::vector<char> v;
-        v.push_back(n >> 24);
-        v.push_back(n >> 16);
-        v.push_back(n >> 8);
-        v.push_back(n);
+        //int is 4 bytes
+        //if int n consist of bytes W X Y Z then converting to char leaves us with Z
+        v.push_back(n >> 24); //Move W to 0 0 0 W
+        v.push_back(n >> 16); //Move X to 0 0 W X
+        v.push_back(n >> 8); //Move Y to 0 W X Y
+        v.push_back(n); //Z is already in right location
 
         return v;
     }
@@ -85,8 +87,18 @@ namespace fractals::common {
         if (d.size() < 1) { return {}; }
 
         int n = 0;
-        int size = d.size() > 4 ? 4 : d.size(); //number of bytes in an int
+        int size = d.size() > 4 ? 4 : d.size(); //We may have fewer than 4 bytes
         for(int i = 0; i < size; i++) {
+            //Example:
+            //Assume size = 3 (X Y Z) and start with 0 0 0 0, then
+            //byte X must be moved 16bits left: 3*8 - (0+1)*8 = 16, 0 X 0 0
+            //byte Y must be moved 8bits left: 3*8 - (1+1)*8 = 8, 0 X Y 0
+            //byte Z must be moved 0bits left: 3*8 - (2+1)*8 = 0, 0 X Y Z
+            // note that the | operator does or operations between bytes:
+            // 0 X 0 0
+            // 0 0 Y 0
+            // ------- or (|)
+            // 0 X Y 0
             n |= (unsigned char)d.front() << (size*8 - (i+1) * 8);
             d.pop_front();
         }
@@ -99,6 +111,7 @@ namespace fractals::common {
         char c = 0;
         int i = 0;
         while(i < bits.size()) {
+            //bits[i] is either 1 or 0. Here we move it to the right bit location in c
             c |= bits[i] << (7 - (i % 8));
             i++;
 
@@ -122,7 +135,10 @@ namespace fractals::common {
         for(int i = 0; i < len; i++) {
             char c = bytes[i];
 
-            for(int j = 0; j < 8; j++) { v.push_back(c >> (7 - j)); }
+            //convert each bit in c to a bool and push into the vector
+            for(int j = 0; j < 8; j++) { 
+                v.push_back(c >> (7 - j)); 
+            }
         }
 
         return v;
@@ -133,7 +149,10 @@ namespace fractals::common {
         for(int i = 0; i < len; i++) {
             char c = bytes[i];
 
-            for(int j = 0; j < 8; j++) { v.push_back(c >> (7 - j)); }
+            //convert each bit in c to a bool and push into the vector
+            for(int j = 0; j < 8; j++) { 
+                v.push_back(c >> (7 - j)); 
+            }
         }
 
         return v;

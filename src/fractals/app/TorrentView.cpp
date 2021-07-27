@@ -39,6 +39,7 @@ namespace fractals::app {
 
     long long TorrentView::get_download_speed() {
         time_t curr = std::time(0);
+
         if(!m_prev_time.has_value() || m_prev_time == curr) {
             m_prev_time = curr;
             return m_prev_download_speed;
@@ -49,7 +50,6 @@ namespace fractals::app {
         auto downl = get_downloaded();
 
         // (number of bytes downloaded since previous update) / (time passed since previous update)
-
         auto speed = (downl - m_prev_downloaded) / (curr - prev);
 
         // update the 'prev' variables with values of 'curr' variables
