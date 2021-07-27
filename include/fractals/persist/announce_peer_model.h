@@ -4,6 +4,10 @@
 
 namespace fractals::persist {
 
+    /**
+    ADT for announce peer model in database.
+    Combines peers to specific announces.
+    */
     struct AnnouncePeerModel {
         int id;
         int announce_id;

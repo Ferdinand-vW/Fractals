@@ -8,6 +8,9 @@
 
 namespace fractals::network::http {
 
+    /**
+    Model of Announce as returned by a tracker
+    */
     struct Announce {
         time_t announce_time;
         int interval;

@@ -16,7 +16,11 @@
 
 namespace fractals::persist {
 
-    // defined here such that we can construct a type alias (e.g. 'InternalStorage') for the 'storage' type
+    /**
+    Defines database model.
+
+    Defined here such that we can construct a type alias (e.g. 'InternalStorage') for the 'storage' type
+    */ 
     inline auto init_storage(std::string db) {
         using namespace sqlite_orm;
         return make_storage(db,
@@ -47,7 +51,9 @@ namespace fractals::persist {
                                         foreign_key(&AnnouncePeerModel::announce_id).references(&AnnounceModel::id)));
     }
 
-
+    /**
+    Simple type that represents the database schema
+    */
     using InternalStorage = decltype(init_storage(""));
 
     class Storage {
@@ -57,6 +63,9 @@ namespace fractals::persist {
 
             Storage();
             void open_storage(std::string db);
+            /**
+            Should be called to deal with migrations.
+            */
             void sync_schema();
 
             void add_torrent(const TorrentModel &t);

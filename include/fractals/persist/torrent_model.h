@@ -4,6 +4,9 @@
 
 namespace fractals::persist {
 
+    /**
+    ADT for torrent model in database
+    */
     struct TorrentModel {
         int id;
         std::string name;

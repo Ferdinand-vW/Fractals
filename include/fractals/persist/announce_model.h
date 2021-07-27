@@ -6,6 +6,9 @@
 
 namespace fractals::persist {
 
+    /**
+    ADT for announce model in database
+    */
     struct AnnounceModel {
         int id;
         int torrent_id;

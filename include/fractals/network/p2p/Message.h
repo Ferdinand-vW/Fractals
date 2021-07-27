@@ -12,6 +12,11 @@ namespace fractals::network::http { class PeerId; }
 
 namespace fractals::network::p2p {
 
+    /**
+    Common interface for each message type.
+    The different messages types are defined here:
+    https://wiki.theory.org/BitTorrentSpecification#Messages
+    */
     class IMessage {
         public:
             // virtual int get_length();

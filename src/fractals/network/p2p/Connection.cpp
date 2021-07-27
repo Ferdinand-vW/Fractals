@@ -158,23 +158,4 @@ namespace fractals::network::p2p {
     void Connection::on_handshake(read_callback callback) {
         m_handshake_callback = callback;
     }
-
-    void Connection::block_until(bool &cond) {
-        while(!cond) {
-            m_io.run_one();
-        }
-    }
-
-    void Connection::block_until(shared_error opt) {
-        while (opt == nullptr) {
-            m_io.run_one();
-        }
-    }
-
-    void Connection::timed_block_until(std::optional<boost_error> &result, std::optional<boost_error> &timer) {
-        while (!result && !timer) {
-            m_io.run_one();
-        }
-    }
-
 }

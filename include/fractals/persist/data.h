@@ -13,6 +13,10 @@ namespace fractals::persist {
 
     class Storage;
 
+    /**
+    simple API for interacting with the given database connection 
+    */
+
     void save_torrent(Storage &st, std::string mi,const torrent::Torrent &t);
     std::vector<std::shared_ptr<torrent::Torrent>> load_torrents(Storage &st);
     bool has_torrent(Storage &st, const torrent::Torrent &t);

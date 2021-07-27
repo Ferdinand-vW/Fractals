@@ -12,6 +12,13 @@ namespace fractals::network::p2p {
     class Connection;
     class PeerWork;
 
+    /**
+    Class for managing peer resources.
+    PeerManager object is responsible for:
+    1) Assigning work to peers
+    2) Maintaining (number of) peer connections
+    3) Can be disabled and therefore disallowing new connections to be used by the client.
+    */
     class PeerManager {
         int m_max_conn;
         bool m_enabled = true;

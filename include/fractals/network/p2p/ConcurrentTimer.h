@@ -7,6 +7,12 @@
 
 namespace fractals::network::p2p {
 
+    /**
+    Class for ensuring proper access to the deadline timer in a multithreaded environment.
+
+    Specifically this class stops two threads from interacting with the timer at nearly the same time.
+    I had observed times where the deadline timer was canceled and then started again right after.
+    */
     class ConcurrentTimer {
         boost::asio::deadline_timer m_timer;
         bool is_enabled = true;

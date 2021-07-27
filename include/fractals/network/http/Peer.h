@@ -5,6 +5,9 @@
 
 namespace fractals::network::http {
 
+    /**
+    A peer is identified by ip address and port
+    */
     class PeerId {
         public:
             std::string m_ip;
@@ -12,9 +15,13 @@ namespace fractals::network::http {
 
             PeerId(std::string ip,uint port);
 
+            //Required for ordered data structures
             bool operator<(const PeerId &p2) const;
     };
 
+    /**
+    A Peer is also assigned some random unique name
+    */
     struct Peer {
         std::string peer_name;
         PeerId peer_id;
