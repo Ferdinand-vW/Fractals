@@ -52,14 +52,15 @@ namespace fractals::network::http {
 
     TrackerRequest makeTrackerRequest(const torrent::MetaInfo &mi) {
         bencode::bdict info_dict = torrent::BencodeConvert::to_bdict(mi.info);
-        auto encoded = bencode::encode(info_dict);
 
-        
+        auto encoded = bencode::encode(info_dict);
         auto info_hash = common::sha1_encode(encoded);
+        //tracker expects url encoded sha1 hash of info
         auto uri_info  = common::url_encode(info_hash);
-        auto peer_id   = app::generate_peerId();
+        auto peer_id   = app::generate_peerId(); //unique id for this instance
+        //peer id must also be url encoded
         auto str_peer_id = common::url_encode(peer_id);
-        int port = 6882;
+        int port = 6882; //port used by this app
         int uploaded = 0;
         int downloaded = 0;
         int left = 0;
@@ -83,19 +84,21 @@ namespace fractals::network::http {
 
     std::string toHttpGetUrl(const TrackerRequest &tr) {
         std::string ann_base = tr.announce + "?";
-        std::string ih_prm   = "info_hash="+tr.url_info_hash;
-        std::string peer_prm = "peer_id="+tr.url_peer_id;
-        std::string port_prm = "port="+std::to_string(tr.port);
-        std::string upl_prm = "uploaded="+std::to_string(tr.uploaded);
-        std::string dl_prm  = "downloaded="+std::to_string(tr.downloaded);
-        std::string lft_prm = "left="+std::to_string(tr.left);
-        std::string cmpt_prm = "compact="+std::to_string(tr.compact);
+        std::string ih_prm   = "info_hash=" +tr.url_info_hash;
+        std::string peer_prm = "peer_id="   +tr.url_peer_id;
+        std::string port_prm = "port="      +std::to_string(tr.port);
+        std::string upl_prm  = "uploaded="  +std::to_string(tr.uploaded);
+        std::string dl_prm   = "downloaded="+std::to_string(tr.downloaded);
+        std::string lft_prm  = "left="      +std::to_string(tr.left);
+        std::string cmpt_prm = "compact="   +std::to_string(tr.compact);
 
         std::string url = ann_base + common::intercalate("&", {ih_prm,peer_prm,port_prm,upl_prm,dl_prm,lft_prm,cmpt_prm});
 
         return url;
     }
 
+    //tracker response peer model in dictionary format
+    //keys are peer id, ip and port
     neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) {
         auto parse_peer = [](const bdata &bd) -> Either<std::string,Peer> {
             auto mpeer_dict = common::to_maybe(bd.get_bdict());
@@ -122,6 +125,8 @@ namespace fractals::network::http {
         return common::mmap_vector<bdata,std::string,Peer>(bl.value(),parse_peer);
     }
 
+    //tracker response peer model in binary format
+    //multiples of 6 bytes. First 4 bytes are ip and remaining 2 bytes are port. big endian notation 
     neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
         if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
 
@@ -130,10 +135,13 @@ namespace fractals::network::http {
             struct sockaddr_in sa;
             char buffer[4];
             std::copy(bytes.begin()+i,bytes.begin()+i+4,buffer);
-            char result[INET_ADDRSTRLEN];
+            char result[INET_ADDRSTRLEN]; //16
+
+            //parse first 4 bytes to ip address
             inet_ntop(AF_INET,(void*)(&buffer[0]),result, sizeof result);
             
             std::string ip(result);
+            //convert remaining 2 bytes to port
             ushort port = static_cast<unsigned char>(bytes[i+4]) * 256 + static_cast<unsigned char>(bytes[i+5]);
 
             auto peer_id = ip + ":" + std::to_string(port);
@@ -145,10 +153,6 @@ namespace fractals::network::http {
 
 
     neither::Either<std::string, TrackerResponse> parseTrackerReponse(const bdict &bd) {
-        //
-        std::ofstream fs("err2.txt");
-        fs << bd;
-        fs.close();
         auto optfailure = bd.find("failure reason");
         std::string failure_reason;
         if(optfailure.has_value()) { 
