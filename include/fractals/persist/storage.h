@@ -57,6 +57,11 @@ namespace fractals::persist {
     using InternalStorage = decltype(init_storage(""));
 
     class Storage {
+            /**
+            We're using SQLite underneath and sometimes experience a BUSY error.
+            To prevent that from happening I use a mutex for locking such that only a single
+            thread at a time is allowed to access the underlying database.
+            */
             std::mutex m_update_mutex;
         public:
             std::shared_ptr<InternalStorage> m_storage;

@@ -39,7 +39,8 @@ namespace fractals::network::p2p {
 
     void Connection::cancel() {
         // gracefully cancel outstanding operations before closing socket
-        try {
+        try { //try is necessary because the socket sometimes throws an exception
+              //it's unclear why it does it..
             m_timer.cancel();
             m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
             m_socket.close();
@@ -141,7 +142,9 @@ namespace fractals::network::p2p {
             unsigned char pstrlen = common::bytes_to_int(deq_buf);
             int length = pstrlen + 48;
             m_buf.consume(1);
-
+            //handshake length is exactly 1 + pstrlen + 48,
+            //where pstrlen is determined by the first byte
+            //here we've read the first byte and determined the value of pstrlen
             read_handshake_body(boost_error(),0,pstrlen,length,length);
         };
 

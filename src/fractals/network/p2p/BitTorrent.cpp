@@ -124,6 +124,8 @@ namespace fractals::network::p2p {
 
     void BitTorrent::perform_handshake(PeerId p) {
         std::string prot("BitTorrent protocol");
+        //these identify implemented BT extensions
+        //currently none are implemented
         char reserved[8] = {0,0,0,0,0,0,0,0};
         auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
         BOOST_LOG(m_lg) << p.m_ip << " >>> " + handshake.pprint();
@@ -139,6 +141,7 @@ namespace fractals::network::p2p {
         if(m_available_peers.size() != 0) {
             int n = rand() % m_available_peers.size();
             auto it = m_available_peers.begin();
+            //moves @n times on the iterator
             std::advance(it,n);
             PeerId p = *it;
             m_available_peers.erase(p);
@@ -176,7 +179,6 @@ namespace fractals::network::p2p {
 
     void BitTorrent::run() {
         BOOST_LOG(m_lg) << "[BitTorrent] run";
-        m_max_peers = 7;
         setup_client();
 
         request_peers();

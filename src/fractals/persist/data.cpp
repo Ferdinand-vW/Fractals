@@ -49,8 +49,10 @@ namespace fractals::persist {
     void delete_torrent(Storage &st, const Torrent &t) {
         auto tm = st.load_torrent(t.m_name);
         if(tm.has_value()) {
+            //delete anything that has torrent as foreign key
             delete_announces(st, t);
             delete_pieces(st, t);
+            //deletes the actual torrent
             st.delete_torrent(tm.value());
         }
     }
@@ -93,7 +95,14 @@ namespace fractals::persist {
             auto peers = ann.peers;
             std::vector<AnnounceModel> ams;
             std::transform(peers.begin(),peers.end(),std::back_inserter(ams),[&tm,&ann](PeerId &p) {
-                return AnnounceModel{0,tm->id,p.m_ip,p.m_port,ann.announce_time, ann.interval, ann.min_interval };
+                return AnnounceModel
+                    {0
+                    ,tm->id
+                    ,p.m_ip
+                    ,p.m_port
+                    ,ann.announce_time
+                    ,ann.interval
+                    ,ann.min_interval };
             });
             
             std::for_each(ams.begin(),ams.end(),[&st](auto &am) { st.save_announce(am); });

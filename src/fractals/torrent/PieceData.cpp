@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "fractals/common/logger.h"
 #include "fractals/torrent/PieceData.h"
 
 namespace fractals::torrent {
@@ -23,7 +24,7 @@ namespace fractals::torrent {
         }
 
         if(overlaps) {
-            std::cout << "Incoming block for piece " << m_piece_index << " overlaps with existing blocks" << std::endl; 
+            BOOST_LOG(common::logger::get()) << "Incoming block for piece " << m_piece_index << " overlaps with existing blocks" << std::endl; 
         } else {
             m_blocks.push_back(incoming);
         }

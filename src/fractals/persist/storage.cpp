@@ -39,7 +39,6 @@ namespace fractals::persist {
                 where(c(&TorrentModel::name) == name)
         );
 
-        common::print_err("load torrent"+std::to_string(tms.size()));
         if(tms.begin() != tms.end()) {
             return tms.front();
         } else {

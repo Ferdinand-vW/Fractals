@@ -198,7 +198,7 @@ namespace fractals::network::p2p {
 
     void Client::received_choke(PeerId p) {
         m_peer_status[p].m_peer_choking = true;
-        //if we get choked then we can just stop the connection
+        //if we get choked then we can just drop the connection
         drop_connection(p);
     }
 
@@ -241,6 +241,7 @@ namespace fractals::network::p2p {
         send_interested(p); //only sends a message if not interested yet
     }
 
+    //unimplemented since we don't actually support data requests at this time
     void Client::received_request(PeerId p, Request &r) {
         BOOST_LOG(m_lg) << "[Client] received receive request from "+ p.m_ip + ":" + std::to_string(p.m_port);
         BOOST_LOG(m_lg) << r.m_index << " " << r.m_begin << " " << r.m_length;
@@ -286,12 +287,6 @@ namespace fractals::network::p2p {
             work->m_progress = PieceProgress::Downloaded;
             write_messages(p);
         }
-    }
-
-    void doNothing(){}
-
-    void Client::received_garbage(PeerId p) {
-        
     }
 
     void Client::send_handshake(PeerId p,HandShake &&hs) {
@@ -358,7 +353,7 @@ namespace fractals::network::p2p {
             handle_peer_message(p, err, l, std::move(d));
         };
         conn->on_receive(f);
-        conn->read_messages();
+        conn->read_messages(); //starts read messages loop for this peer
     }
 
     void Client::write_messages(PeerId p) {
@@ -395,7 +390,10 @@ namespace fractals::network::p2p {
 
         // bitfield must be a multiple of 8
         int mult8 = num_pieces % 8;
-        int tail = mult8 == 0 ? 0 : 8 - mult8; 
+        int tail = mult8 == 0 ? 0 : 8 - mult8;
+        //here we're essentially telling all others peers we have no pieces for them to download
+        //this is to stop peers from requesting pieces from us
+        //in the future I hope to enable this functionality
         for(int i = 0; i < num_pieces + tail ;i++) {
             bf.push_back(0);
         }
@@ -476,13 +474,15 @@ namespace fractals::network::p2p {
         auto work = mwork.value();
 
         //calculate size to request
-        int request_size = 1 << 14 ; // 16KB, standard request size 
+        int standard_size = 1 << 14 ; // 16KB, standard request size 
         int remaining = work->m_data.remaining(); // remaining data of piece
         int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
+        //the size of the request cannot exceed any one of the above sizes
+        int request_size = std::min(remaining,std::min(piece_length,request_size));
 
         Request request(work->m_data.m_piece_index
                         ,work->m_data.next_block_begin()
-                        ,std::min(remaining,std::min(piece_length,request_size)));
+                        ,request_size);
         BOOST_LOG(m_lg) << p.m_ip + " >>> " + request.pprint();
         auto req_ptr = std::make_unique<Request>(request);
         peer->write_message(std::move(req_ptr)
@@ -525,10 +525,6 @@ namespace fractals::network::p2p {
         }
     }
 
-
-
-
-
     void Client::handle_peer_message(PeerId p,const boost_error &error,int length,std::deque<char> &&deq_buf) {
         if(error) {
             BOOST_LOG(m_lg) << "[Client] Fatal error " + p.m_ip + " " + error.message();
@@ -570,5 +566,4 @@ namespace fractals::network::p2p {
             case MessageType::MT_Port: break;
         }
     }
-
 }

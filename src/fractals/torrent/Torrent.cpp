@@ -69,7 +69,6 @@ namespace fractals::torrent {
     Function computes for a given piece, start offset and number of bytes across how many file(s)
     it spans. I.e. a piece may encompass the second 50% of file A, 100% of file B and 20% of file C.
     The offset for this piece is then 50% of file A (plus #bytes of any previous files).
-    And the length 
     */
     std::vector<FileData> Torrent::divide_over_files(int piece) {
         std::vector<FileData> fds;
@@ -77,12 +76,12 @@ namespace fractals::torrent {
         long long bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
         auto piece_len = size_of_piece(piece);
 
-        auto cum_files_bytes = 0;
+        auto curr_offset = 0;
         for(auto fi : m_files) {
-            auto next_file_begin = cum_files_bytes + fi.length;
+            auto next_file_begin = curr_offset + fi.length;
             
             if(bytes_begin < next_file_begin) { // start position is in current file and there is data to write
-                auto cur_file_offset = bytes_begin - cum_files_bytes; // start position in current file
+                auto cur_file_offset = bytes_begin - curr_offset; // start position in current file
                 auto file_remaining = next_file_begin - bytes_begin; // bytes left in remainder of current file
                 
                 // How much can we write/is there to write
@@ -108,7 +107,7 @@ namespace fractals::torrent {
                 return fds;
             }
 
-            cum_files_bytes = next_file_begin;
+            curr_offset = next_file_begin;
         }
 
         return fds;
