@@ -5,9 +5,9 @@
 #include "fractals/torrent/Bencode.h"
 
 namespace fractals::torrent {
-
-    template <>
-    Either<std::string,SingleFile> from_bdict<SingleFile>(bdict bd) {
+    
+    template<>
+    Either<std::string, SingleFile> from_bdict<SingleFile>(const bdict &bd) {
         auto name = to_maybe(bd.find("name"))
                 .flatMap(to_bstring)
                 .map(mem_fn(&bstring::to_string));
@@ -26,7 +26,7 @@ namespace fractals::torrent {
     }
 
     template <>
-    Either<std::string,FileInfo> from_bdict<FileInfo>(bdict bd) {
+    Either<std::string,FileInfo> from_bdict<FileInfo>(const bdict &bd) {
         auto m_length = to_maybe(bd.find("length"))
                 .flatMap(to_bint)
                 .map(mem_fn(&bint::value));
@@ -62,7 +62,7 @@ namespace fractals::torrent {
 
 
     template <>
-    Either<std::string,MultiFile> from_bdict<MultiFile>(bdict bd) {
+    Either<std::string,MultiFile> from_bdict<MultiFile>(const bdict &bd) {
         auto name = to_maybe(bd.find("name"))
                 .flatMap(to_bstring)
                 .map(mem_fn(&bstring::to_string));
@@ -84,11 +84,11 @@ namespace fractals::torrent {
     }
 
     template<>
-    Either<std::string,InfoDict> from_bdict<InfoDict>(bdict bd) {
+    Either<std::string,InfoDict> from_bdict<InfoDict>(const bdict &bd) {
         auto m_piece_length = to_maybe(bd.find("piece length"))
                 .flatMap(to_bint)
                 .map(mem_fn(&bint::value));
-        int piece_length;
+        long long piece_length;
         if(!m_piece_length.hasValue)
         { return left("Attribute piece length missing from info"s);}
         else { piece_length = m_piece_length.value; }
@@ -136,7 +136,7 @@ namespace fractals::torrent {
         kv_map.insert({key_l,bdata(val_l)});
         kv_map.insert({key_ps,bdata(val_ps)});
 
-        return bdict(kv_map);
+        return {kv_map };
     }
 
     bdict to_bdict(const SingleFile &sf) {
@@ -158,7 +158,7 @@ namespace fractals::torrent {
         }
 
 
-        return bdict(kv_map);
+        return {kv_map };
     }
 
     bdict to_bdict(const MultiFile &mf) {
@@ -175,10 +175,10 @@ namespace fractals::torrent {
         }
 
         kv_map.insert({key_fs,bdata(val_fs)});
-        return bdict(kv_map);
+        return {kv_map };
     }
 
-    bdict to_bdict(InfoDict id) {
+    bdict to_bdict(const InfoDict &id) {
         string key_pl("piece length");
         bint val_pl(id.piece_length);
 

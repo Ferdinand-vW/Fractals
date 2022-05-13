@@ -2,7 +2,7 @@
 #include <exception>     // std::set_terminate
 #include <filesystem>
 #include <fstream>
-#include <signal.h>
+#include <csignal>
 
 #include <boost/filesystem.hpp>
 #include <boost/log/utility/setup/file.hpp>
@@ -49,7 +49,7 @@ int main(int /* argc */, const char* /* argv */[]) {
     }
 
     //get current time and set as seed for rand
-    srand (time(NULL));
+    srand(static_cast<unsigned int>(time(nullptr)));
 
     //set log file as logging destination
     boost::log::add_file_log(

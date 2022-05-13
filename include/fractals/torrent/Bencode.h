@@ -25,11 +25,11 @@ namespace fractals::torrent {
     template <class A>
     Either<string,A> from_bdata(const bdata &bd);
     template <class A>
-    Either<string,A> from_bdict(bdict bd);
+    Either<string,A> from_bdict(const bdict &bd);
 
     bdict to_bdict(const FileInfo &fi);
     bdict to_bdict(const SingleFile &sf);
     bdict to_bdict(const MultiFile &mf);
-    bdict to_bdict(InfoDict id);
+    bdict to_bdict(const InfoDict &id);
 
 }

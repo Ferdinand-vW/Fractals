@@ -8,7 +8,7 @@
 
 namespace fractals::app {
 
-    ScreenTicker::ScreenTicker(ftxui::ScreenInteractive &screen) : m_screen(screen) {};
+    ScreenTicker::ScreenTicker(ftxui::ScreenInteractive &screen) : m_screen(screen) {}
     ScreenTicker::~ScreenTicker() {
         m_running = false;
         m_ticker->join();
