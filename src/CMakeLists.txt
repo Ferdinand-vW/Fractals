@@ -21,6 +21,7 @@ set(SOURCES main.cpp
             fractals/network/p2p/Message.cpp 
             fractals/network/p2p/MessageType.cpp
             fractals/network/http/Peer.cpp
+            fractals/torrent/Bencode.cpp
             fractals/torrent/PieceData.cpp
             fractals/torrent/Torrent.cpp
             fractals/persist/storage.cpp
@@ -30,10 +31,9 @@ set(SOURCES main.cpp
 add_executable (Fractals ${SOURCES})
 # add_library(Fractals_lib STATIC ${SOURCES})
 
-target_include_directories(Fractals PUBLIC ${BENCODE_INCLUDE_DIR})
+#target_include_directories(Fractals PUBLIC ${BENCODE_INCLUDE_DIR})
 target_include_directories(Fractals PUBLIC ${NEITHER_INCLUDE_DIR})
-target_include_directories(Fractals PUBLIC ${TERMINALPP_INCLUDE_DIR})
-target_link_libraries(Fractals bencode)
+target_link_libraries(Fractals bencode::bencode)
 target_link_libraries(Fractals OpenSSL::SSL)
 target_link_libraries(Fractals ftxui::screen ftxui::dom ftxui::component)
 target_link_libraries(Fractals ${CURL_LIBRARIES})

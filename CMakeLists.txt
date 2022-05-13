@@ -47,10 +47,10 @@ find_package(ftxui)
 include_directories(${FTXUI_INCLUDE_DIR})
 
 find_package(bencode REQUIRED)
-include_directories(${BENCODE_INCLUDE_DIR})
+include_directories(${BENCODE_INCLUDE_DIRS})
 
 add_subdirectory(src)
 enable_testing ()
-add_subdirectory(test)
+#add_subdirectory(test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_GLIBCXX_DEBUG")

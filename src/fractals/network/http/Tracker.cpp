@@ -26,7 +26,7 @@
 #include "fractals/network/http/Announce.h"
 #include "fractals/network/http/Tracker.h"
 #include "fractals/network/http/Peer.h"
-#include "fractals/torrent/BencodeConvert.h"
+#include "fractals/torrent/Bencode.h"
 #include "fractals/torrent/MetaInfo.h"
 
 using namespace neither;
@@ -51,7 +51,7 @@ namespace fractals::network::http {
     }
 
     TrackerRequest makeTrackerRequest(const torrent::MetaInfo &mi) {
-        bencode::bdict info_dict = torrent::BencodeConvert::to_bdict(mi.info);
+        bencode::bdict info_dict = torrent::to_bdict(mi.info);
 
         auto encoded = bencode::encode(info_dict);
         auto info_hash = common::sha1_encode(encoded);

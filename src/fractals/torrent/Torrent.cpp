@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iterator>
 #include <mutex>
+#include <set>
 
 #include <bencode/bencode.h>
 #include <neither/either.hpp>
@@ -13,7 +14,7 @@
 #include "fractals/torrent/PieceData.h"
 #include "fractals/torrent/Torrent.h"
 #include "fractals/torrent/MetaInfo.h"
-#include "fractals/torrent/BencodeConvert.h"
+#include "fractals/torrent/Bencode.h"
 
 namespace fractals::torrent {
 
@@ -40,22 +41,22 @@ namespace fractals::torrent {
         }
 
         // Compute info hash and store
-        m_info_hash = sha1_encode(bencode::encode(BencodeConvert::to_bdict(m_mi.info)));
+        m_info_hash = sha1_encode(encode(to_bdict(m_mi.info)));
     }
 
     neither::Either<std::string,std::shared_ptr<Torrent>> Torrent::read_torrent(std::string fp) {
         std::ifstream fstream;
         fstream.open(fp, std::ifstream::binary);
         
-        auto mbd = bencode::decode<bencode::bdict>(fstream);
+        auto mbd = decode<bdict>(fstream);
         //return on decode failure
         if(mbd.has_error()) { return left(mbd.error().message()); }
 
         //value is safe since we return on error above
-        bencode::bdict bd_ = mbd.value();
+        bdict bd_ = mbd.value();
 
         std::filesystem::path p(fp);
-        neither::Either<std::string,MetaInfo> bd = BencodeConvert::from_bdata<MetaInfo>(bencode::bdata(bd_));
+        neither::Either<std::string,MetaInfo> bd = from_bdata<MetaInfo>(bdata(bd_));
 
         if(bd.isLeft) {
             return left<std::string>(bd.leftValue);
