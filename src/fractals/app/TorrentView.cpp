@@ -19,7 +19,7 @@ namespace fractals::app {
         return m_model->m_torrent->m_name;
     }
 
-    long long TorrentView::get_size() {
+    int64_t TorrentView::get_size() {
         auto info = m_model->m_torrent->m_mi.info; 
         if(info.file_mode.isLeft) {
             // torrent is single file therefore torrent size is equal to the size of that file
@@ -33,11 +33,11 @@ namespace fractals::app {
         }
     }
 
-    long long TorrentView::get_downloaded() {
+    int64_t TorrentView::get_downloaded() {
         return m_model->m_torrent->size_of_pieces(m_model->m_torrent->get_pieces());
     }
 
-    long long TorrentView::get_download_speed() {
+    int64_t TorrentView::get_download_speed() {
         time_t curr = std::time(0);
 
         if(!m_prev_time.has_value() || m_prev_time == curr) {
@@ -60,7 +60,7 @@ namespace fractals::app {
         return speed;
     }
 
-    long long TorrentView::get_upload_speed() {
+    int64_t TorrentView::get_upload_speed() {
         time_t curr = std::time(0);
         if(!m_prev_time.has_value() || m_prev_time == curr) {
             m_prev_time = curr;
@@ -98,7 +98,7 @@ namespace fractals::app {
         return 0;
     }
 
-    long long TorrentView::get_eta() {
+    int64_t TorrentView::get_eta() {
         auto total = get_size();
         auto downloaded = get_downloaded();
         auto speed = get_download_speed();

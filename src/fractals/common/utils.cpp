@@ -158,7 +158,7 @@ namespace fractals::common {
         return v;
     }
 
-    std::wstring pp_bytes(long long bytes) {
+    std::wstring pp_bytes(int64_t bytes) {
         std::list<std::wstring> units = { L"B",L"KB",L"MB",L"GB"};
         long double d = bytes;
         auto u = units.front();
@@ -173,14 +173,14 @@ namespace fractals::common {
         auto dec = d - std::floor(d); // xx.yyzz - xx -> 0.yyzz
         auto dec_rounded = std::floor(dec*100); // 0.yyzz -> yy
 
-        return std::to_wstring((long long)nat) + L"." + std::to_wstring((long long)dec_rounded) + L" " + u;
+        return std::to_wstring((int64_t)nat) + L"." + std::to_wstring((int64_t)dec_rounded) + L" " + u;
     }
 
-    std::wstring pp_bytes_per_second(long long bytes) {
+    std::wstring pp_bytes_per_second(int64_t bytes) {
         return pp_bytes(bytes) + L"/s";
     }
 
-    std::wstring pp_time(long long seconds) {
+    std::wstring pp_time(int64_t seconds) {
         // >= 3 years
         if(seconds >= 279936000) {
             return L"inf";
@@ -192,7 +192,7 @@ namespace fractals::common {
 
         std::list<std::pair<std::wstring,int>> measurements;
 
-        std::pair<std::wstring,long long> prev(L"s",seconds);
+        std::pair<std::wstring,int64_t> prev(L"s",seconds);
         for(auto &u : units) {
             auto nat = prev.second / u.second; //number of minutes/hours/days/..
             auto prev_units = prev.second - nat*u.second;

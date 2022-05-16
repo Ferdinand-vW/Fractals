@@ -21,7 +21,7 @@ namespace fractals::torrent {
                 .map(mem_fn(&bstring::value));
 
         return e_length.rightMap(
-                [name,md5sum](const long long length) { return SingleFile {name,length,md5sum}; }
+                [name,md5sum](const int64_t length) { return SingleFile {name,length,md5sum}; }
         );
     }
 
@@ -49,7 +49,7 @@ namespace fractals::torrent {
         else                 { path = m_path.value; }
 
         return e_length.rightMap(
-                [md5sum,path](const long long &length) { return FileInfo {length,md5sum,path}; }
+                [md5sum,path](const int64_t &length) { return FileInfo {length,md5sum,path}; }
         );
     }
 
@@ -88,7 +88,7 @@ namespace fractals::torrent {
         auto m_piece_length = to_maybe(bd.find("piece length"))
                 .flatMap(to_bint)
                 .map(mem_fn(&bint::value));
-        long long piece_length;
+        int64_t piece_length;
         if(!m_piece_length.hasValue)
         { return left("Attribute piece length missing from info"s);}
         else { piece_length = m_piece_length.value; }

@@ -5,28 +5,11 @@
 #include <boost/log/sources/logger.hpp>
 
 #include "fractals/torrent/MetaInfo.h"
+#include "fractals/torrent/TorrentMeta.h"
 
 namespace fractals::torrent {
 
     struct PieceData;
-
-    /**
-    Abstraction of each file contained in the torrent data.
-    */
-    struct FileData {
-        FileInfo fi;
-        
-        /**
-        Offset in the torrent data.
-        */
-        long long begin;
-
-        /**
-        equals file size + begin
-        */
-        long long end;
-        std::string full_path;
-    };
 
     /**
     This class represents both the MetaInfo file and the (partially) downloaded torrent data.
@@ -36,12 +19,10 @@ namespace fractals::torrent {
     3) Parse torrent file to MetaInfo/Torrent
     */
     class Torrent {
+
         public:
-            std::string m_name;
-            std::string m_dir;
-            MetaInfo m_mi;
-            std::vector<char> m_info_hash;
-            std::vector<FileInfo> m_files;
+
+
             boost::log::sources::logger_mt &m_lg;
             std::mutex m_mutex;
 
@@ -49,18 +30,20 @@ namespace fractals::torrent {
 
             void write_data(PieceData & pd);
             static Either<std::string,std::shared_ptr<Torrent>> read_torrent(std::string fp);
-            long long size_of_piece(int piece);
-            long long size_of_pieces(std::set<int> pieces);
+            int64_t size_of_piece(int piece);
+            int64_t size_of_pieces(std::set<int> pieces);
             void add_piece(int p);
             void add_piece(std::set<int> p);
             std::set<int> get_pieces();
 
         private:
+            TorrentMeta m_tm;
+
             /**
             Add up size of each piece up to and including @piece.
             Can be used to calculate offset of piece by cumulative_size_of_pieces(piece - 1)
             */
-            long long cumulative_size_of_pieces(int piece);
+            int64_t cumulative_size_of_pieces(int piece);
             
             void create_files(std::vector<FileData> &fds);
 

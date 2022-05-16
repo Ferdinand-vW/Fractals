@@ -125,7 +125,7 @@ namespace fractals::network::p2p {
             
             void add_peer(http::PeerId p);
 
-            void add_peer_work(http::PeerId p,int piece, long long piece_size);
+            void add_peer_work(http::PeerId p,int piece, int64_t piece_size);
 
             /**
             Starts the write message loop. Call after receiving handshake.

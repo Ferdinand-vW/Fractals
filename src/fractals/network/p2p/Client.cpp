@@ -188,7 +188,7 @@ namespace fractals::network::p2p {
         BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece size: " << piece_size;
     }
 
-    void Client::add_peer_work(PeerId p,int piece,long long piece_size) {
+    void Client::add_peer_work(PeerId p,int piece,int64_t piece_size) {
         torrent::PieceData pd(piece,piece_size);
         PeerWork pw = { PieceProgress::Nothing, pd };
 

@@ -18,7 +18,7 @@ namespace fractals::torrent {
 
     struct FileInfo {
         public:
-            long long length;
+            int64_t length;
             Maybe<std::vector<char>> md5sum;
             std::vector<string> path;
 
@@ -47,7 +47,7 @@ namespace fractals::torrent {
     struct SingleFile {
         public:
             Maybe<std::string> name; // file name
-            long long length;
+            int64_t length;
             Maybe<std::vector<char>> md5sum;
 
             string to_string(int len = 100) {
@@ -61,9 +61,9 @@ namespace fractals::torrent {
 
     struct InfoDict {
         public:
-            long long piece_length;
+            int64_t piece_length;
             std::vector<char> pieces;
-            Maybe<long long> publish; // if set to 1 then publish
+            Maybe<int64_t> publish; // if set to 1 then publish
             Either<SingleFile,MultiFile> file_mode;
 
             string to_string(int len = 100) {
@@ -72,7 +72,7 @@ namespace fractals::torrent {
                 auto s_pcs = ", pieces: <bytestring>"s;
 
                 auto pb_to_string = [](auto a) { return std::to_string(a); };
-                auto s_pb  = ", publish: "s + common::maybe_to_val<long long,string>(publish,pb_to_string,"<empty>"s);
+                auto s_pb  = ", publish: "s + common::maybe_to_val<int64_t,string>(publish,pb_to_string,"<empty>"s);
                 
                 auto sf_to_string = [len](SingleFile sf) { return sf.to_string(len); };
                 auto mf_to_string = [len](MultiFile mf) { return mf.to_string(len); };
@@ -83,7 +83,7 @@ namespace fractals::torrent {
                 return common::concat(common::map_vector<string,string>(v,to_line)) + s_fm + s_end;
             }
 
-            long long number_of_pieces() {
+            int64_t number_of_pieces() {
                 return pieces.size() / 20;
             }
     };
@@ -95,7 +95,7 @@ namespace fractals::torrent {
         public:
             std::string announce;
             Maybe<std::vector<std::vector<std::string>>> announce_list;
-            Maybe<long long> creation_date;
+            Maybe<int64_t> creation_date;
             Maybe<std::string> comment;
             Maybe<std::string> created_by;
             Maybe<std::string> encoding;

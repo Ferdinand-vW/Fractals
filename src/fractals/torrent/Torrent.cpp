@@ -74,7 +74,7 @@ namespace fractals::torrent {
     std::vector<FileData> Torrent::divide_over_files(int piece) {
         std::vector<FileData> fds;
 
-        long long bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
+        int64_t bytes_begin = piece == 0 ? 0 : cumulative_size_of_pieces(piece - 1);
         auto piece_len = size_of_piece(piece);
 
         auto curr_offset = 0;
@@ -86,7 +86,7 @@ namespace fractals::torrent {
                 auto file_remaining = next_file_begin - bytes_begin; // bytes left in remainder of current file
                 
                 // How much can we write/is there to write
-                long long to_write;
+                int64_t to_write;
                 if (file_remaining < piece_len) {
                     to_write = file_remaining;
                 } else {
@@ -150,9 +150,9 @@ namespace fractals::torrent {
         }
     }
 
-    long long Torrent::size_of_pieces(std::set<int> pieces) {
+    int64_t Torrent::size_of_pieces(std::set<int> pieces) {
         //all pieces but last have equal size.
-        long long sum_size_pieces = pieces.size() * m_mi.info.piece_length;
+        int64_t sum_size_pieces = pieces.size() * m_mi.info.piece_length;
 
         //if last piece is also present then we must subtract one standard piece size 
         // from the above and add the last piece size
@@ -167,10 +167,10 @@ namespace fractals::torrent {
 
     }
 
-    long long Torrent::size_of_piece(int piece) {
+    int64_t Torrent::size_of_piece(int piece) {
         auto info = m_mi.info;
-        long long piece_length = info.piece_length;
-        long long num_pieces = info.number_of_pieces();
+        int64_t piece_length = info.piece_length;
+        int64_t num_pieces = info.number_of_pieces();
 
         // All pieces but last have uniform size as specified in the info dict
         if(piece != num_pieces - 1) { return piece_length; }
@@ -178,12 +178,12 @@ namespace fractals::torrent {
         // For the last piece we need to compute the total file size (sum of all file lengths)
         if(info.file_mode.isLeft) {
             //if single file mode then it's simple
-            long long file_length = info.file_mode.leftValue.length;
+            int64_t file_length = info.file_mode.leftValue.length;
             //last piece has size of remainder of file
             return file_length - (num_pieces - 1) * info.piece_length;
         } else {
             //In multi file mode we need to traverse over each file and sum
-            long long sum_file_lengths = 0;
+            int64_t sum_file_lengths = 0;
             for(auto &f : info.file_mode.rightValue.files) {
                 sum_file_lengths += f.length;
             }
@@ -204,8 +204,8 @@ namespace fractals::torrent {
         return m_pieces;
     }
 
-    long long Torrent::cumulative_size_of_pieces(int piece) {
-        long long sum = 0;
+    int64_t Torrent::cumulative_size_of_pieces(int piece) {
+        int64_t sum = 0;
         for(int i = 0; i <= piece;i++) { // piece is zero based index
             sum += size_of_piece(i);
         }
@@ -226,7 +226,7 @@ namespace fractals::torrent {
 
         BOOST_LOG(m_lg) << "[Torrent] To write " << bytes.size() << " number of bytes";
         BOOST_LOG(m_lg) << "[Torrent] Spanning over " << fds.size() << " file(s)";
-        long long bytes_pos = 0;
+        int64_t bytes_pos = 0;
         for(auto fd : fds) {
             std::fstream fstream;
 
