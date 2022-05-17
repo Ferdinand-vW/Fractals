@@ -64,7 +64,7 @@ namespace fractals::network::p2p {
     }
 
     std::optional<Announce> make_announce(const Torrent &t) {
-        auto tr = makeTrackerRequest(t.m_mi);
+        auto tr = makeTrackerRequest(t.getMetaInfo());
         time_t curr = std::time(0);
         auto resp = sendTrackerRequest(tr);
 
@@ -127,7 +127,7 @@ namespace fractals::network::p2p {
         //these identify implemented BT extensions
         //currently none are implemented
         char reserved[8] = {0,0,0,0,0,0,0,0};
-        auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->m_info_hash,m_client->m_client_id);
+        auto handshake = HandShake(prot.size(),prot,reserved,m_torrent->getMeta().getInfoHash(),m_client->m_client_id);
         BOOST_LOG(m_lg) << p.m_ip << " >>> " + handshake.pprint();
         m_client->send_handshake(p,std::move(handshake));
 

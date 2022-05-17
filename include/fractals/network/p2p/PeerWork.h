@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fractals/torrent/PieceData.h"
+#include "fractals/torrent/Piece.h"
 
 namespace fractals::network::p2p {
 
@@ -14,7 +14,7 @@ namespace fractals::network::p2p {
     */
     struct PeerWork {
         PieceProgress m_progress;
-        torrent::PieceData m_data;
+        torrent::Piece m_data;
     };
 
 }

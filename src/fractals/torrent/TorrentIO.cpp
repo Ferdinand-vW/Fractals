@@ -5,14 +5,14 @@
 #include <fstream>
 #include <boost/log/sources/record_ostream.hpp>
 
-#include "fractals/torrent/FileData.h"
-#include "fractals/torrent/PieceData.h"
+#include "fractals/torrent/File.h"
+#include "fractals/torrent/Piece.h"
 #include "fractals/torrent/TorrentMeta.h"
 #include "fractals/torrent/TorrentIO.h"
 
 namespace fractals::torrent {
 
-    void TorrentIO::writePieceToDisk(const TorrentMeta &tm, PieceData &&pd) {
+    void TorrentIO::writePieceToDisk(const TorrentMeta &tm, Piece &&pd) {
         BOOST_LOG(m_lg) << "[Torrent] writing piece " << pd.m_piece_index;
         auto fds = touchedFiles(tm, pd.m_piece_index); // which files does this piece touch?
 
@@ -48,7 +48,7 @@ namespace fractals::torrent {
 
     }
 
-    void TorrentIO::createFiles(const std::vector<FileData> &fds) {
+    void TorrentIO::createFiles(const std::vector<File> &fds) {
 
     }
 

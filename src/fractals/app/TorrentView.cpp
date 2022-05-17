@@ -10,31 +10,22 @@
 #include "fractals/network/p2p/BitTorrent.h"
 #include <fractals/torrent/MetaInfo.h>
 #include "fractals/torrent/Torrent.h"
+#include "fractals/torrent/Piece.h"
 
 namespace fractals::app {
 
     TorrentView::TorrentView(int id,std::shared_ptr<network::p2p::BitTorrent> t) : m_id(id),m_model(t) {};
 
     std::string TorrentView::get_name() {
-        return m_model->m_torrent->m_name;
+        return m_model->m_torrent->getName();
     }
 
     int64_t TorrentView::get_size() {
-        auto info = m_model->m_torrent->m_mi.info; 
-        if(info.file_mode.isLeft) {
-            // torrent is single file therefore torrent size is equal to the size of that file
-            return info.file_mode.leftValue.length;
-        } else {
-            auto files = info.file_mode.rightValue.files;
-            // for multi mode we need to sum the size of each file
-            return std::accumulate(files.begin(),files.end(),0,[](auto acc,auto &f) {
-                return std::move(acc) + f.length;
-            });
-        }
+        return m_model->m_torrent->getMeta().getSize();
     }
 
     int64_t TorrentView::get_downloaded() {
-        return m_model->m_torrent->size_of_pieces(m_model->m_torrent->get_pieces());
+        return size_of_piece(m_model->m_torrent->getMeta(),m_model->m_torrent->get_pieces());
     }
 
     int64_t TorrentView::get_download_speed() {

@@ -83,7 +83,7 @@ namespace fractals::torrent {
                 return common::concat(common::map_vector<string,string>(v,to_line)) + s_fm + s_end;
             }
 
-            int64_t number_of_pieces() {
+            int64_t number_of_pieces() const {
                 return pieces.size() / 20;
             }
     };

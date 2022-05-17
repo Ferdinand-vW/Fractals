@@ -12,15 +12,15 @@
 namespace fractals::torrent {
 
     struct TorrentMeta;
-    struct PieceData;
-    class FileData;
+    struct Piece;
+    class File;
 
     class TorrentIO {
         public:
 
-            void writePieceToDisk(const TorrentMeta &tm, PieceData &&pd);
+            void writePieceToDisk(const TorrentMeta &tm, Piece &&pd);
             void writePieceToDb(const TorrentMeta &tm,int piece);
-            void createFiles(const std::vector<FileData> &fds);
+            void createFiles(const std::vector<File> &fds);
             static neither::Either<std::string,TorrentMeta> readTorrentFile(std::string fp);
 
         private:
@@ -32,8 +32,6 @@ namespace fractals::torrent {
                      : m_storage(storage)
                      , m_lg(lg)
                      {};
-
-            std::vector<FileData> touchedFiles(const TorrentMeta &tm, int piece);
     };
 
 }

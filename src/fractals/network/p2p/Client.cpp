@@ -21,7 +21,7 @@
 #include "fractals/network/p2p/PeerManager.h"
 #include "fractals/network/p2p/PeerWork.h"
 #include "fractals/persist/data.h"
-#include "fractals/torrent/PieceData.h"
+#include "fractals/torrent/Piece.h"
 #include "fractals/torrent/Torrent.h"
 
 using namespace fractals::torrent;
@@ -46,7 +46,7 @@ namespace fractals::network::p2p {
 
         m_existing_pieces = m_torrent->get_pieces();
         // Pieces are zero based index
-        for(int i = 0; i < torrent->m_mi.info.number_of_pieces(); i++) {
+        for(int i = 0; i < torrent->getMetaInfo().info.number_of_pieces(); i++) {
             //piece has not been downloaded yet so we wish to download it
             if(m_existing_pieces.find(i) == m_existing_pieces.end()) {
                 m_missing_pieces.insert(i);
@@ -63,7 +63,7 @@ namespace fractals::network::p2p {
     }
 
     bool Client::has_all_pieces() {
-        return m_existing_pieces.size() == m_torrent->m_mi.info.number_of_pieces();
+        return m_existing_pieces.size() == m_torrent->getMetaInfo().info.number_of_pieces();
     }
 
     bool Client::is_choked_by(PeerId p) {
@@ -181,7 +181,7 @@ namespace fractals::network::p2p {
         }
 
         // m_peer_status[p].m_available_pieces.erase(piece); // too early?
-        auto piece_size = m_torrent->size_of_piece(piece);
+        auto piece_size = torrent::size_of_piece(m_torrent->getMeta(),piece);
         add_peer_work(p,piece,piece_size);
 
         BOOST_LOG(m_lg) << "[Client] " + p.m_ip + " selected piece: " << piece;
@@ -189,7 +189,7 @@ namespace fractals::network::p2p {
     }
 
     void Client::add_peer_work(PeerId p,int piece,int64_t piece_size) {
-        torrent::PieceData pd(piece,piece_size);
+        torrent::Piece pd(piece, piece_size);
         PeerWork pw = { PieceProgress::Nothing, pd };
 
         auto work_ptr = std::make_shared<PeerWork>(pw);
@@ -264,15 +264,16 @@ namespace fractals::network::p2p {
         if(work->m_data.is_complete()) {
             
             BOOST_LOG(m_lg) << "[Client] received all data from " << p.m_ip << " for " << pc.pprint();
-            PieceData piece = work->m_data;
-            BOOST_LOG(m_lg) << piece.m_piece_index;
-            m_torrent->write_data(piece);
+            torrent::Piece piece = work->m_data;
+            int pieceIndex = piece.m_piece_index; // retain relevant information
+            BOOST_LOG(m_lg) << pieceIndex;
+            m_torrent->writePiece(std::move(piece)); // other data is now discarded
 
             // update internal state of required pieces
-            m_missing_pieces.erase(piece.m_piece_index);
-            m_existing_pieces.insert(piece.m_piece_index);
+            m_missing_pieces.erase(pieceIndex);
+            m_existing_pieces.insert(pieceIndex);
             m_peers.finished_work(p);
-            save_piece(m_storage,*m_torrent.get(),piece.m_piece_index);
+            save_piece(m_storage,*m_torrent.get(),pieceIndex);
 
             if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
                 BOOST_LOG(m_lg) << "[BitTorrent] received all pieces";
@@ -386,7 +387,7 @@ namespace fractals::network::p2p {
         std::vector<bool> bf;
         //pieces is a byte string consisting of consecutive 20length SHA1 hashes
         //thus the number of pieces is the length of the byte string divided by 20
-        int num_pieces = m_torrent->m_mi.info.number_of_pieces();
+        int num_pieces = m_torrent->getMetaInfo().info.number_of_pieces();
 
         // bitfield must be a multiple of 8
         int mult8 = num_pieces % 8;
@@ -476,7 +477,7 @@ namespace fractals::network::p2p {
         //calculate size to request
         int standard_size = 1 << 14 ; // 16KB, standard request size 
         int remaining = work->m_data.remaining(); // remaining data of piece
-        int piece_length = m_torrent->m_mi.info.piece_length; //size of pieces
+        int piece_length = m_torrent->getMetaInfo().info.piece_length; //size of pieces
         //the size of the request cannot exceed any one of the above sizes
         int request_size = std::min(remaining,std::min(piece_length,request_size));
 

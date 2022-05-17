@@ -10,7 +10,7 @@ set(SOURCES main.cpp
             fractals/app/TerminalInput.cpp
             fractals/app/TorrentDisplay.cpp
             fractals/app/TorrentView.cpp
-            fractals/common/encode.cpp 
+            fractals/common/encode.cpp
             fractals/common/utils.cpp
             fractals/network/http/Tracker.cpp
             fractals/network/http/Peer.cpp
@@ -22,10 +22,13 @@ set(SOURCES main.cpp
             fractals/network/p2p/MessageType.cpp
             fractals/network/http/Peer.cpp
             fractals/torrent/Bencode.cpp
-            fractals/torrent/PieceData.cpp
+            fractals/torrent/File.cpp
+            fractals/torrent/Piece.cpp
             fractals/torrent/Torrent.cpp
+            fractals/torrent/TorrentMeta.cpp
+            fractals/torrent/TorrentIO.cpp
             fractals/persist/storage.cpp
-            fractals/persist/data.cpp)
+            fractals/persist/data.cpp fractals/torrent/File.cpp)
 
 # Add source to this project's executable.
 add_executable (Fractals ${SOURCES})

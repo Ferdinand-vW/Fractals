@@ -9,11 +9,12 @@
 #include "fractals/torrent/MetaInfo.h"
 
 namespace fractals::torrent {
+    struct TorrentMeta;
 
     /**
     Abstraction of each file contained in the torrent data.
     */
-    struct FileData {
+    struct File {
         FileInfo fi;
 
         /**
@@ -27,5 +28,7 @@ namespace fractals::torrent {
         int64_t end;
         std::string full_path;
     };
+
+    std::vector<File> touchedFiles(const TorrentMeta &tm, int piece);
 
 }

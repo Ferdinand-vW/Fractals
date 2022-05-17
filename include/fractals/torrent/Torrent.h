@@ -6,10 +6,11 @@
 
 #include "fractals/torrent/MetaInfo.h"
 #include "fractals/torrent/TorrentMeta.h"
+#include "fractals/torrent/TorrentIO.h"
 
 namespace fractals::torrent {
 
-    struct PieceData;
+    struct Piece;
 
     /**
     This class represents both the MetaInfo file and the (partially) downloaded torrent data.
@@ -22,36 +23,23 @@ namespace fractals::torrent {
 
         public:
 
+            Torrent(TorrentMeta &&tm,TorrentIO &tio, std::set<int> pieces);
 
-            boost::log::sources::logger_mt &m_lg;
-            std::mutex m_mutex;
+            const TorrentMeta& getMeta() const;
+            TorrentIO& getIO() const;
 
-            Torrent(MetaInfo &mi,std::string fileName,std::set<int> pieces);
-
-            void write_data(PieceData & pd);
-            static Either<std::string,std::shared_ptr<Torrent>> read_torrent(std::string fp);
-            int64_t size_of_piece(int piece);
-            int64_t size_of_pieces(std::set<int> pieces);
             void add_piece(int p);
             void add_piece(std::set<int> p);
             std::set<int> get_pieces();
 
+            std::string getName() const;
+            const MetaInfo& getMetaInfo() const;
+            void writePiece(Piece &&p);
+
         private:
             TorrentMeta m_tm;
-
-            /**
-            Add up size of each piece up to and including @piece.
-            Can be used to calculate offset of piece by cumulative_size_of_pieces(piece - 1)
-            */
-            int64_t cumulative_size_of_pieces(int piece);
-            
-            void create_files(std::vector<FileData> &fds);
-
-            /**
-            Generate files for which the piece must write data to
-            */
-            std::vector<FileData> divide_over_files(int piece);
-            std::set<int> m_pieces;
+            TorrentIO &m_io;
+            std::set<int> m_pieces; // in-memory representation of available pieces
     };
 
 }

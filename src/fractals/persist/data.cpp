@@ -12,6 +12,7 @@
 #include "fractals/persist/storage.h"
 #include "fractals/persist/torrent_model.h"
 #include "fractals/torrent/Torrent.h"
+#include "fractals/common/logger.h"
 
 using namespace fractals::torrent;
 using namespace fractals::network::http;
@@ -19,23 +20,24 @@ using namespace fractals::network::http;
 namespace fractals::persist {
 
     void save_torrent(Storage &st, std::string mi,const Torrent &t) {
-        auto mi_path = "./metainfo/" + t.m_name + ".torrent";
+        auto mi_path = "./metainfo/" + t.getName() + ".torrent";
         //copy the meta info to a local directory
         std::filesystem::copy(mi,mi_path
                             ,std::filesystem::copy_options::overwrite_existing);
-        auto tm = TorrentModel { 0, t.m_name, mi_path, "./downloads"};
+        auto tm = TorrentModel { 0, t.getName(), mi_path, "./downloads"};
         st.add_torrent(tm);
     }
 
-    std::vector<std::shared_ptr<Torrent>> load_torrents(Storage &st) {
+    std::vector<std::shared_ptr<Torrent>> load_torrents(TorrentIO &tio,Storage &st) {
         auto tms = st.load_torrents();
 
         std::vector<std::shared_ptr<Torrent>> torrs;
 
         for(auto &tm : tms) {
-            auto t = Torrent::read_torrent(tm.meta_info_path);
+            auto t = TorrentIO::readTorrentFile(tm.meta_info_path);
             if(!t.isLeft) {
-                torrs.push_back(t.rightValue);
+                Torrent torr(std::move(t.rightValue),tio,{});
+                torrs.push_back(std::make_shared<Torrent>(torr));
             }
         }
 
@@ -43,11 +45,11 @@ namespace fractals::persist {
     }
 
     bool has_torrent(Storage &st, const Torrent &t) {
-        return st.load_torrent(t.m_name).has_value();
+        return st.load_torrent(t.getName()).has_value();
     }
 
     void delete_torrent(Storage &st, const Torrent &t) {
-        auto tm = st.load_torrent(t.m_name);
+        auto tm = st.load_torrent(t.getName());
         if(tm.has_value()) {
             //delete anything that has torrent as foreign key
             delete_announces(st, t);
@@ -58,7 +60,7 @@ namespace fractals::persist {
     }
 
     void save_piece(Storage &st, const Torrent &t,int piece) {
-        auto tm = st.load_torrent(t.m_name);
+        auto tm = st.load_torrent(t.getName());
         if(tm.has_value()) {
             auto pm = PieceModel {0,tm->id,piece};
             st.add_piece(pm);
@@ -66,7 +68,7 @@ namespace fractals::persist {
     }
 
     std::set<int> load_pieces(Storage &st, const Torrent &t) {
-        auto tm = st.load_torrent(t.m_name);
+        auto tm = st.load_torrent(t.getName());
         std::set<int> pieces;
         if(tm.has_value()) {
             auto pms = st.load_pieces(tm.value());
@@ -80,7 +82,7 @@ namespace fractals::persist {
     }
 
     void delete_pieces(Storage &st,const Torrent &t) {
-        auto tm = st.load_torrent(t.m_name);
+        auto tm = st.load_torrent(t.getName());
         if(tm.has_value()) {
             auto pms = st.load_pieces(tm.value());
             for(auto &pm : pms) {
@@ -90,7 +92,7 @@ namespace fractals::persist {
     }
 
     void save_announce(Storage &st, const Torrent &t, const Announce &ann) {
-        auto tm = st.load_torrent(t.m_name);
+        auto tm = st.load_torrent(t.getName());
         if(tm.has_value()) {
             auto peers = ann.peers;
             std::vector<AnnounceModel> ams;
@@ -110,14 +112,14 @@ namespace fractals::persist {
     }
 
     void delete_announces(Storage &st, const Torrent &t) {
-        auto tm = st.load_torrent(t.m_name);
+        auto tm = st.load_torrent(t.getName());
         if(tm.has_value()) {
             st.delete_announces(tm.value());
         }
     }
 
     std::optional<Announce> load_announce(Storage &st, const Torrent &t) {
-        auto tm_opt = st.load_torrent(t.m_name);
+        auto tm_opt = st.load_torrent(t.getName());
         if(!tm_opt.has_value()) { return {}; }
         auto tm = tm_opt.value();
 

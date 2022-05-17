@@ -1,13 +1,15 @@
 #include <iostream>
 
 #include "fractals/common/logger.h"
-#include "fractals/torrent/PieceData.h"
+#include "fractals/torrent/Piece.h"
+#include "fractals/torrent/File.h"
+#include "fractals/torrent/TorrentMeta.h"
 
 namespace fractals::torrent {
 
-    PieceData::PieceData(int piece_index,int64_t length) : m_piece_index(piece_index),m_length(length) {}
+    Piece::Piece(int piece_index, int64_t length) : m_piece_index(piece_index), m_length(length) {}
 
-    bool PieceData::is_complete() {
+    bool Piece::is_complete() {
         int block_length = 0;
         for(auto &b : m_blocks) {
             block_length += b.m_data.size();
@@ -15,7 +17,7 @@ namespace fractals::torrent {
         return block_length == m_length;
     }
 
-    void PieceData::add_block(const Block &incoming) {
+    void Piece::add_block(const Block &incoming) {
         bool overlaps = false;
         for(const auto &existing : m_blocks) {
             auto o = incoming.m_begin < (existing.m_begin + existing.m_data.size()) 
@@ -31,13 +33,13 @@ namespace fractals::torrent {
         
     }
 
-    int64_t PieceData::remaining() {
+    int64_t Piece::remaining() {
         int sum = 0;
         for(auto &b : m_blocks) { sum += b.m_data.size(); }
         return m_length - sum;
     }
 
-    int64_t PieceData::next_block_begin() {
+    int64_t Piece::next_block_begin() {
         if(m_blocks.size() == 0) {
             return 0;
         }
@@ -47,7 +49,7 @@ namespace fractals::torrent {
         }
     }
 
-    int64_t PieceData::numBytes() {
+    int64_t Piece::numBytes() {
        int64_t res = 0;
 
        for(auto &bl : m_blocks) {
@@ -57,7 +59,7 @@ namespace fractals::torrent {
        return res;
     }
 
-    std::vector<char> PieceData::getBytes(int64_t begin, int64_t end) {
+    std::vector<char> Piece::getBytes(int64_t begin, int64_t end) {
         std::vector<char> bytes;
 
         auto beginPos = getIndex(begin);
@@ -70,12 +72,12 @@ namespace fractals::torrent {
         auto dBEnd   = m_blocks[beginPos.first].m_data.end();
         auto dEBegin = m_blocks[endPos.first].m_data.begin();
 
-        if(beginPos.first == endPos.first) {
+        if(beginPos.first == endPos.first) { // indexes specify a range within a block
             bytes.insert(bytes.end()
                         ,dBBegin + beginPos.second
                         ,dBBegin + endPos.second + 1);
         }
-        else {
+        else { // range across at least two blocks
 
             // (Partially) insert the first block
             bytes.insert(bytes.end(), dBBegin + beginPos.second,dBEnd);
@@ -93,7 +95,7 @@ namespace fractals::torrent {
         return bytes;
     }
 
-    std::pair<int64_t ,int64_t> PieceData::getIndex(int64_t pos) {
+    std::pair<int64_t ,int64_t> Piece::getIndex(int64_t pos) {
 
         int64_t curr_pos = 0;
         for(int interIndex = 0; interIndex < m_blocks.size(); ++interIndex) {
@@ -109,4 +111,46 @@ namespace fractals::torrent {
         return {-1,-1}; // Could not find position
     }
 
+    int64_t size_of_piece(const TorrentMeta &tm, int piece) {
+        auto info = tm.getMetaInfo().info;
+        int64_t piece_length = info.piece_length;
+        int64_t num_pieces = info.number_of_pieces();
+
+        // All pieces but last have uniform size as specified in the info dict
+        if(piece != num_pieces - 1) { return piece_length; }
+
+        // For the last piece we need to compute the total file size (sum of all file lengths)
+        int64_t totalSize = 0;
+
+        if(info.file_mode.isLeft) {
+            //if single file mode then it's simple
+            totalSize = info.file_mode.leftValue.length;
+        } else {
+            //In multi file mode we need to traverse over each file and sum
+            for (auto &f: info.file_mode.rightValue.files) {
+                totalSize += f.length;
+            }
+        }
+
+        //size of last piece equals total file size minus sum of sizes of all but the last piece
+        return totalSize - (num_pieces - 1) * info.piece_length;
+    }
+
+    int64_t size_of_piece(const TorrentMeta &tm, std::set<int> pieces) {
+        int64_t sum = 0;
+        for(auto p : pieces) {
+            sum += size_of_piece(tm, p);
+        }
+
+        return sum;
+    }
+
+    int64_t cumulative_size_of_pieces(const TorrentMeta &tm, int piece) {
+        int64_t sum = 0;
+        for(int i = 0; i <= piece;i++) { // piece is zero based index
+            sum += size_of_piece(tm, i);
+        }
+
+        return sum;
+    }
 }
