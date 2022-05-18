@@ -21,7 +21,7 @@ using namespace fractals::network::http;
 namespace fractals::persist {
 
     void save_torrent(Storage &st, std::string mi,const TorrentMeta &t) {
-        auto mi_path = "./metainfo/" + t.getName() + ".torrent";
+        auto mi_path = "./metainfo/" + t.getName();
         //copy the meta info to a local directory
         std::filesystem::copy(mi,mi_path
                             ,std::filesystem::copy_options::overwrite_existing);
