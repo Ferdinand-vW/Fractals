@@ -20,7 +20,7 @@ namespace fractals::torrent {
 
             void writePieceToDisk(const TorrentMeta &tm, Piece &&pd);
             void writePieceToDb(const TorrentMeta &tm,int piece);
-            void createFiles(const std::vector<File> &fds);
+            void createFiles(std::string dir, std::vector<File> &fds);
             static neither::Either<std::string,TorrentMeta> readTorrentFile(std::string fp);
 
         private:
