@@ -18,7 +18,10 @@
 
 namespace fractals::torrent {
 
-    Torrent::Torrent(TorrentMeta &&tm,TorrentIO &tio,std::set<int> pieces)
+    Torrent::Torrent(TorrentMeta &&tm,TorrentIO &tio,std::set<int> &&pieces)
+                    : m_tm(std::move(tm)),m_io(tio),m_pieces(std::move(pieces)) {}
+
+    Torrent::Torrent(const TorrentMeta &tm, TorrentIO &tio, const set<int> &pieces)
                     : m_tm(tm),m_io(tio),m_pieces(pieces) {}
 
     void Torrent::add_piece(int p) {
@@ -50,8 +53,16 @@ namespace fractals::torrent {
         getIO().writePieceToDb(getMeta(),p.m_piece_index);
     }
 
-    const MetaInfo &Torrent::getMetaInfo() const {
+    const MetaInfo& Torrent::getMetaInfo() const {
         return getMeta().getMetaInfo();
+    }
+
+    std::shared_ptr<Torrent> Torrent::makeTorrent(TorrentMeta &&tm, TorrentIO &tio, std::set<int> &&pieces) {
+        return std::make_shared<Torrent>(std::move(tm),tio,std::move(pieces));
+    }
+
+    std::shared_ptr<Torrent> Torrent::makeTorrent(const TorrentMeta &tm, TorrentIO &tio, const std::set<int> &pieces) {
+        return std::make_shared<Torrent>(tm,tio,pieces);
     }
 
 }

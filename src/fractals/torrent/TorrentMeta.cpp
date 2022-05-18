@@ -57,7 +57,7 @@ namespace fractals::torrent {
     }
 
 
-    MetaInfo TorrentMeta::getMetaInfo() const {
+    const MetaInfo& TorrentMeta::getMetaInfo() const {
         return m_mi;
     }
 

@@ -273,7 +273,7 @@ namespace fractals::network::p2p {
             m_missing_pieces.erase(pieceIndex);
             m_existing_pieces.insert(pieceIndex);
             m_peers.finished_work(p);
-            save_piece(m_storage,*m_torrent.get(),pieceIndex);
+            save_piece(m_storage,m_torrent->getMeta(),pieceIndex);
 
             if(has_all_pieces()) { //Only report completed if all pieces have been downloaded
                 BOOST_LOG(m_lg) << "[BitTorrent] received all pieces";

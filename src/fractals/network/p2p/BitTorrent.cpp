@@ -43,7 +43,7 @@ namespace fractals::network::p2p {
     }
 
     std::optional<Announce> get_recent_announce(Storage &st,const Torrent &t) {
-        auto mann = load_announce(st, t);
+        auto mann = load_announce(st, t.getMeta());
         if(mann.has_value()) {
             auto ann = mann.value();
             time_t curr = std::time(0);
@@ -95,8 +95,8 @@ namespace fractals::network::p2p {
                 if(next_ann.has_value()) { //on success add received peers
                     BOOST_LOG(m_lg) << "[BitTorrent] made new recent announce";
                     new_peers = next_ann->peers;
-                    delete_announces(m_storage,torr);
-                    save_announce(m_storage, torr, next_ann.value()); //saves announce in db
+                    delete_announces(m_storage,torr.getMeta());
+                    save_announce(m_storage, torr.getMeta(), next_ann.value()); //saves announce in db
                 } else { //indicates a failure in making the announce
                         //we retry after short sleep
                         //the 'current' invocation of request_peers will not add new peers
@@ -156,7 +156,7 @@ namespace fractals::network::p2p {
             peer_change(p, pc);
         };
 
-        auto pieces = load_pieces(m_storage, *m_torrent.get());
+        auto pieces = load_pieces(m_storage, m_torrent->getMeta());
         m_torrent->add_piece(pieces);
         m_client = std::shared_ptr<Client>(new Client(m_max_peers,m_torrent,m_io,m_storage,f));
     }

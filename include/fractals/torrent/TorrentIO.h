@@ -17,6 +17,9 @@ namespace fractals::torrent {
 
     class TorrentIO {
         public:
+            TorrentIO(persist::Storage &storage,boost::log::sources::logger_mt &lg)
+                    : m_storage(storage)
+                    , m_lg(lg) {};
 
             void writePieceToDisk(const TorrentMeta &tm, Piece &&pd);
             void writePieceToDb(const TorrentMeta &tm,int piece);
@@ -28,10 +31,7 @@ namespace fractals::torrent {
             std::mutex m_mutex;
             boost::log::sources::logger_mt &m_lg;
 
-            TorrentIO(persist::Storage &storage,boost::log::sources::logger_mt &lg)
-                     : m_storage(storage)
-                     , m_lg(lg)
-                     {};
+
     };
 
 }

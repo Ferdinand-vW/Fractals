@@ -37,7 +37,7 @@ namespace fractals::torrent {
              * Returns original MetaInfo (parsed .torrent file)
              * @return MetaInfo object
              */
-            MetaInfo getMetaInfo() const;
+            const MetaInfo& getMetaInfo() const;
 
             /**
              * A SHA1 hash of Info dict in MetaInfo

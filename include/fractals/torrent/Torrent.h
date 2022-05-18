@@ -23,7 +23,8 @@ namespace fractals::torrent {
 
         public:
 
-            Torrent(TorrentMeta &&tm,TorrentIO &tio, std::set<int> pieces);
+            Torrent(TorrentMeta &&tm,TorrentIO &tio, std::set<int> &&pieces);
+            Torrent(const TorrentMeta &tm,TorrentIO &tio, const std::set<int> &pieces);
 
             const TorrentMeta& getMeta() const;
             TorrentIO& getIO() const;
@@ -35,6 +36,9 @@ namespace fractals::torrent {
             std::string getName() const;
             const MetaInfo& getMetaInfo() const;
             void writePiece(Piece &&p);
+
+            static std::shared_ptr<Torrent> makeTorrent(TorrentMeta &&tm,TorrentIO &tio,std::set<int> &&pieces);
+            static std::shared_ptr<Torrent> makeTorrent(const TorrentMeta &tm,TorrentIO &tio,const std::set<int> &pieces);
 
         private:
             TorrentMeta m_tm;
