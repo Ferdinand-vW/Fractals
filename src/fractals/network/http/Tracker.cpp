@@ -35,15 +35,15 @@ namespace fractals::network::http {
 
     std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
         auto peers_str = common::intercalate(", ",common::map_vector<Peer,std::string>(s.peers, [](const Peer &p) {
-            return "("s + p.peer_name + "," + p.peer_id.m_ip + "," + std::to_string(p.peer_id.m_port) + ")";
+            return "(["s + p.peer_name + "]" + p.peer_id.m_ip + ":" + std::to_string(p.peer_id.m_port) + ")";
         }));
-        os << "Tracker Reponse: " << endl;
-        os << "{ tracker id: "+common::from_maybe(s.tracker_id,""s) << endl;
+        os << "Tracker Response: " << endl;
+        os << "{ tracker id: "+common::from_maybe(s.tracker_id,"<empty>"s) << endl;
         os << ", complete: " + std::to_string(s.complete) << endl;
         os << ", incomplete: " + std::to_string(s.incomplete) << endl;
         os << ", interval: " + std::to_string(s.interval) << endl;
         os << ", min interval: " + std::to_string(s.min_interval) << endl;
-        os << ", warning message: " + common::from_maybe(s.warning_message,""s) << endl;
+        os << ", warning message: " + common::from_maybe(s.warning_message,"<empty>"s) << endl;
         os << ", peers: " + peers_str << endl;
         os << "}" << endl;
 
@@ -90,10 +90,9 @@ namespace fractals::network::http {
         std::string upl_prm  = "uploaded="  +std::to_string(tr.uploaded);
         std::string dl_prm   = "downloaded="+std::to_string(tr.downloaded);
         std::string lft_prm  = "left="      +std::to_string(tr.left);
-        std::string cmpt_prm = "compact="   +std::to_string(tr.compact);
+        std::string cmpt_prm = "compact=1";//   +std::to_string(tr.compact);
 
         std::string url = ann_base + common::intercalate("&", {ih_prm,peer_prm,port_prm,upl_prm,dl_prm,lft_prm,cmpt_prm});
-
         return url;
     }
 
@@ -131,7 +130,7 @@ namespace fractals::network::http {
         if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
 
         std::vector<Peer> peers;
-        for(int i = 0; i < bytes.size() - 6; i+=6) {
+        for(int i = 0; i < bytes.size(); i+=6) {
             struct sockaddr_in sa;
             char buffer[4];
             std::copy(bytes.begin()+i,bytes.begin()+i+4,buffer);
@@ -236,6 +235,10 @@ namespace fractals::network::http {
         CURL *curl = curl_easy_init();
         std::string readBuffer;
         string url = toHttpGetUrl(tr);
+
+        if(url.substr(0,3) == "udp") {
+            return left ("udp trackers are not supported"s);
+        }
 
         if(curl) {
             curl_easy_setopt(curl, CURLOPT_URL, url.c_str());

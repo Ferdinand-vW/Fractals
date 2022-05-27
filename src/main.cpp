@@ -25,6 +25,7 @@ void my_terminate_handler() {
 void my_segfault_handler(int /* sig */) {
     try {
         std::ofstream ofs("err.txt");
+        std::cout << "test" << std::endl;
         ofs << boost::stacktrace::stacktrace();
         ofs.close();
     } catch (...) {}

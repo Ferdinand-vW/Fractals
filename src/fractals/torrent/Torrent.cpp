@@ -45,7 +45,7 @@ namespace fractals::torrent {
     }
 
     std::string Torrent::getName() const {
-        return getName();
+        return getMeta().getName();
     }
 
     void Torrent::writePiece(Piece &&p) {

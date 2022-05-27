@@ -58,7 +58,7 @@ namespace fractals::app {
         //add torrents to display
         for(auto &tm : tms) {
             BOOST_LOG(m_lg) << "loading torrent " << tm.getName();
-            Torrent torr(std::move(tm),tio,{});
+            Torrent torr(tm,tio,{});
             add_torrent(to_bit_torrent(std::make_shared<Torrent>(torr)));
         }
 
