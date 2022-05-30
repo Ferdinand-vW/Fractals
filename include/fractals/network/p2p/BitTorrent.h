@@ -10,6 +10,7 @@
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/PeerWork.h"
 #include "fractals/torrent/Torrent.h"
+#include "AnnounceService.h"
 
 namespace boost { namespace asio { class io_context; } }
 namespace fractals::persist { class Storage; }
@@ -36,6 +37,8 @@ namespace fractals::network::p2p {
         boost::log::sources::logger_mt &m_lg;
 
         persist::Storage &m_storage;
+
+        AnnounceService mAnnService;
 
 
         public:
@@ -86,7 +89,7 @@ namespace fractals::network::p2p {
             /**
             Number of known leechers (returned by announce)
             */
-            int known_leecher_count();
+            int known_leecher_count() const;
 
         private:
 

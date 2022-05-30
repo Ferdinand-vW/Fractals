@@ -14,6 +14,7 @@ set(SOURCES main.cpp
             fractals/common/utils.cpp
             fractals/network/http/Tracker.cpp
             fractals/network/http/Peer.cpp
+            fractals/network/p2p/AnnounceService.cpp
             fractals/network/p2p/Connection.cpp
             fractals/network/p2p/PeerManager.cpp
             fractals/network/p2p/BitTorrent.cpp

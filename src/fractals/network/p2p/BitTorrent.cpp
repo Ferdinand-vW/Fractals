@@ -26,6 +26,7 @@ namespace fractals::network::p2p {
                         , m_io(io)
                         , m_lg(common::logger::get())
                         , m_storage(st)
+                        , mAnnService(st,torrent->getMeta())
                         {};
 
     int BitTorrent::connected_peers() {
@@ -38,77 +39,24 @@ namespace fractals::network::p2p {
     int BitTorrent::available_peers() {
         return m_available_peers.size();
     }
-    int BitTorrent::known_leecher_count() {
+    int BitTorrent::known_leecher_count() const {
         return m_leecher_count;
     }
 
-    std::optional<Announce> get_recent_announce(Storage &st,const Torrent &t) {
-        auto mann = load_announce(st, t.getMeta());
-        if(mann.has_value()) {
-            auto ann = mann.value();
-            time_t curr = std::time(0);
-            int iv = ann.min_interval.value_or(ann.interval);
-            //if a recent announce exists then return those peers
-            //we should not announce more often than @min_interval@
-            if (curr - ann.announce_time < iv) {
-                BOOST_LOG(common::logger::get()) << "[BitTorrent] recent announce exists";
-                return ann;
-            } else {
-                //return nothing since the announce stored in database is not recent enough
-                return {};
-            }
-        }
-
-        return {};
-
-    }
-
-    std::optional<Announce> make_announce(const Torrent &t) {
-        auto tr = makeTrackerRequest(t.getMetaInfo());
-        time_t curr = std::time(0);
-        auto resp = sendTrackerRequest(tr);
-
-        if(resp.isLeft) {
-            BOOST_LOG(common::logger::get()) << "[BitTorrent] tracker response error: " << resp.leftValue;
-            if (resp.leftValue == "announcing too fast") { sleep(10); }
-            return {};
-        }
-        else {
-            BOOST_LOG(common::logger::get()) << "[BitTorrent] tracker response: " << resp.rightValue;
-            return toAnnounce(curr,resp.rightValue);
-        }
-    }
-
     void BitTorrent::request_peers() {
-        std::unique_lock<std::recursive_mutex> lock(m_mutex,std::try_to_lock);
-        //only one thread should request peers
-        if(lock.owns_lock()) {
-            auto &torr = *m_torrent.get();
-            auto mann = get_recent_announce(m_storage,torr);
+        auto annOpt = mAnnService.announce();
 
-            std::vector<PeerId> new_peers;
-            if(mann.has_value()) { //recent announce exists so use already known peers
-                BOOST_LOG(m_lg) << "[BitTorrent] loaded recent announce";
-                new_peers = mann->peers;
-            } else {//make a new announce
-                auto next_ann = make_announce(torr);
-                if(next_ann.has_value()) { //on success add received peers
-                    BOOST_LOG(m_lg) << "[BitTorrent] made new recent announce";
-                    new_peers = next_ann->peers;
-                    delete_announces(m_storage,torr.getMeta());
-                    save_announce(m_storage, torr.getMeta(), next_ann.value()); //saves announce in db
-                } else { //indicates a failure in making the announce
-                        //we retry after short sleep
-                        //the 'current' invocation of request_peers will not add new peers
-                    request_peers(); //this should probably be done async to avoid stack overflow
-                }
-            }
-
-            //add new peers to set of known peers
-            for(auto &p : new_peers) {
+        if(annOpt.has_value()) {
+            for(auto &p : annOpt.value().peers) {
                 m_available_peers.insert(p);
             }
+
+            mAnnService.saveAnnounce(annOpt.value());
+            BOOST_LOG(m_lg) << "[BitTorrent] Made new announce";
+        } else {
+            BOOST_LOG(m_lg) << "[BitTorrent] Announce service unavailable";
         }
+
     }
 
     void BitTorrent::connect_to_a_peer() {

@@ -17,6 +17,18 @@ namespace fractals::network::http {
 
     struct Announce;
 
+    struct Tracker {
+        public:
+            Tracker(std::string &&url);
+            Tracker(const std::string &url);
+            std::string getUrl() const;
+
+            friend std::ostream & operator<<(std::ostream& out, const Tracker & s);
+
+        private:
+            std::string mUrl;
+    };
+
     /**
     Request to be sent to the tracker
     */

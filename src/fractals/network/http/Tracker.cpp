@@ -33,6 +33,18 @@ using namespace neither;
 
 namespace fractals::network::http {
 
+    Tracker::Tracker(string &&url) : mUrl(std::move(url)) {};
+    Tracker::Tracker(const std::string &url) : mUrl(url) {};
+
+    std::string Tracker::getUrl() const {
+        return mUrl;
+    }
+
+    std::ostream &operator<<(ostream &os, const Tracker &t) {
+        os << "Tracker(" + t.getUrl() + ")";
+        return os;
+    }
+
     std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
         auto peers_str = common::intercalate(", ",common::map_vector<Peer,std::string>(s.peers, [](const Peer &p) {
             return "(["s + p.peer_name + "]" + p.peer_id.m_ip + ":" + std::to_string(p.peer_id.m_port) + ")";
@@ -269,5 +281,4 @@ namespace fractals::network::http {
 
         return parseTrackerReponse(resp);
     }
-
 }
