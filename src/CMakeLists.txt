@@ -2,8 +2,7 @@ cmake_minimum_required (VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 
 # file(GLOB SOURCES "*.cpp" "")
-set(SOURCES main.cpp 
-            fractals/app/Client.cpp
+set(SOURCES fractals/app/Client.cpp
             fractals/app/Feedback.cpp
             fractals/app/ScreenTicker.cpp
             fractals/app/TorrentController.cpp
@@ -32,20 +31,21 @@ set(SOURCES main.cpp
             fractals/persist/data.cpp fractals/torrent/File.cpp)
 
 # Add source to this project's executable.
-add_executable (Fractals ${SOURCES})
-# add_library(Fractals_lib STATIC ${SOURCES})
+add_library(Fractals_lib ${SOURCES})
 
-#target_include_directories(Fractals PUBLIC ${BENCODE_INCLUDE_DIR})
-target_include_directories(Fractals PUBLIC ${NEITHER_INCLUDE_DIR})
-target_link_libraries(Fractals bencode::bencode)
-target_link_libraries(Fractals OpenSSL::SSL)
-target_link_libraries(Fractals ftxui::screen ftxui::dom ftxui::component)
-target_link_libraries(Fractals ${CURL_LIBRARIES})
-target_link_libraries(Fractals ${BOOST_LIBRARIES})
-target_link_libraries(Fractals sqlite3)
-target_link_libraries(Fractals Boost::log boost_log_setup)
-target_link_libraries(Fractals pthread dl)
-target_link_libraries(Fractals m)
+target_include_directories(Fractals_lib PUBLIC ${NEITHER_INCLUDE_DIR})
+target_link_libraries(Fractals_lib bencode::bencode)
+target_link_libraries(Fractals_lib OpenSSL::SSL)
+target_link_libraries(Fractals_lib ftxui::screen ftxui::dom ftxui::component)
+target_link_libraries(Fractals_lib ${CURL_LIBRARIES})
+target_link_libraries(Fractals_lib ${BOOST_LIBRARIES})
+target_link_libraries(Fractals_lib sqlite3)
+target_link_libraries(Fractals_lib Boost::log boost_log_setup)
+target_link_libraries(Fractals_lib pthread dl)
+target_link_libraries(Fractals_lib m)
+
+add_executable (Fractals main.cpp)
+target_link_libraries(Fractals Fractals_lib)
 
 set_target_properties(Fractals PROPERTIES
             CXX_STANDARD 17

@@ -32,7 +32,7 @@ namespace fractals::network::p2p {
         int m_max_peers = 20;
         
         boost::asio::io_context &m_io;
-        std::recursive_mutex m_mutex;
+        std::mutex mMutex;
 
         boost::log::sources::logger_mt &m_lg;
 

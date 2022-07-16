@@ -62,9 +62,9 @@ namespace fractals::network::p2p {
     void BitTorrent::connect_to_a_peer() {
 
         while(m_client->is_enabled()) {
-            auto opt_p = choose_peer();
-            if(opt_p.has_value()) {
-                attempt_connect(opt_p.value());
+            auto peerOpt = choose_peer();
+            if(peerOpt.has_value()) {
+                attempt_connect(peerOpt.value());
                 return;
             }
         }
@@ -83,6 +83,7 @@ namespace fractals::network::p2p {
     }
 
     std::optional<PeerId> BitTorrent::choose_peer() {
+        std::unique_lock<std::mutex> lck(mMutex);
         if(m_available_peers.size() == 0) {
             request_peers(); //request additional peers if we tried all
         }
