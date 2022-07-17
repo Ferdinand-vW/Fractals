@@ -134,9 +134,9 @@ namespace fractals::common {
     template<class A,class B,class C>
     static std::vector<C> map_either(const std::vector<B> &vec,std::function<neither::Either<A,C>(B)> f) {
         std::vector<C> out;
-        for(B &b : vec) {
+        for(const B &b : vec) {
             neither::Either<A,C> c = f(b);
-            if(c.isRight) {
+            if(!c.isLeft) {
                 out.push_back(c.rightValue);
             }
         }
