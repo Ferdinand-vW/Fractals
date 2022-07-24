@@ -3,11 +3,26 @@
     "tasks": [
       {
         "type": "shell",
-        "label": "g++ build active file",
-        "command": "/usr/bin/g++",
-        "args": ["-g", "${workspaceFolder}/src/*.cpp", "-o", "${fileDirname}/${fileBasenameNoExtension}"],
+        "label": "build",
+        "command": "/usr/bin/ninja",
+        "args": ["-j8"],
         "options": {
-          "cwd": "/usr/bin"
+          "cwd": "${workspaceFolder}/build"
+        },
+        "problemMatcher": ["$gcc"],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      },
+
+      {
+        "type": "shell",
+        "label": "build_target",
+        "command": "/usr/bin/ninja",
+        "args": ["-j8", "${relativeFileDirname}/${fileBasenameNoExtension}"],
+        "options": {
+          "cwd": "${workspaceFolder}/build"
         },
         "problemMatcher": ["$gcc"],
         "group": {
