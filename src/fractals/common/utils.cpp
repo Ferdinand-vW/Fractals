@@ -151,7 +151,15 @@ namespace fractals::common {
 
             //convert each bit in c to a bool and push into the vector
             for(int j = 0; j < 8; j++) { 
-                v.push_back(c >> (7 - j)); 
+                int mvr = 7 - j;
+
+                unsigned char sig = '\x80';
+                unsigned char bitPos = sig >> j; // =100000000 >> mvr
+
+                char pickedBit = c & bitPos;
+
+
+                v.push_back(pickedBit >> mvr); 
             }
         }
 
@@ -159,7 +167,7 @@ namespace fractals::common {
     }
 
     std::wstring pp_bytes(int64_t bytes) {
-        std::list<std::wstring> units = { L"B",L"KB",L"MB",L"GB"};
+        std::list<std::wstring> units = { L"B",L"KB",L"MB",L"GB",L"TB",L"PB"};
         long double d = bytes;
         auto u = units.front();
         units.pop_front();
