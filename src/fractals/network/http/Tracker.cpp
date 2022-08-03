@@ -23,7 +23,6 @@
 #include "fractals/common/encode.h"
 #include "fractals/common/maybe.h"
 #include "fractals/common/utils.h"
-#include "fractals/network/http/Announce.h"
 #include "fractals/network/http/Tracker.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/torrent/Bencode.h"
@@ -45,6 +44,20 @@ namespace fractals::network::http {
         return os;
     }
 
+    bool TrackerRequest::operator==(const TrackerRequest& tr) const
+    {
+        return announce == tr.announce
+            && std::equal(info_hash.begin(), info_hash.end(), tr.info_hash.begin())
+            && url_info_hash == tr.url_info_hash
+            && std::equal(peer_id.begin(), peer_id.end(), tr.peer_id.begin())
+            && url_peer_id == tr.url_peer_id
+            && port == tr.port
+            && uploaded == tr.uploaded
+            && downloaded == tr.downloaded
+            && left == tr.left
+            && compact == tr.compact;
+    }
+
     std::ostream & operator<<(std::ostream& os, const TrackerResponse & s) {
         auto peers_str = common::intercalate(", ",common::map_vector<Peer,std::string>(s.peers, [](const Peer &p) {
             return "(["s + p.peer_name + "]" + p.peer_id.m_ip + ":" + std::to_string(p.peer_id.m_port) + ")";
@@ -60,6 +73,26 @@ namespace fractals::network::http {
         os << "}" << endl;
 
         return os;
+    }
+
+    bool TrackerResponse::operator==(const TrackerResponse& tr) const
+    {
+        return warning_message == tr.warning_message
+            && interval == tr.interval
+            && min_interval == tr.min_interval
+            && tracker_id == tr.tracker_id
+            && complete == tr.complete
+            && incomplete == tr.incomplete
+            && std::equal(peers.begin(), peers.end(), tr.peers.begin());
+
+    }
+
+    bool Announce::operator==(const Announce& ann) const
+    {
+        return announce_time == ann.announce_time
+            && interval == ann.interval
+            && min_interval == ann.min_interval
+            && std::equal(peers.begin(), peers.end(), ann.peers.begin());
     }
 
     TrackerRequest makeTrackerRequest(const torrent::MetaInfo &mi) {

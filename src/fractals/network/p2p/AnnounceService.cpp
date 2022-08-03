@@ -3,7 +3,6 @@
 //
 
 #include "fractals/common/logger.h"
-#include "fractals/network/http/Announce.h"
 #include "fractals/network/http/Tracker.h"
 #include "fractals/persist/data.h"
 #include "fractals/network/p2p/AnnounceService.h"

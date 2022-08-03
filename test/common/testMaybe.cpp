@@ -1,5 +1,4 @@
-#include "neither/either.hpp"
-#include "gmock/gmock.h"
+#include <neither/either.hpp>
 #include <fractals/common/maybe.h>
 
 #include <gtest/gtest.h>

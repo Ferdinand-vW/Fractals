@@ -10,3 +10,4 @@ include_directories(${GTEST_INCLUDE_DIRS})
 include_directories(${GMOCK_INCLUDE_DIRS})
 
 add_subdirectory(common)
+add_subdirectory(network/http)

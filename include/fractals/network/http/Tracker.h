@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <iosfwd>
 #include <vector>
+#include <optional>
 
 #include <neither/either.hpp>
 #include <neither/maybe.hpp>
@@ -90,6 +91,8 @@ namespace fractals::network::http {
             // Maybe<std::int16_t> numwant;
             //
             //
+
+            bool operator==(const TrackerRequest& tr) const;
     };
 
     /**
@@ -130,6 +133,20 @@ namespace fractals::network::http {
             std::vector<Peer> peers;
 
             friend std::ostream & operator<<(std::ostream& out, const TrackerResponse & s);
+
+            bool operator==(const TrackerResponse& tr) const;
+    };
+
+    /**
+    Model of Announce as returned by a tracker
+    */
+    struct Announce {
+        time_t announce_time;
+        int interval;
+        std::optional<int> min_interval;
+        std::vector<PeerId> peers;
+
+        bool operator==(const Announce& ann) const;
     };
 
     /**

@@ -17,6 +17,7 @@ namespace fractals::network::http {
 
             //Required for ordered data structures
             bool operator<(const PeerId &p2) const;
+            bool operator==(const PeerId &p) const;
     };
 
     /**
@@ -25,6 +26,8 @@ namespace fractals::network::http {
     struct Peer {
         std::string peer_name;
         PeerId peer_id;
+
+        bool operator==(const Peer& p) const;
     };
 
 }

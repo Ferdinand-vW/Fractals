@@ -5,7 +5,6 @@
 
 #include "fractals/common/logger.h"
 #include "fractals/network/http/Peer.h"
-#include "fractals/network/http/Announce.h"
 #include "fractals/network/http/Tracker.h"
 #include "fractals/network/p2p/BitTorrent.h"
 #include "fractals/network/p2p/Message.h"
