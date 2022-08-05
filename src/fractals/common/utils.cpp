@@ -20,6 +20,17 @@ namespace fractals::common {
         return out;
     }
 
+    std::string concat(const std::vector<char>& cs) {
+        std::string out{""};
+
+        for(char c : cs)
+        {
+            out.append(std::to_string(c));
+        }
+
+        return out;
+    }
+
     std::string intercalate(std::string del,const std::vector<std::string> &v) {
         std::string out("");
         bool first = true;

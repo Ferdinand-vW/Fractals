@@ -22,6 +22,7 @@ std::vector<B> map_vector(const std::vector<A> &v, std::function<B(A)> f) {
 Turns a vector of strings into a single string without delimiters
 */
 std::string concat(const std::vector<std::string> &v);
+std::string concat(const std::vector<char>& cs);
 
 /**
 Turns a vector of strings into a single string delimited by @del

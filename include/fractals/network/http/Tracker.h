@@ -92,6 +92,8 @@ namespace fractals::network::http {
             //
             //
 
+            friend std::ostream& operator<<(std::ostream&, const TrackerRequest& tr);
+
             bool operator==(const TrackerRequest& tr) const;
     };
 

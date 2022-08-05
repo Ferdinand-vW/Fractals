@@ -1,3 +1,5 @@
+#include "fractals/common/encode.h"
+#include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
 #include <fractals/network/http/Tracker.h>
 #include <fractals/torrent/MetaInfo.h>
@@ -36,17 +38,18 @@ TEST(TRACKER, make_tracker_request_empty)
 
     auto res = fractals::network::http::makeTrackerRequest(mi);
 
+    auto ih = fractals::common::sha1_encode(bencode::encode(fractals::torrent::to_bdict(info)));
     const fractals::network::http::TrackerRequest tr
     { .announce = ""
-    , .info_hash = std::vector<char>()
-    , .url_info_hash = ""
-    , .peer_id = std::vector<char>()
-    , .url_peer_id = ""
-    , .port = 0
+    , .info_hash = ih
+    , .url_info_hash = fractals::common::url_encode(ih)
+    , .peer_id = res.peer_id // automatically generated
+    , .url_peer_id = fractals::common::url_encode(res.peer_id)
+    , .port = 6882
     , .uploaded = 0
     , .downloaded = 0
     , .left = 0
-    , . compact = 0
+    , .compact = 0
     };
 
     ASSERT_EQ(tr, res);
