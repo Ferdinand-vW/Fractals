@@ -1,4 +1,5 @@
 #include "fractals/common/encode.h"
+#include "fractals/common/utils.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
 #include <fractals/network/http/Tracker.h>
@@ -38,11 +39,12 @@ TEST(TRACKER, make_tracker_request_empty)
 
     auto res = fractals::network::http::makeTrackerRequest(mi);
 
-    auto ih = fractals::common::sha1_encode(bencode::encode(fractals::torrent::to_bdict(info)));
+    auto info_hash_hex = "a3e4ef2e3999f595f55c215ae0854c760960693b";
+    auto info_hash_bytes = fractals::common::hex_to_bytes(info_hash_hex);
     const fractals::network::http::TrackerRequest tr
     { .announce = ""
-    , .info_hash = ih
-    , .url_info_hash = fractals::common::url_encode(ih)
+    , .info_hash = info_hash_bytes
+    , .url_info_hash = fractals::common::url_encode(info_hash_bytes)
     , .peer_id = res.peer_id // automatically generated
     , .url_peer_id = fractals::common::url_encode(res.peer_id)
     , .port = 6882

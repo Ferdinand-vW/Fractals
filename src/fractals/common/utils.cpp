@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <list>
 #include <cmath> // for floor
+#include <math.h>
 #include <string>
 #include <filesystem>
 #include <utility>
@@ -38,6 +39,19 @@ namespace fractals::common {
             if (first) { out.append(s); first = false; }
             else       { out.append(del + s); }
         }
+        return out;
+    }
+
+    std::string intercalate(std::string del, const std::vector<char> &v)
+    {
+        std::string out{""};
+        bool first = true;
+        for (auto c : v)
+        {
+            if (first) { out.append(std::to_string(c)); first = false; }
+            else       { out.append(del + std::to_string(c)); }
+        }
+
         return out;
     }
 
@@ -80,6 +94,23 @@ namespace fractals::common {
         };
 
         return ss.str();
+    }
+
+    std::vector<char> hex_to_bytes(const std::string& s)
+    {
+        std::vector<char> bytes;
+        bytes.reserve(std::ceil(s.size() / (double)2));
+        for(int i = 0; i+1 < s.size(); i+=2)
+        {
+            unsigned int c;
+            std::stringstream ss;
+            ss << std::hex << std::string(s.begin() + i, s.begin() + i + 2);
+            ss >> c;
+
+            bytes.emplace_back(c);
+        }
+
+        return bytes;
     }
 
     std::vector<char> int_to_bytes(int n)  {

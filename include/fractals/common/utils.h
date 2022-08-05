@@ -28,6 +28,7 @@ std::string concat(const std::vector<char>& cs);
 Turns a vector of strings into a single string delimited by @del
 */
 std::string intercalate(std::string del, const std::vector<std::string> &v);
+std::string intercalate(std::string del, const std::vector<char> &v);
 
 /**
 Remove characters from string after a certain size
@@ -51,6 +52,11 @@ Convert bytes to hex format
 */
 std::string bytes_to_hex(const std::vector<char> &bytes);
 std::string bytes_to_hex(const std::deque<char> &bytes);
+
+/**
+Convert hex format to bytes
+*/
+std::vector<char> hex_to_bytes(const std::string& s);
 
 /**
 Convert int to bytes

@@ -51,9 +51,9 @@ namespace fractals::network::http {
 
         os << "Tracker Request: " << endl;
         os << "{ announce: "+tr.announce << std::endl;
-        os << ", info_hash:"+common::concat(tr.info_hash) << std::endl;
+        os << ", info_hash:"+common::bytes_to_hex(tr.info_hash) << std::endl;
         os << ", url_info_hash:"+tr.url_info_hash << std::endl;
-        os << ", peer_id:"+common::concat(tr.peer_id) << std::endl;
+        os << ", peer_id:"+common::bytes_to_hex(tr.peer_id) << std::endl;
         os << ", url_peer_id:"+tr.url_peer_id << std::endl;
         os << ", port:" << tr.port << std::endl;
         os << ", port:" << tr.uploaded << std::endl;

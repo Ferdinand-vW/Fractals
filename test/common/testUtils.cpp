@@ -78,6 +78,15 @@ TEST(UTILS, bytes_to_hex)
     ASSERT_EQ(res, "deadbeef");
 }
 
+TEST(UTILS, hex_to_bytes)
+{
+    std::string hex{"deadbeef"};
+
+    auto res = fractals::common::hex_to_bytes(hex);
+
+    EXPECT_THAT(res, testing::ElementsAre('\xde','\xad','\xbe','\xef'));
+}
+
 TEST(UTILS, int_to_bytes)
 {
     auto res1 = fractals::common::int_to_bytes(230530);
