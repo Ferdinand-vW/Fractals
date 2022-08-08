@@ -11,8 +11,10 @@ set(SOURCES fractals/app/Client.cpp
             fractals/app/TorrentView.cpp
             fractals/common/encode.cpp
             fractals/common/utils.cpp
-            fractals/network/http/Tracker.cpp
+            fractals/network/http/Announce.cpp
             fractals/network/http/Peer.cpp
+            fractals/network/http/Request.cpp
+            fractals/network/http/Tracker.cpp
             fractals/network/p2p/AnnounceService.cpp
             fractals/network/p2p/Connection.cpp
             fractals/network/p2p/PeerManager.cpp
