@@ -171,7 +171,7 @@ namespace fractals::network::http
     }
 
 
-    neither::Either<std::string, TrackerResponse> decode(const bdict &bd) {
+    neither::Either<std::string, TrackerResponse> TrackerResponse::decode(const bdict &bd) {
         auto optfailure = bd.find("failure reason");
         std::string failure_reason;
         if(optfailure.has_value()) { 

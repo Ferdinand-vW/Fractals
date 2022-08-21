@@ -26,7 +26,7 @@ foreach (H ${NEITHER_HEADERS})
 endforeach()
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
-find_package(Boost 1.74.0 COMPONENTS system thread log REQUIRED)
+find_package(Boost 1.76.0 COMPONENTS system thread log REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 find_package(OpenSSL REQUIRED)
@@ -39,9 +39,9 @@ find_package(SQLite3)
 include_directories(${SQLite3_INCLUDE_DIR})
 
 include_directories(include)
-include_directories(${NEITHER_INCLUDE_DIR})
+include_directories(SYSTEM ${NEITHER_INCLUDE_DIR})
 
-include_directories(${SQLITE_ORM_INCLUDE_DIR})
+include_directories(SYSTEM ${SQLITE_ORM_INCLUDE_DIR})
 
 find_package(ftxui)
 include_directories(${FTXUI_INCLUDE_DIR})

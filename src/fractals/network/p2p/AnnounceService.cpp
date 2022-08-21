@@ -2,8 +2,11 @@
 // Created by Ferdinand on 5/28/2022.
 //
 
+#include <memory>
+
 #include "fractals/common/logger.h"
 #include "fractals/network/http/Tracker.h"
+#include "fractals/network/http/Request.h"
 #include "fractals/persist/data.h"
 #include "fractals/network/p2p/AnnounceService.h"
 
@@ -11,7 +14,8 @@ namespace fractals::network::p2p {
 
     AnnounceService::AnnounceService(persist::Storage &st
                                     ,const torrent::TorrentMeta &tm)
-                                    : mStorage(st),mTorrentMeta(tm){};
+                                    : mStorage(st),mTorrentMeta(tm)
+                                    , mTracker(std::make_unique<network::http::TrackerClient>(network::http::TrackerClient(tm.getMetaInfo().announce))){};
 
     std::optional<http::Announce> AnnounceService::announce() {
         std::unique_lock<std::mutex> lck(mMutex,std::defer_lock);
@@ -33,7 +37,7 @@ namespace fractals::network::p2p {
         // Start new announce with a tracker
         auto tr = http::makeTrackerRequest(mTorrentMeta.getMetaInfo());
         time_t curr = std::time(0);
-        auto resp = http::sendTrackerRequest(tr);
+        auto resp = mTracker->sendRequest(tr);
 
         if(resp.isLeft) {
             BOOST_LOG(common::logger::get()) << "[BitTorrent] tracker response error: " << resp.leftValue;
@@ -42,7 +46,7 @@ namespace fractals::network::p2p {
         }
         else {
             BOOST_LOG(common::logger::get()) << "[BitTorrent] tracker response: " << resp.rightValue;
-            auto ann = toAnnounce(curr,resp.rightValue);
+            auto ann = resp.rightValue.toAnnounce(curr);
 
             mInterval = getInterval(ann);
             auto now = std::chrono::system_clock::now();

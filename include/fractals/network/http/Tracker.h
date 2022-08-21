@@ -22,6 +22,7 @@ namespace fractals::network::http {
     struct ITrackerClient
     {
         virtual neither::Either<std::string, TrackerResponse> sendRequest(const TrackerRequest &tr) = 0;
+        virtual ~ITrackerClient(){}
     };
 
     struct TrackerClient :  ITrackerClient {

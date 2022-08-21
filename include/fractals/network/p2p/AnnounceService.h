@@ -9,6 +9,7 @@
 
 #include "fractals/persist/storage.h"
 #include "fractals/torrent/TorrentMeta.h"
+#include "fractals/network/http/Tracker.h"
 
 namespace fractals::network::http { struct Announce; struct Tracker; }
 
@@ -29,6 +30,7 @@ namespace fractals::network::p2p {
             void saveAnnounce(const http::Announce &ann);
 
         private:
+            std::unique_ptr<http::ITrackerClient> mTracker;
             torrent::TorrentMeta mTorrentMeta;
             std::mutex mMutex;
             persist::Storage &mStorage;
