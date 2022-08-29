@@ -11,3 +11,4 @@ include_directories(${GMOCK_INCLUDE_DIRS})
 
 add_subdirectory(common)
 add_subdirectory(network/http)
+add_subdirectory(network/p2p)
