@@ -1,5 +1,6 @@
 
-#include <fractals/network/p2p/Epoll.ipp>
+#include "fractals/network/epoll/Epoll.h"
+#include <fractals/network/epoll/Epoll.ipp>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -7,7 +8,7 @@
 #include <sstream>
 #include <unistd.h>
 
-using namespace fractals::network::p2p;
+using namespace fractals::network;
 
 struct Fd
 {
@@ -32,65 +33,91 @@ void write_to_pipe (int fd, std::string text)
 
 TEST(EPOLL, create_delete)
 {
-    auto epoll = Epoll<Fd>::createEpoll(-1);
+    auto epollRes = epoll::Epoll<Fd>::epollCreate();
 
-    ASSERT_TRUE(epoll);
+    ASSERT_EQ(epollRes.mErrc, epoll::ErrorCode::None);
 
-    EXPECT_NO_THROW((void)epoll.release());
+    EXPECT_NO_THROW((void)epollRes.mEpoll.release());
 }
 
 TEST(EPOLL, add_and_remove_listener)
 {
-    auto epoll = Epoll<Fd>::createEpoll(-1);
+    auto epoll = epoll::Epoll<Fd>::epollCreate();
 
-    ASSERT_TRUE(epoll);
+    ASSERT_EQ(epoll.mErrc, epoll::ErrorCode::None);
 
     auto std_in = std::make_unique<Fd>(Fd{0});
-    int res = epoll->addListener(std_in, Epoll<Fd>::Action::READ);
+    auto res = epoll->add(std_in, epoll::EventCode::EpollIn);
 
-    ASSERT_TRUE(res);
+    std::cout << epoll::ErrorCode::None << std::endl;
 
-    int res2 = epoll->removeListener(std_in);
+    ASSERT_EQ(res.mErrc, epoll::ErrorCode::None);
 
-    ASSERT_TRUE(res2);
+    auto res2 = epoll->erase(std_in);
+
+    ASSERT_EQ(res2.mErrc, epoll::ErrorCode::None);
 
     auto fd = std::make_unique<Fd>(Fd{1});
-    int res3 = epoll->removeListener(fd);
+    auto res3 = epoll->erase(fd);
 
-    ASSERT_EQ(res3, -1);
+    ASSERT_EQ(res3.mErrc, epoll::ErrorCode::Einval);
 
-    EXPECT_NO_THROW((void)epoll.release());
+    EXPECT_NO_THROW((void)epoll->close());
 }
 
 TEST(EPOLL, wait)
 {
-    auto epoll = Epoll<Fd>::createEpoll(-1);
+    auto epoll = epoll::Epoll<Fd>::epollCreate();
 
-    ASSERT_TRUE(epoll);
+    ASSERT_EQ(epoll.mErrc, epoll::ErrorCode::None);
 
     int mypipe[2];
-    pipe(mypipe);
+    int pipeRes = pipe(mypipe);
+
+    ASSERT_EQ(pipeRes, 0);
 
     auto readFd = std::unique_ptr<Fd>(new Fd{mypipe[0]});
-    int res = epoll->addListener(readFd, Epoll<Fd>::Action::READ);
+    auto res = epoll->add(readFd, epoll::EventCode::EpollIn);
 
-    ASSERT_TRUE(res);
-
+    ASSERT_EQ(res.mErrc, epoll::ErrorCode::None);
     
-    write_to_pipe(mypipe[1], "test");
+    std::string input("test");
+    write_to_pipe(mypipe[1], input);
 
     auto waitResult = epoll->wait();
 
-    ASSERT_EQ(waitResult.resultCode, 1);
-    ASSERT_EQ(waitResult.mData.size(), 1);
-    ASSERT_EQ(waitResult.mData[0].data.fd, readFd->getFileDescriptor());
+    ASSERT_EQ(waitResult.mErrc, epoll::ErrorCode::None);
+    ASSERT_EQ(waitResult->size(), 1);
+    ASSERT_EQ(waitResult->front().mData.fd, readFd->getFileDescriptor());
     
     char read_buf[READSIZE];
-    int bytes_read = read(waitResult.mData[0].data.fd, read_buf, READSIZE);
+    int bytes_read = read(waitResult->front().mData.fd, read_buf, READSIZE);
 
-    ASSERT_EQ(bytes_read, READSIZE);
+    ASSERT_EQ(bytes_read, input.size());
 
     std::string s(read_buf);
 
-    ASSERT_EQ(s, "test");
+    ASSERT_EQ(s, input);
+}
+
+TEST(EPOLL, wait_empty_input)
+{
+    auto epoll = epoll::Epoll<Fd>::epollCreate();
+
+    ASSERT_EQ(epoll.mErrc, epoll::ErrorCode::None);
+
+    int mypipe[2];
+    int pipeRes = pipe(mypipe);
+
+    ASSERT_EQ(pipeRes, 0);
+
+    auto readFd = std::unique_ptr<Fd>(new Fd{mypipe[0]});
+    auto res = epoll->add(readFd, epoll::EventCode::EpollIn);
+
+    ASSERT_EQ(res.mErrc, epoll::ErrorCode::None);
+
+    auto waitResult = epoll->wait(0);
+
+    ASSERT_EQ(waitResult.mErrc, epoll::ErrorCode::None);
+    ASSERT_EQ(waitResult->size(), 0);    
 }

@@ -11,6 +11,7 @@ set(SOURCES fractals/app/Client.cpp
             fractals/app/TorrentView.cpp
             fractals/common/encode.cpp
             fractals/common/utils.cpp
+            fractals/network/epoll/Epoll.cpp
             fractals/network/http/Announce.cpp
             fractals/network/http/Peer.cpp
             fractals/network/http/Request.cpp
@@ -20,7 +21,6 @@ set(SOURCES fractals/app/Client.cpp
             fractals/network/p2p/PeerManager.cpp
             fractals/network/p2p/BitTorrent.cpp
             fractals/network/p2p/Client.cpp
-            fractals/network/p2p/Epoll.cpp
             fractals/network/p2p/Message.cpp 
             fractals/network/p2p/MessageType.cpp
             fractals/network/http/Peer.cpp
