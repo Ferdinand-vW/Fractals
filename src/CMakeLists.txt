@@ -12,6 +12,9 @@ set(SOURCES fractals/app/Client.cpp
             fractals/common/encode.cpp
             fractals/common/utils.cpp
             fractals/network/epoll/Epoll.cpp
+            fractals/network/epoll/Error.cpp
+            fractals/network/epoll/Event.cpp
+            fractals/network/epoll/IEpoll.cpp
             fractals/network/http/Announce.cpp
             fractals/network/http/Peer.cpp
             fractals/network/http/Request.cpp

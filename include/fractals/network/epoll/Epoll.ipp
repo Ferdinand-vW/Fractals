@@ -1,7 +1,12 @@
 #include "Epoll.h"
+#include "Event.h"
+#include "Error.h"
+#include "fractals/common/utils.h"
 
+#include <algorithm>
 #include <asm-generic/errno-base.h>
 #include <cerrno>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
@@ -15,221 +20,42 @@
 namespace fractals::network::epoll
 {
 
-    std::ostream& operator<<(std::ostream& os, const EventCode& ec)
+    template <typename EpollType>
+    EpollImpl<EpollType>::EpollImpl(std::unique_ptr<EpollType>&& epoll) : mEpoll(std::move(epoll)) {}
+
+    template <typename EpollType>
+    CreateEpollImpl<EpollType> EpollImpl<EpollType>::epollCreate()
     {
-        switch(ec)
+        auto epollFd = EpollType::epoll_create(1);
+
+        if (epollFd)
         {
-        case EventCode::EpollIn:
-            os << "EPOLLIN";
-            break;
-        case EventCode::EpollOut:
-            os << "EPOLLOUT";
-            break;
-        case EventCode::EpollRdHUp:
-            os << "EPOLLRDHUP";
-            break;
-        case EventCode::EpollPri:
-            os << "EPOLLPRI";
-            break;
-        case EventCode::EpollErr:
-            os << "EPOLLERR";
-            break;
-        case EventCode::EpollHUp:
-            os << "EPOLLHUP";
-            break;
-        case EventCode::EpollEt:
-            os << "EPOLLET";
-            break;
-        case EventCode::EpollOneShot:
-            os << "EPOLLONESHOT";
-            break;
-        case EventCode::EpollWakeUp:
-            os << "EPOLLWAKEUP";
-            break;
-        case EventCode::EpollExclusive:
-            os << "EPOLLEXCLUSIVE";
-            break;
-        case EventCode::None:
-            os << "NONE";
-            break;
-        }
-
-        return os;
-    }
-
-    std::ostream& operator<<(std::ostream& os, const ErrorCode& ec)
-    {
-        switch(ec)
-        {
-        case ErrorCode::None:
-            os << "NONE";
-            break;
-        case ErrorCode::Unknown:
-            os << "UNKNOWN";
-            break;
-        case ErrorCode::EbadF:
-            os << "EBADF";
-            break;
-        case ErrorCode::Eexist:
-            os << "EEXISTS";
-            break;
-        case ErrorCode::Einval:
-            os << "EINVAL";
-            break;
-        case ErrorCode::Eloop:
-            os << "ELOOP";
-            break;
-        case ErrorCode::EnoEnt:
-            os << "ENOENT";
-            break;
-        case ErrorCode::EnoMem:
-            os << "ENOMEM";
-            break;
-        case ErrorCode::EnoSpc:
-            os << "ENOSPEC";
-            break;
-        case ErrorCode::Eperm:
-            os << "EPERM";
-            break;
-        case ErrorCode::Efault:
-            os << "EFAULT";
-            break;
-        case ErrorCode::Eintr:
-            os << "EINTR";
-            break;
-        case ErrorCode::EmFile:
-            os << "EMFILE";
-            break;
-        case ErrorCode::EnFile:
-            os << "ENFILE";
-            break;
-        }
-
-        return os;
-    }
-
-    bool Error::isSuccess()
-    { 
-        return mCode == ErrorCode::None;
-    }
-
-    constexpr int toEpollEvent(EventCode event)
-    {
-        switch (event)
-        {
-            case EventCode::EpollIn:
-                return EPOLLIN;
-            case EventCode::EpollOut:
-                return EPOLLOUT;
-            case EventCode::EpollRdHUp:
-                return EPOLLRDHUP;
-            case EventCode::EpollPri:
-                return EPOLLPRI;
-            case EventCode::EpollErr:
-                return EPOLLERR;
-            case EventCode::EpollHUp:
-                return EPOLLHUP;
-            case EventCode::EpollEt:
-                return EPOLLET;
-            case EventCode::EpollOneShot:
-                return EPOLLONESHOT;
-            case EventCode::EpollWakeUp:
-                return EPOLLWAKEUP;
-            case EventCode::EpollExclusive:
-                return EPOLLEXCLUSIVE;
-            case EventCode::None:
-                return 0;
-            }
-    }
-
-    bool EventCodes::has(EventCode ec)
-    {
-        return mCodes.find(ec) != mCodes.end();
-    }
-
-    EventCodes fromEpollEvent(int eventc)
-    {
-        std::unordered_set<EventCode> codes;
-
-        if (eventc & EPOLLIN)        { codes.emplace(EventCode::EpollIn);        }
-        if (eventc & EPOLLOUT)       { codes.emplace(EventCode::EpollOut);       }
-        if (eventc & EPOLLRDHUP)     { codes.emplace(EventCode::EpollRdHUp);     }
-        if (eventc & EPOLLPRI)       { codes.emplace(EventCode::EpollPri);       }
-        if (eventc & EPOLLERR)       { codes.emplace(EventCode::EpollErr);       }
-        if (eventc & EPOLLHUP)       { codes.emplace(EventCode::EpollHUp);       }
-        if (eventc & EPOLLET)        { codes.emplace(EventCode::EpollEt);        }
-        if (eventc & EPOLLONESHOT)   { codes.emplace(EventCode::EpollOneShot);   }
-        if (eventc & EPOLLWAKEUP)    { codes.emplace(EventCode::EpollWakeUp);    }
-        if (eventc & EPOLLEXCLUSIVE) { codes.emplace(EventCode::EpollExclusive); }
-
-        return EventCodes{codes};
-    }
-
-    constexpr ErrorCode fromEpollError(int errc)
-    {
-        if (errc >= 0)
-        {
-            return ErrorCode::None;
-        }
-
-        int err = errno;
-
-        if      (err & EBADF)  { return ErrorCode::EbadF;  }
-        else if (err & EEXIST) { return ErrorCode::Eexist; }
-        else if (err & EINVAL) { return ErrorCode::Einval; }
-        else if (err & ELOOP)  { return ErrorCode::Eloop;  }
-        else if (err & ENOENT) { return ErrorCode::EnoEnt; }
-        else if (err & ENOMEM) { return ErrorCode::EnoMem; }
-        else if (err & ENOSPC) { return ErrorCode::EnoSpc; }
-        else if (err & EPERM)  { return ErrorCode::Eperm;  }
-        else if (err & EFAULT) { return ErrorCode::Efault; }
-        else if (err & EINTR)  { return ErrorCode::Eintr;  }
-        else if (err & EMFILE) { return ErrorCode::EmFile; }
-        else if (err & ENFILE) { return ErrorCode::EnFile; }
-        else { return ErrorCode::Unknown; }
-    }
-
-    Error toError(int errc)
-    {
-        return Error{fromEpollError(errc)};
-    }
-
-        template <typename FdType>
-    Epoll<FdType>::Epoll(int32_t epollfd) : mEpollFd(epollfd) {}
-
-    template <typename FdType>
-    CreateResult<FdType> Epoll<FdType>::epollCreate()
-    {
-        auto epollFd = epoll_create(1);
-
-        if (epollFd != 0)
-        {
-            return CreateResult<FdType>{
-                std::unique_ptr<Epoll<FdType>>(
-                    new Epoll<FdType>(epollFd))
+            return CreateEpollImpl<EpollType>{
+                std::unique_ptr<EpollImpl<EpollType>>(
+                    new EpollImpl<EpollType>(std::move(epollFd)))
                 , ErrorCode::None};
         }
 
         return {};
     }
 
-    template <typename FdType>
-    Epoll<FdType>::~Epoll()
+    template <typename EpollType>
+    EpollImpl<EpollType>::~EpollImpl()
     {
         this->close();
     }
 
-    template <typename FdType>
-    void Epoll<FdType>::close()
+    template <typename EpollType>
+    void EpollImpl<EpollType>::close()
     {
-        ::close(mEpollFd);
+        mEpoll->close();
     }
 
-    template <typename FdType>
-    WaitResult Epoll<FdType>::wait(uint32_t timeout)
+    template <typename EpollType>
+    WaitAction EpollImpl<EpollType>::wait(uint32_t timeout)
     {
         struct epoll_event events[MAXEVENTS];
-        auto resultCode = epoll_wait(mEpollFd, events, MAXEVENTS, timeout);
+        auto resultCode = mEpoll->epoll_wait(events, MAXEVENTS, timeout);
 
         std::vector<Event> eventVector;
         int i = 0;
@@ -242,43 +68,88 @@ namespace fractals::network::epoll
         }
 
         
-        return WaitResult{eventVector, ErrorCode::None};
+        return WaitAction{eventVector, ErrorCode::None};
     }
 
+    template <typename EpollType>
     template <typename FdType>
-    CtlResult Epoll<FdType>::add(const std::unique_ptr<FdType>& socket, EventCode eventc)
+    CtlAction EpollImpl<EpollType>::add(const std::unique_ptr<FdType>& fd_ptr, EventCodes eventc)
     {
-        auto fd = socket->getFileDescriptor();
+        auto fd = fd_ptr->getFileDescriptor();
         
         struct epoll_event event;
-        event.events = toEpollEvent(eventc);
+        event.events = fromEvent(eventc);
         event.data.fd = fd;
         
-        std::cout << mEpollFd << std::endl;
-        auto res = epoll_ctl(mEpollFd, EPOLL_CTL_ADD, fd, &event);
+        auto res = mEpoll->epoll_ctl(EPOLL_CTL_ADD, fd, &event);
 
-        if (res)
+        if (res == 0)
         {
-            mFileDescriptors.insert(fd);
+            mFds.insert({fd, eventc});
         }
 
-        return CtlResult{fromEpollError(res)};
+        return CtlAction{fromEpollError(res)};
     }
 
+    template <typename EpollType>
     template <typename FdType>
-    CtlResult Epoll<FdType>::erase(const std::unique_ptr<FdType>& socket)
+    CtlAction EpollImpl<EpollType>::mod(const std::unique_ptr<FdType>& fd_ptr, EventCodes eventc)
     {
-        auto fd = socket->getFileDescriptor();
+        auto fd = fd_ptr->getFileDescriptor();
+
+        if (mFds.find(fd) == mFds.end())
+        {
+            return CtlAction{ErrorCode::EnoEnt};
+        }
 
         struct epoll_event event;
-        auto res = epoll_ctl(mEpollFd, EPOLL_CTL_DEL, fd, &event);
+        event.events = fromEvent(eventc);
+        event.data.fd = fd;
+        
+        auto res = mEpoll->epoll_ctl(EPOLL_CTL_MOD, fd, &event);
 
-        if (res)
+        if (res == 0)
         {
-            mFileDescriptors.erase(fd);
+            mFds[fd] = eventc;
         }
 
-        return CtlResult{fromEpollError(res)};
+        return CtlAction{fromEpollError(res)};
+    }
+
+    template <typename EpollType>
+    template <typename FdType>
+    CtlAction EpollImpl<EpollType>::erase(const std::unique_ptr<FdType>& fd_ptr)
+    {
+        auto fd = fd_ptr->getFileDescriptor();
+
+        struct epoll_event event;
+        auto res = mEpoll->epoll_ctl(EPOLL_CTL_DEL, fd, &event);
+
+        if (res == 0)
+        {
+            mFds.erase(fd);
+        }
+
+        return CtlAction{fromEpollError(res)};
     }
         
+    template <typename EpollType>
+    const std::unique_ptr<EpollType>& EpollImpl<EpollType>::getUnderlying() const
+    {
+        return mEpoll;
+    }
+
+    template <typename EpollType>
+    template <typename FdType>
+    const EventCodes EpollImpl<EpollType>::getEvents(const std::unique_ptr<FdType> &fd_ptr) const
+    {
+        auto it  = mFds.find(fd_ptr->getFileDescriptor());
+
+        if (it != mFds.end())
+        {
+            return it->second;
+        }
+
+        return EventCodes({});
+    }
 }

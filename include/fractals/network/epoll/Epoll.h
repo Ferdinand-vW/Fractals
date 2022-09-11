@@ -1,86 +1,41 @@
 #pragma once
 
 #include "fractals/network/p2p/Socket.h"
+#include "Error.h"
+#include "Event.h"
 
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 namespace fractals::network::epoll
 {
-    enum class EventCode 
-        { None
-        , EpollIn , EpollOut    , EpollRdHUp
-        , EpollPri, EpollErr    , EpollHUp
-        , EpollEt , EpollOneShot, EpollWakeUp
-        , EpollExclusive
-        };
+    template<typename EpollType>
+    class EpollImpl;
 
-    std::ostream& operator<<(std::ostream&, const EventCode&);
-
-    enum class ErrorCode 
-        { None, Unknown
-        , EbadF , Eexist, Einval, Eloop
-        , EnoEnt, EnoMem, EnoSpc, Eperm
-        , Efault, Eintr , EmFile, EnFile 
-        };
-
-    std::ostream& operator<<(std::ostream&, const ErrorCode&);
-
-    struct EventCodes
+    template <typename EpollType>
+    struct CreateEpollImpl
     {
-        std::unordered_set<EventCode> mCodes;
-
-        bool has(EventCode ec);
-    };
-
-    struct Event
-    {
-        EventCodes mCodes;
-        ErrorCode mError{ErrorCode::None};
-        epoll_data_t mData;
-    };
-
-    struct Error
-    {
-        ErrorCode mCode{ErrorCode::None};
-        int mErrc{0};
-
-        bool isSuccess();
-    };
-
-    
-    constexpr int toEpollEvent(EventCode event);
-    EventCodes fromEpollEvent(int eventc);
-    constexpr ErrorCode fromEpollError(int errc);
-    Error toError(int errc);
-
-    template<typename FdType>
-    class Epoll;
-
-    template <typename FdType>
-    struct CreateResult
-    {
-        std::unique_ptr<Epoll<FdType>> mEpoll; 
+        std::unique_ptr<EpollImpl<EpollType>> mEpoll; 
         ErrorCode mErrc;
 
-        Epoll<FdType>* operator->()
+        EpollImpl<EpollType>* operator->()
         {
             return mEpoll.get();
         }
     };
 
-    struct CtlResult
+    struct CtlAction
     {
         ErrorCode mErrc;
-
     };
 
-    struct WaitResult
+    struct WaitAction
     {
         std::vector<Event> mEvents;
         ErrorCode mErrc;
@@ -91,36 +46,43 @@ namespace fractals::network::epoll
         }
     };
 
-    template <typename FdType>
-    class Epoll
+    template <typename EpollType>
+    class EpollImpl
     {
         
     public:
-        static CreateResult<FdType> epollCreate();
+        static CreateEpollImpl<EpollType> epollCreate();
 
-        ~Epoll();
+        ~EpollImpl();
 
-        Epoll(const Epoll&) = delete;
-        Epoll(Epoll&&) = delete;
-        Epoll& operator=(const Epoll&) = delete;
-        Epoll& operator=(Epoll&&) = delete;
+        EpollImpl(const EpollImpl&) = delete;
+        EpollImpl(EpollImpl&&) = delete;
+        EpollImpl& operator=(const EpollImpl&) = delete;
+        EpollImpl& operator=(EpollImpl&&) = delete;
 
-        WaitResult wait(uint32_t timeout = -1);
-        CtlResult add(const std::unique_ptr<FdType>& fd, EventCode event);
-        CtlResult add(const std::unique_ptr<FdType>& fd, const std::vector<EventCode>& events);
-        CtlResult mod(const std::unique_ptr<FdType>& fd, EventCode event);
-        CtlResult mod(const std::unique_ptr<FdType>& fd, const std::vector<EventCode>& event);
-        CtlResult erase(const std::unique_ptr<FdType>& fd);
+        WaitAction wait(uint32_t timeout = -1);
+
+        template <typename FdType>
+        CtlAction add(const std::unique_ptr<FdType>& fd, EventCodes event);
+        template <typename FdType>
+        CtlAction mod(const std::unique_ptr<FdType>& fd, EventCodes event);
+        template <typename FdType>
+        CtlAction erase(const std::unique_ptr<FdType>& fd);
         void close();
+
+        const std::unique_ptr<EpollType>& getUnderlying() const;
+        template <typename FdType> 
+        const EventCodes getEvents(const std::unique_ptr<FdType> &fd) const;
         
     private:
         static constexpr uint32_t MAXEVENTS = 32;
 
-        int32_t mEpollFd{-1};
         int32_t mTimeout{-1};
-        std::unordered_set<int32_t> mFileDescriptors;
+        std::unordered_map<int32_t, EventCodes> mFds;
         struct epoll_event mEvents[MAXEVENTS];
 
-        Epoll(int32_t epollfd);
+        std::unique_ptr<EpollType> mEpoll;
+
+        EpollImpl(std::unique_ptr<EpollType>&& epollfd);
 };
 }
