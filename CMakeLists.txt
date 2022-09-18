@@ -49,6 +49,9 @@ include_directories(${FTXUI_INCLUDE_DIR})
 find_package(bencode REQUIRED)
 include_directories(${BENCODE_INCLUDE_DIRS})
 
+find_package(epoll_wrapper REQUIRED)
+include_directories(${EPOLL_WRAPPER_INCLUDE_DIRS})
+
 add_subdirectory(src)
 
 enable_testing ()

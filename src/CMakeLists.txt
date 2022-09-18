@@ -11,10 +11,6 @@ set(SOURCES fractals/app/Client.cpp
             fractals/app/TorrentView.cpp
             fractals/common/encode.cpp
             fractals/common/utils.cpp
-            fractals/network/epoll/Epoll.cpp
-            fractals/network/epoll/Error.cpp
-            fractals/network/epoll/Event.cpp
-            fractals/network/epoll/IEpoll.cpp
             fractals/network/http/Announce.cpp
             fractals/network/http/Peer.cpp
             fractals/network/http/Request.cpp
@@ -45,6 +41,7 @@ target_link_libraries(Fractals_lib OpenSSL::SSL)
 target_link_libraries(Fractals_lib ftxui::screen ftxui::dom ftxui::component)
 target_link_libraries(Fractals_lib ${CURL_LIBRARIES})
 target_link_libraries(Fractals_lib ${BOOST_LIBRARIES})
+target_link_libraries(Fractals_lib ${EPOLL_WRAPPER_LIBRARIES})
 target_link_libraries(Fractals_lib sqlite3)
 target_link_libraries(Fractals_lib Boost::log boost_log_setup)
 target_link_libraries(Fractals_lib pthread dl)
