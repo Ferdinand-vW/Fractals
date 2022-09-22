@@ -36,7 +36,7 @@ set(SOURCES fractals/app/Client.cpp
 add_library(Fractals_lib ${SOURCES})
 
 target_include_directories(Fractals_lib PUBLIC ${NEITHER_INCLUDE_DIR})
-target_link_libraries(Fractals_lib bencode::bencode)
+target_link_libraries(Fractals_lib bencode)
 target_link_libraries(Fractals_lib OpenSSL::SSL)
 target_link_libraries(Fractals_lib ftxui::screen ftxui::dom ftxui::component)
 target_link_libraries(Fractals_lib ${CURL_LIBRARIES})
