@@ -1,12 +1,13 @@
 #pragma once
 
 #include "PeerFd.h"
+#include "Event.h"
 
 #include <epoll_wrapper/Epoll.h>
 
 namespace fractals::network::p2p
 {
-    using ReceiverWorker = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll, ReceiveQueue<Peer>>;
+    using ReceiverWorker = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll, ReceiveQueue<PeerEvent>>;
 
     template <typename Peer, typename Epoll, template <typename> typename ReceiveQueue>
     class ReceiverWorkerImpl

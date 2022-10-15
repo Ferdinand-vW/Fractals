@@ -1,4 +1,9 @@
 #include "Receiver.h"
+#include "Event.h"
+
+#include <sstream>
+
+
 
 namespace fractals::network::p2p
 {
@@ -30,14 +35,19 @@ namespace fractals::network::p2p
 
             if (wa.hasError())
             {
-                mQueue.push(EpollError);
+                std::stringstream ss;
+                ss << wa.mErrorCode;
+                mQueue.push(EpollError{{}, ss.str()});
             }
 
             for (auto &event : wa.mEvents)
             {
+                
                 if (event.hasError())
                 {
-                    mQueue.push(PeerReceiveError)
+                    std::stringstream ss;
+                    ss << event.mErrorCode;
+                    mQueue.push(ReceiveError{{}, ss.str(), })
                 }
                 else
                 {

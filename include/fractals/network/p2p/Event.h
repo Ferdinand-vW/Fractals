@@ -11,7 +11,6 @@ namespace fractals::network::p2p
 
     struct EpollError : PeerEvent
     {
-        std::string mEpollId;
         std::string mError;
     };
 
