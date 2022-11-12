@@ -20,3 +20,6 @@
 	path = libs/FTXUI
 	ignore = dirty
 	url = https://github.com/ArthurSonzogni/FTXUI.git
+[submodule "epoll_wrapper"]
+	path = libs/epoll_wrapper
+	url = https://github.com/Ferdinand-vW/epoll_wrapper.git

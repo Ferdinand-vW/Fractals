@@ -5,11 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 add_definitions( -DBOOST_STACKTRACE_USE_ADDR2LINE )
 set (CMAKE_CXX_FLAGS "-DSQLITE_THREADSAFE=1")
-find_program(iwyu_path NAMES include-what-you-use iwyu)
-if(NOT iwyu_path)
-  message(FATAL_ERROR "Could not find the program include-what-you-use")
-endif()
-
 
 set(SOURCE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
@@ -22,7 +17,7 @@ set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
 # scaffold neither headers
 set(NEITHER_HEADERS "either.hpp" "lift.hpp" "maybe.hpp" "neither.hpp" "traits.hpp" "try.hpp")
 foreach (H ${NEITHER_HEADERS}) 
-    file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR}/neither)
+    file(COPY ${NEITHER_HEADER_DIR}/${H} DESTINATION ${NEITHER_INCLUDE_DIR})
 endforeach()
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
