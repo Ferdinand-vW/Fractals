@@ -10,7 +10,7 @@
 
 namespace fractals::network::p2p
 {
-    template <typename Peer, template <typename> typename Epoll, typename ReceiveQueue>
+    template <typename Peer, typename Epoll, typename ReceiveQueue>
     class ReceiverWorkerImpl
     {
         private:
@@ -35,71 +35,24 @@ namespace fractals::network::p2p
             }
 
         public:
-            ReceiverWorkerImpl(Epoll<Peer> &epoll, ReceiveQueue &rq);
+            ReceiverWorkerImpl(Epoll &epoll, ReceiveQueue &rq);
             ReceiverWorkerImpl(const ReceiverWorkerImpl&) = delete;
             ReceiverWorkerImpl(ReceiverWorkerImpl&&) = delete;
 
-            typename Epoll<Peer>::CtlAction subscribe(const std::unique_ptr<Peer> &peer)
-            {
-                return mEpoll.add(peer, epoll_wrapper::EventCode::EpollOut);
-            }
+            epoll_wrapper::CtlAction subscribe(const Peer &peer);
+            epoll_wrapper::CtlAction unsubscribe(const Peer &peer);
 
-            typename Epoll<Peer>::CtlAction unsubscribe(const std::unique_ptr<Peer> &peer)
-            {
-                return mEpoll.erase(peer);
-            }
+            void run();
 
-            void run()
-            {
-                mIsActive = true;
-
-                while(mIsActive)
-                {
-                    const auto wa = mEpoll.wait();
-
-                    if (wa.hasError())
-                    {
-                        mIsActive = false;
-                        mQueue.push(EpollError(wa.mErrc));
-                        return;
-                    }
-
-                    for(auto &[peer, event] : wa.mEvents)
-                    {
-                        if (event.mError & epoll_wrapper::ErrorCode::None)
-                        {
-                            if (event.mEventCodes & epoll_wrapper::EventCode::EpollErr)
-                            {
-                                mQueue.push(ConnectionError{peer.mId, event.mError});
-                            }
-
-                            if (event.mEventCodes & epoll_wrapper::EventCode::EpollHUp)
-                            {
-                                mQueue.push(ConnectionCloseEvent{peer.mId});
-                            }
-
-                            if (event.mEventCodes & epoll_wrapper::EventCode::EpollIn)
-                            {
-                                auto&& data = readFromSocket(peer.getFileDescriptor());
-                                mQueue.push(ReceiveEvent{peer.mId,std::move(data)});
-                            }
-                        }
-                    }
-                }
-            }
-
-            void stop()
-            {
-                mIsActive = false;
-            }
+            void stop();
 
         private:
 
             bool mIsActive{false};
 
-            Epoll<Peer> &mEpoll;
+            Epoll &mEpoll;
             ReceiveQueue &mQueue;
     };
 
-    using ReceiverWorker = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll, WorkQueueImpl<256, PeerEvent>>;
+    using ReceiverWorker = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueueImpl<256, PeerEvent>>;
 }

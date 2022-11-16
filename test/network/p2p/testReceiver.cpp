@@ -1,10 +1,11 @@
 #include "fractals/common/encode.h"
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Request.h"
-#include "fractals/network/p2p/Receiver.h"
+#include "fractals/network/p2p/Receiver.ipp"
+#include "fractals/network/p2p/PeerFd.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
-#include <epoll_wrapper/EpollImpl.h>
+#include <epoll_wrapper/EpollImpl.ipp>
 #include <fractals/network/http/Tracker.h>
 #include <fractals/torrent/MetaInfo.h>
 
@@ -22,81 +23,44 @@
 using ::testing::StrictMock;
 using namespace fractals::network::p2p;
 
-// class FakeEpoll
-// {
-//     std::unordered_map<Socket, std::optional<std::vector<char>>> listeners;
-//     int efd{-1};
 
-//     public:
-//         FakeEpoll()
-//         {
-//             efd = epoll_create(1024);
-//         }
-
-//         ~FakeEpoll()
-//         {
-//             close(efd);
-//         }
-
-//         FakeEpoll(const FakeEpoll&) = delete;
-//         FakeEpoll(FakeEpoll&&) = delete;
-//         FakeEpoll& operator=(const FakeEpoll&) = delete;
-//         FakeEpoll& operator=(FakeEpoll&&) = delete;
-
-//         int wait(struct epoll_event *events)
-//         {
-//             return 0;
-//         }
-
-//         int addListener(Socket fd)
-//         {
-//             return 0;
-//         }
-
-//         void setData(Socket fd, std::vector<char> data)
-//         {
-//             listeners[fd] = data;
-//         }
-
-//         void removeListener(Socket fd)
-//         {
-//             listeners.erase(fd);
-//         }
+class FakeEpoll
+{
+    public:
+        FakeEpoll() = default;
+        ~FakeEpoll() = default;
         
-// };
+        static std::unique_ptr<FakeEpoll> epoll_create(int)
+        {
+            return std::unique_ptr<FakeEpoll>(new FakeEpoll());
+        }
 
-// class MockEpoll
-// {
+        int close()
+        {
+            return 0;
+        }
 
-//     public:
-//         MockEpoll()
-//         {
-//             ON_CALL(*this, wait).WillByDefault([this](struct epoll_event *events) {
-//                 return fake_.wait(events);
-//             });
-//             ON_CALL(*this, addListener).WillByDefault([this](Socket fd) {
-//                 return fake_.addListener(fd);
-//             });
+        int epoll_wait(struct epoll_event* events, int maxevents, int timeout)
+        {
+            return 0;
+        }
 
-//             ON_CALL(*this, removeListener).WillByDefault([this](Socket fd) {
-//                 fake_.removeListener(fd);
-//             });
-//         }
+        int epoll_ctl(int action, int fd, struct epoll_event* event)
+        {
+            return 0;
+        }      
+};
 
-//         MOCK_METHOD(int, wait, (struct epoll_event *events));
-//         MOCK_METHOD(int, addListener, (Socket));
-//         MOCK_METHOD(void, removeListener, (Socket));
+using MockEpoll = epoll_wrapper::EpollImpl<FakeEpoll, PeerFd>;
 
-//         FakeEpoll fake_;
-// };
 
-using MockReceiver = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll, ReceiveQueue<PeerEvent>>;
+using MockReceiver = ReceiverWorkerImpl<PeerFd, MockEpoll, WorkQueue>;
 
 TEST(RECEIVER, receiver_mock)
 {
-    auto epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
-    ReceiveQueue<Peer> rq;
-    MockReceiver mr(epoll.mEpoll.get(), rq);
+    epoll_wrapper::CreateAction<FakeEpoll, PeerFd> epoll = MockEpoll::epollCreate();
+    WorkQueue rq;
+    MockReceiver mr(epoll.getEpoll(), rq);
 
     // ReceiveQueue rq{};
     // ActivePeers ap{};
