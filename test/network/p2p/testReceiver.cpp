@@ -23,44 +23,29 @@
 using ::testing::StrictMock;
 using namespace fractals::network::p2p;
 
-
-class FakeEpoll
-{
-    public:
-        FakeEpoll() = default;
-        ~FakeEpoll() = default;
-        
-        static std::unique_ptr<FakeEpoll> epoll_create(int)
-        {
-            return std::unique_ptr<FakeEpoll>(new FakeEpoll());
-        }
-
-        int close()
-        {
-            return 0;
-        }
-
-        int epoll_wait(struct epoll_event* events, int maxevents, int timeout)
-        {
-            return 0;
-        }
-
-        int epoll_ctl(int action, int fd, struct epoll_event* event)
-        {
-            return 0;
-        }      
-};
-
-using MockEpoll = epoll_wrapper::EpollImpl<FakeEpoll, PeerFd>;
-
-
-using MockReceiver = ReceiverWorkerImpl<PeerFd, MockEpoll, WorkQueue>;
+using MockReceiver = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueue>;
 
 TEST(RECEIVER, receiver_mock)
 {
-    epoll_wrapper::CreateAction<FakeEpoll, PeerFd> epoll = MockEpoll::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
     WorkQueue rq;
     MockReceiver mr(epoll.getEpoll(), rq);
+
+    /*
+    
+    Create PeerFd with pipe
+
+    EXPECT_CALL(epoll_ctl)
+    Add to Receiver
+
+    EXPECT_CALL(epoll_wait)
+    run receiver
+
+    send msg to pipe
+
+    
+    
+    */
 
     // ReceiveQueue rq{};
     // ActivePeers ap{};

@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "type": "shell",
+        "type": "process",
         "label": "build",
         "command": "/usr/bin/ninja",
         "args": ["-j8"],
@@ -20,8 +20,9 @@
           "focus": false,
           "panel": "shared",
           "showReuseMessage": true,
-          "clear": true
-        }
+          "clear": true,
+          "group": "build"
+        },
       },
 
       {
@@ -43,7 +44,8 @@
           "focus": false,
           "panel": "shared",
           "showReuseMessage": true,
-          "clear": true
+          "clear": true,
+          "group": "build"
         }
       }
     ]
