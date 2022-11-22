@@ -14,25 +14,7 @@ namespace fractals::network::p2p
     class ReceiverWorkerImpl
     {
         private:
-            std::deque<char>&& readFromSocket(int32_t fd)
-            {
-                std::deque<char> deq;
-                std::vector<char> buf;
-                buf.reserve(512);
-
-                int count = 0;
-                while(count >= 0)
-                {
-                    count = read(fd, &buf[0], buf.capacity());
-
-                    if (count > 0)
-                    {
-                        deq.emplace_back(std::begin(buf), std::end(buf));
-                    }
-                }
-
-                return std::move(deq);
-            }
+            std::deque<char> readFromSocket(int32_t fd);
 
         public:
             ReceiverWorkerImpl(Epoll &epoll, ReceiveQueue &rq);
@@ -41,6 +23,8 @@ namespace fractals::network::p2p
 
             epoll_wrapper::CtlAction subscribe(const Peer &peer);
             epoll_wrapper::CtlAction unsubscribe(const Peer &peer);
+
+            bool isSubscribed(const Peer &peer);
 
             void run();
 

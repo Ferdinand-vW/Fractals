@@ -5,38 +5,52 @@
 #include <deque>
 #include <epoll_wrapper/Error.h>
 #include <string>
+#include <variant>
 
 namespace fractals::network::p2p
 {
-    struct PeerEvent
+    struct EpollError
     {
+        epoll_wrapper::ErrorCodeMask mError;
     };
 
-    struct EpollError : PeerEvent
-    {
-        std::string mError;
-    };
+    std::ostream& operator<<(std::ostream& os, const EpollError &e);
 
-    struct ReceiveError : PeerEvent
+    struct ReceiveError
     {
-        std::string mError;
+        epoll_wrapper::ErrorCodeMask mError;
         http::PeerId mPeerId;
     };
 
-    struct ReceiveEvent : PeerEvent
+    std::ostream& operator<<(std::ostream& os, const ReceiveError &e);
+
+    struct ReceiveEvent
     {
         http::Peer mPeerId;
         std::deque<char> mData;
     };
 
-    struct ConnectionCloseEvent : PeerEvent
+    std::ostream& operator<<(std::ostream& os, const ReceiveEvent &e);
+
+    struct ConnectionCloseEvent
     {
         http::Peer mPeerId;
     };
 
-    struct ConnectionError : PeerEvent
+    std::ostream& operator<<(std::ostream& os, const ConnectionCloseEvent &e);
+
+    struct ConnectionError
     {
         http::Peer mPeerId;
-        epoll_wrapper::ErrorCode mError;
+        epoll_wrapper::ErrorCodeMask mError;
     };
+    
+    std::ostream& operator<<(std::ostream& os, const ConnectionError &e);
+
+    using PeerEvent = std::variant
+        <EpollError
+        ,ReceiveError
+        ,ReceiveEvent
+        ,ConnectionCloseEvent
+        ,ConnectionError>;
 }

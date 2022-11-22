@@ -53,6 +53,7 @@ namespace fractals::network::p2p
 
             Event&& pop()
             {
+                std::cout << "X " << mHead << " " << mTail << " " << this->size() << std::endl;
                 auto &&res = std::move(mEvents[mTail]);
                 mTail = inc(mTail);
 
@@ -77,10 +78,12 @@ namespace fractals::network::p2p
             {
                 if (mHead >= mTail)
                 {
+                    std::cout << "Size: " << mHead - std::max(mTail, 0) << std::endl;
                     return mHead - std::max(mTail, 0);
                 }
                 else
                 {
+                    std::cout << "Size: " << QUEUE_SIZE - mTail + mHead << std::endl;
                     return QUEUE_SIZE - mTail + mHead;
                 }
             }

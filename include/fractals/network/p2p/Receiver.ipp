@@ -1,9 +1,9 @@
 #include "Receiver.h"
 #include "Event.h"
+#include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/Socket.h"
 
 #include <sstream>
-
-
 
 namespace fractals::network::p2p
 {
@@ -15,7 +15,7 @@ namespace fractals::network::p2p
     template <typename Peer, typename Epoll, typename RQ>
     typename epoll_wrapper::CtlAction ReceiverWorkerImpl<Peer, Epoll, RQ>::subscribe(const Peer &peer)
     {
-        return mEpoll.add(peer, Epoll::EventCodes::EpollOut);
+        return mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
     }
 
     template <typename Peer, typename Epoll, typename RQ>
@@ -25,39 +25,73 @@ namespace fractals::network::p2p
     }
 
     template <typename Peer, typename Epoll, typename RQ>
+    bool ReceiverWorkerImpl<Peer, Epoll, RQ>::isSubscribed(const Peer &peer)
+    {
+        return mEpoll.hasFd(peer.getFileDescriptor());
+    }
+
+    template <typename Peer, typename Epoll, typename RQ>
+    std::deque<char> ReceiverWorkerImpl<Peer, Epoll, RQ>::readFromSocket(int32_t fd)
+    {
+        std::deque<char> deq;
+        std::vector<char> buf;
+        buf.resize(512);
+
+        while(int n = read(fd, &buf[0], 512))
+        {
+            if (n <= 0)
+            {
+                break;
+            }
+
+            deq.insert(deq.end(), buf.begin(), buf.begin() + n);
+        }
+
+        return deq;
+    }
+
+    template <typename Peer, typename Epoll, typename RQ>
     void ReceiverWorkerImpl<Peer, Epoll, RQ>::run()
     {
         mIsActive = true;
 
         while(mIsActive)
         {
-            const auto wa = mEpoll.wait();
+            const auto wa = mEpoll.wait(100);
 
             if (wa.hasError())
             {
                 mIsActive = false;
-                mQueue.push(EpollError(wa.mErrc));
+                mQueue.push(EpollError{wa.getError()});
                 return;
             }
 
-            for(auto &[peer, event] : wa.mEvents)
+            for(auto &[peer, event] : wa.getEvents())
             {
-                if (event.mError & epoll_wrapper::ErrorCode::None)
+                const auto p = http::Peer{"", http::PeerId{"",0}};
+                if (!event.mErrors && isSubscribed(peer))
                 {
-                    if (event.mEventCodes & epoll_wrapper::EventCode::EpollErr)
+                    if (event.mEvents & epoll_wrapper::EventCode::EpollErr)
                     {
-                        mQueue.push(ConnectionError{peer.mId, event.mError});
+                        mQueue.push(ConnectionError{p, event.mErrors});
+
+                        unsubscribe(peer);
+                        break;
                     }
 
-                    if (event.mEventCodes & epoll_wrapper::EventCode::EpollHUp )
+                    if (event.mEvents & epoll_wrapper::EventCode::EpollHUp )
                     {
-                        mQueue.push(ConnectionCloseEvent{peer.mId});
+                        std::cout <<  peer.getFileDescriptor() << std::endl;
+                        mQueue.push(ConnectionCloseEvent{p});
+
+                        unsubscribe(peer);
+                        break;
                     }
 
-                    if (event.mEventCodes & epoll_wrapper::EventCode::EpollIn)
+                    if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
                     {
-                        auto&& data = readFromSocket(peer.getFileDescriptor());
-                        mQueue.push(ReceiveEvent{peer.mId,std::move(data)});
+                        auto data = readFromSocket(peer.getFileDescriptor());
+                        mQueue.push(ReceiveEvent{p,std::move(data)});
                     }
                 }
             }

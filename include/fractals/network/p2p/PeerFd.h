@@ -13,7 +13,7 @@ namespace fractals::network::p2p
 
         Socket mSocket;
 
-        int32_t getFileDescriptor()
+        int32_t getFileDescriptor() const
         {
             return mSocket.getFileDescriptor();
         }

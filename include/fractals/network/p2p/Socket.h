@@ -11,9 +11,9 @@ namespace fractals::network::p2p
     {
         int32_t mFd{-1};
 
-        Socket(int32_t fd): mFd(fd){}
-
         public:
+            Socket(int32_t fd): mFd(fd){}
+
             static std::unique_ptr<Socket> makeClientSocket(std::string address, uint16_t port)
             {
                 auto fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -21,7 +21,10 @@ namespace fractals::network::p2p
             }
             static std::unique_ptr<Socket> makeServerSocket();
 
-            int32_t getFileDescriptor();
+            int32_t getFileDescriptor() const
+            {
+                return mFd;
+            }
 
             void close();
     };
