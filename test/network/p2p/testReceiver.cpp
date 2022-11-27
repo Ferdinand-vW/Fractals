@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <deque>
 #include <fcntl.h>
 #include <iterator>
 #include <optional>
@@ -29,6 +30,7 @@
 #include <sys/eventfd.h>
 #include <thread>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 using namespace fractals::network::p2p;
@@ -63,7 +65,7 @@ std::pair<int, PeerFd> createPeer()
     return {pipeFds[1], PeerFd{"host",0, Socket(pipeFds[0])}};
 }
 
-TEST(RECEIVER, receiver_mock)
+TEST(RECEIVER, one_subscriber_read_one)
 {
     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
@@ -74,33 +76,81 @@ TEST(RECEIVER, receiver_mock)
 
     auto [writeFd, peer] = createPeer();
 
-    std::cout << peer.getFileDescriptor() << std::endl;
-
     auto ctl = mr.subscribe(peer);
 
     ASSERT_FALSE(ctl.hasError());
+
+    writeToFd(writeFd, "test");
 
     auto t = std::thread([&](){
         mr.run();
     });
 
-    writeToFd(writeFd, "test");
-
-    // Make sure we have written and read using epoll before checking queue
-    this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    // std::cout << v.size() << std::endl;
+    // Give epoll thread enough time to wait
+    this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_TRUE(!rq.isEmpty());
     PeerEvent pe = rq.pop();
+
+    ASSERT_TRUE(rq.isEmpty());
+
+    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
+
+    auto re = std::get<ReceiveEvent>(pe);
+    ASSERT_EQ(re.mData, std::deque<char>({'t','e','s','t'}));
 
     mr.stop();
 
     t.join();
 }
 
-TEST(RECEIVER, populate_receive_queue_on_messages)
+TEST(RECEIVER, one_subscribed_read_multiple)
 {
-   
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+
+    ASSERT_TRUE(epoll);
+
+    WorkQueue rq;
+    MockReceiver mr(epoll.getEpoll(), rq);
+
+    auto [writeFd, peer] = createPeer();
+
+    auto ctl = mr.subscribe(peer);
+
+    ASSERT_FALSE(ctl.hasError());
+
+    writeToFd(writeFd, "test");
+
+    auto t = std::thread([&](){
+        mr.run();
+    });
+
+    // Give epoll thread enough time to wait
+    this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    writeToFd(writeFd, "test1");
+
+    this_thread::sleep_for(std::chrono::milliseconds(10));
+    writeToFd(writeFd, "test2");
+
+    this_thread::sleep_for(std::chrono::milliseconds(10));
+    writeToFd(writeFd, "test3");
+
+    this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    ASSERT_TRUE(!rq.isEmpty());
+    PeerEvent pe = rq.pop();
+    PeerEvent p2 = rq.pop();
+
+    ASSERT_TRUE(rq.isEmpty());
+
+    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
+
+    auto re = std::get<ReceiveEvent>(pe);
+    ASSERT_EQ(re.mData, std::deque<char>({'t','e','s','t'}));
+
+    mr.stop();
+
+    t.join();
 }
 

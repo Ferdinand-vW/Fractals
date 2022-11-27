@@ -73,6 +73,7 @@ namespace fractals::network::p2p
                 {
                     if (event.mEvents & epoll_wrapper::EventCode::EpollErr)
                     {
+                        std::cout << "EpollErr" << std::endl;
                         mQueue.push(ConnectionError{p, event.mErrors});
 
                         unsubscribe(peer);
@@ -81,7 +82,7 @@ namespace fractals::network::p2p
 
                     if (event.mEvents & epoll_wrapper::EventCode::EpollHUp )
                     {
-                        std::cout <<  peer.getFileDescriptor() << std::endl;
+                        std::cout << "EpollHUp" << std::endl;
                         mQueue.push(ConnectionCloseEvent{p});
 
                         unsubscribe(peer);
@@ -90,6 +91,7 @@ namespace fractals::network::p2p
 
                     if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
                     {
+                        std::cout << "EpollIn" << std::endl;
                         auto data = readFromSocket(peer.getFileDescriptor());
                         mQueue.push(ReceiveEvent{p,std::move(data)});
                     }

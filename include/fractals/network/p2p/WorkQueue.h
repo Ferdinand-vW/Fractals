@@ -3,6 +3,7 @@
 #include "Event.h"
 #include "fractals/network/p2p/AnnounceService.h"
 
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -14,16 +15,27 @@ namespace fractals::network::p2p
     template <uint32_t SIZE, typename Event>
     class WorkQueueImpl
     {
-        static constexpr uint32_t QUEUE_SIZE = SIZE + 1;
+        static constexpr uint32_t QUEUE_SIZE = SIZE;
         Event mEvents[QUEUE_SIZE];
         int32_t mHead{0};
-        int32_t mTail{-1};
+        int32_t mTail{0};
 
         private:
-            int32_t inc(int32_t ptr)
+            void calibrate()
             {
-                return (ptr + 1) % QUEUE_SIZE;
+                const int32_t divisor = mTail / QUEUE_SIZE;
+                const auto queueStart = QUEUE_SIZE * divisor;
+                mHead = mHead - queueStart;
+                mTail = mTail - queueStart;
             }
+
+            /*
+            -1 0 | 0 - -1 - 1
+            0 1 | 1 - 0 - 1
+            1 2 | 2 - 1 - 1
+            2 0 | 0 - 2
+            0 1
+            */
 
         public:
             WorkQueueImpl() = default;
@@ -32,17 +44,18 @@ namespace fractals::network::p2p
 
             void push(Event&& event)
             {
-                mEvents[mHead] = event;
+                if (size() == QUEUE_SIZE)
+                {
+                    return;
+                }
+                std::cout << "-----S " << mHead << " " << mTail << " " << this->size() << std::endl;
+                mEvents[mHead % QUEUE_SIZE] = event;
 
                 // Condition implies that we will overwrite the tail event
                 // Therefore the next last event is now the tail
-                const auto nextHead = inc(mHead);
-                if (nextHead == mTail || mTail < 0)
-                {
-                    mTail = inc(mTail);
-                }
-
-                mHead = nextHead;
+                std::cout << "S " << mHead << " " << mTail << " " << this->size() << std::endl;
+                ++mHead;
+                std::cout << "S " << mHead << " " << mTail << " " << this->size() << std::endl;
                 std::cout << "S " << mHead << " " << mTail << " " << this->size() << std::endl;
             }
 
@@ -54,9 +67,9 @@ namespace fractals::network::p2p
             Event&& pop()
             {
                 std::cout << "X " << mHead << " " << mTail << " " << this->size() << std::endl;
-                auto &&res = std::move(mEvents[mTail]);
-                mTail = inc(mTail);
-
+                auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
+                ++mTail;
+                calibrate();
                 std::cout << "X " << mHead << " " << mTail << " " << this->size() << std::endl;
                 return std::move(res);
             }
@@ -64,18 +77,17 @@ namespace fractals::network::p2p
             template<typename F>
             void forEach(F f)
             {
-                auto ptr = mTail;
-                while(ptr != mHead)
+                for(auto ptr = mTail; ptr < mHead; ++ptr)
                 {
                     std::cout << "PTR " << ptr << std::endl;
-                    f(mEvents[ptr]);
-                    
-                    ptr = inc(ptr);
+                    f(mEvents[ptr]);   
                 }
             }
 
             size_t size()
             {
+                return mHead - mTail;
+
                 if (mHead >= mTail)
                 {
                     std::cout << "Size: " << mHead - std::max(mTail, 0) << std::endl;
