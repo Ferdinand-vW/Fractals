@@ -1,6 +1,6 @@
-#include "ReceiveClient.h"
 #include "Event.h"
 #include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/ConnectionEventHandler.h"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/Socket.h"
 
@@ -12,32 +12,37 @@
 
 namespace fractals::network::p2p
 {
-    template <typename Peer, typename Epoll, typename RQ>
-    ReceiveClientWorkerImpl<Peer, Epoll, RQ>::ReceiveClientWorkerImpl(Epoll& epoll, RQ &rq)
+    template <ActionType Action, typename Peer, typename Epoll, typename RQ>
+    ConnectionEventHandler<Action, Peer, Epoll, RQ>::ConnectionEventHandler(Epoll& epoll, RQ &rq)
         : mEpoll(epoll), mQueue(rq) {}
 
     
-    template <typename Peer, typename Epoll, typename RQ>
-    typename epoll_wrapper::CtlAction ReceiveClientWorkerImpl<Peer, Epoll, RQ>::subscribe(const Peer &peer)
+    template <ActionType Action, typename Peer, typename Epoll, typename RQ>
+    typename epoll_wrapper::CtlAction ConnectionEventHandler<Action, Peer, Epoll, RQ>::subscribe(const Peer &peer)
     {
-        auto ctl = mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
-        return ctl;
+        if constexpr (Action == ActionType::READ)
+        {
+            return mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
+        }
+        else
+        {
+            return mEpoll.add(peer, epoll_wrapper::EventCode::EpollOut);
+        }
     }
 
-    template <typename Peer, typename Epoll, typename RQ>
-    typename epoll_wrapper::CtlAction ReceiveClientWorkerImpl<Peer, Epoll, RQ>::unsubscribe(const Peer &peer)
+    template <ActionType Action, typename Peer, typename Epoll, typename RQ>
+    typename epoll_wrapper::CtlAction ConnectionEventHandler<Action, Peer, Epoll, RQ>::unsubscribe(const Peer &peer)
     {
         return mEpoll.erase(peer);
     }
 
-    template <typename Peer, typename Epoll, typename RQ>
-    bool ReceiveClientWorkerImpl<Peer, Epoll, RQ>::isSubscribed(const Peer &peer)
+    template <ActionType Action, typename Peer, typename Epoll, typename RQ>
+    bool ConnectionEventHandler<Action, Peer, Epoll, RQ>::isSubscribed(const Peer &peer)
     {
         return mEpoll.hasFd(peer.getFileDescriptor());
     }
 
-    template <typename Peer, typename Epoll, typename RQ>
-    std::deque<char> ReceiveClientWorkerImpl<Peer, Epoll, RQ>::readFromSocket(int32_t fd)
+    std::deque<char> readFromSocket(int32_t fd)
     {
         std::deque<char> deq;
         std::vector<char> buf;
@@ -56,8 +61,8 @@ namespace fractals::network::p2p
         return deq;
     }
 
-    template <typename Peer, typename Epoll, typename RQ>
-    void ReceiveClientWorkerImpl<Peer, Epoll, RQ>::run()
+    template <ActionType Action, typename Peer, typename Epoll, typename RQ>
+    void ConnectionEventHandler<Action, Peer, Epoll, RQ>::run()
     {
         mIsActive = true;
 
@@ -99,22 +104,37 @@ namespace fractals::network::p2p
                         break;
                     }
 
-                    if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
+                    if constexpr (Action == ActionType::READ)
                     {
-                        auto data = readFromSocket(peer.getFileDescriptor());
-                        mQueue.push(ReceiveEvent{p,std::move(data)});
+                        if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
+                        {
+                            auto data = readFromSocket(peer.getFileDescriptor());
+                            mQueue.push(ReceiveEvent{p,std::move(data)});
+                        }
+                        else
+                        {
+                            std::cout << "MISSED EVENT: " << event.mEvents << std::endl;
+                        }
                     }
                     else
                     {
-                        std::cout << "MISSED EVENT: " << event.mEvents << std::endl;
+                        if (event.mEvents & epoll_wrapper::EventCode::EpollOut)
+                        {
+                            auto data = readFromSocket(peer.getFileDescriptor());
+                            mQueue.push(ReceiveEvent{p,std::move(data)});
+                        }
+                        else
+                        {
+                            std::cout << "MISSED EVENT: " << event.mEvents << std::endl;
+                        }
                     }
                 }
             }
         }
     }
 
-    template <typename Peer, typename Epoll, typename RQ>
-    void ReceiveClientWorkerImpl<Peer, Epoll, RQ>::stop()
+    template <ActionType Action, typename Peer, typename Epoll, typename RQ>
+    void ConnectionEventHandler<Action, Peer, Epoll, RQ>::stop()
     {
         mIsActive = false;
 

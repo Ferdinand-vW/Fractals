@@ -2,7 +2,8 @@
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Request.h"
 #include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/ReceiveClient.ipp"
+#include "fractals/network/p2p/ConnectionEventHandler.h"
+#include "fractals/network/p2p/ConnectionEventHandler.ipp"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
@@ -35,8 +36,6 @@
 
 using namespace fractals::network::p2p;
 
-using MockReceiveClient = ReceiveClientWorkerImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueue>;
-
 void writeToFd(int fd, std::string text)
 {
     write (fd, text.c_str(), text.size());
@@ -65,14 +64,14 @@ std::pair<int, PeerFd> createPeer()
     return {pipeFds[1], PeerFd{"host",0, Socket(pipeFds[0])}};
 }
 
-TEST(RECEIVECLIENTR, sub_and_unsub)
+TEST(CONNECTION_READ, sub_and_unsub)
 {
     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
     WorkQueue rq;
-    MockReceiveClient mr(epoll.getEpoll(), rq);
+    ConnectionReadHandler mr(epoll.getEpoll(), rq);
 
     auto t = std::thread([&](){
         mr.run();
@@ -98,14 +97,14 @@ TEST(RECEIVECLIENTR, sub_and_unsub)
 
 }
 
-TEST(RECEIVECLIENTR, one_subscriber_read_one)
+TEST(CONNECTION_READ, one_subscriber_read_one)
 {
     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
     WorkQueue rq;
-    MockReceiveClient mr(epoll.getEpoll(), rq);
+    ConnectionReadHandler mr(epoll.getEpoll(), rq);
 
     auto [writeFd, peer] = createPeer();
 
@@ -137,14 +136,14 @@ TEST(RECEIVECLIENTR, one_subscriber_read_one)
     t.join();
 }
 
-TEST(RECEIVECLIENTR, one_subscribed_read_multiple)
+TEST(CONNECTION_READ, one_subscribed_read_multiple)
 {
     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
     WorkQueue rq;
-    MockReceiveClient mr(epoll.getEpoll(), rq);
+    ConnectionReadHandler mr(epoll.getEpoll(), rq);
 
     auto [writeFd, peer] = createPeer();
 
@@ -200,14 +199,14 @@ TEST(RECEIVECLIENTR, one_subscribed_read_multiple)
     t.join();
 }
 
-TEST(RECEIVECLIENTR, multiple_subscriber_read_one)
+TEST(CONNECTION_READ, multiple_subscriber_read_one)
 {
     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
     WorkQueue rq;
-    MockReceiveClient mr(epoll.getEpoll(), rq);
+    ConnectionReadHandler mr(epoll.getEpoll(), rq);
 
     auto [writeFd1, peer1] = createPeer();
     auto [writeFd2, peer2] = createPeer();
@@ -254,14 +253,14 @@ TEST(RECEIVECLIENTR, multiple_subscriber_read_one)
     t.join();
 }
 
-TEST(RECEIVECLIENTR, multiple_subscribed_read_multiple)
+TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
 {
     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
     WorkQueue rq;
-    MockReceiveClient mr(epoll.getEpoll(), rq);
+    ConnectionReadHandler mr(epoll.getEpoll(), rq);
 
     auto t = std::thread([&](){
         mr.run();
