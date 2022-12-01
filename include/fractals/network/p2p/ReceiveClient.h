@@ -11,15 +11,15 @@
 namespace fractals::network::p2p
 {
     template <typename Peer, typename Epoll, typename ReceiveQueue>
-    class ReceiverWorkerImpl
+    class ReceiveClientWorkerImpl
     {
         private:
             std::deque<char> readFromSocket(int32_t fd);
 
         public:
-            ReceiverWorkerImpl(Epoll &epoll, ReceiveQueue &rq);
-            ReceiverWorkerImpl(const ReceiverWorkerImpl&) = delete;
-            ReceiverWorkerImpl(ReceiverWorkerImpl&&) = delete;
+            ReceiveClientWorkerImpl(Epoll &epoll, ReceiveQueue &rq);
+            ReceiveClientWorkerImpl(const ReceiveClientWorkerImpl&) = delete;
+            ReceiveClientWorkerImpl(ReceiveClientWorkerImpl&&) = delete;
 
             epoll_wrapper::CtlAction subscribe(const Peer &peer);
             epoll_wrapper::CtlAction unsubscribe(const Peer &peer);
@@ -39,5 +39,5 @@ namespace fractals::network::p2p
             ReceiveQueue &mQueue;
     };
 
-    using ReceiverWorker = ReceiverWorkerImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueueImpl<256, PeerEvent>>;
+    using ReceiveClientWorker = ReceiveClientWorkerImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueueImpl<256, PeerEvent>>;
 }

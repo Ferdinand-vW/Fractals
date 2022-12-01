@@ -1,4 +1,4 @@
-#include "Receiver.h"
+#include "ReceiveClient.h"
 #include "Event.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/PeerFd.h"
@@ -13,31 +13,31 @@
 namespace fractals::network::p2p
 {
     template <typename Peer, typename Epoll, typename RQ>
-    ReceiverWorkerImpl<Peer, Epoll, RQ>::ReceiverWorkerImpl(Epoll& epoll, RQ &rq)
+    ReceiveClientWorkerImpl<Peer, Epoll, RQ>::ReceiveClientWorkerImpl(Epoll& epoll, RQ &rq)
         : mEpoll(epoll), mQueue(rq) {}
 
     
     template <typename Peer, typename Epoll, typename RQ>
-    typename epoll_wrapper::CtlAction ReceiverWorkerImpl<Peer, Epoll, RQ>::subscribe(const Peer &peer)
+    typename epoll_wrapper::CtlAction ReceiveClientWorkerImpl<Peer, Epoll, RQ>::subscribe(const Peer &peer)
     {
         auto ctl = mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
         return ctl;
     }
 
     template <typename Peer, typename Epoll, typename RQ>
-    typename epoll_wrapper::CtlAction ReceiverWorkerImpl<Peer, Epoll, RQ>::unsubscribe(const Peer &peer)
+    typename epoll_wrapper::CtlAction ReceiveClientWorkerImpl<Peer, Epoll, RQ>::unsubscribe(const Peer &peer)
     {
         return mEpoll.erase(peer);
     }
 
     template <typename Peer, typename Epoll, typename RQ>
-    bool ReceiverWorkerImpl<Peer, Epoll, RQ>::isSubscribed(const Peer &peer)
+    bool ReceiveClientWorkerImpl<Peer, Epoll, RQ>::isSubscribed(const Peer &peer)
     {
         return mEpoll.hasFd(peer.getFileDescriptor());
     }
 
     template <typename Peer, typename Epoll, typename RQ>
-    std::deque<char> ReceiverWorkerImpl<Peer, Epoll, RQ>::readFromSocket(int32_t fd)
+    std::deque<char> ReceiveClientWorkerImpl<Peer, Epoll, RQ>::readFromSocket(int32_t fd)
     {
         std::deque<char> deq;
         std::vector<char> buf;
@@ -57,7 +57,7 @@ namespace fractals::network::p2p
     }
 
     template <typename Peer, typename Epoll, typename RQ>
-    void ReceiverWorkerImpl<Peer, Epoll, RQ>::run()
+    void ReceiveClientWorkerImpl<Peer, Epoll, RQ>::run()
     {
         mIsActive = true;
 
@@ -114,7 +114,7 @@ namespace fractals::network::p2p
     }
 
     template <typename Peer, typename Epoll, typename RQ>
-    void ReceiverWorkerImpl<Peer, Epoll, RQ>::stop()
+    void ReceiveClientWorkerImpl<Peer, Epoll, RQ>::stop()
     {
         mIsActive = false;
 
