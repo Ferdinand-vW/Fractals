@@ -8,6 +8,12 @@
 
 namespace fractals::common {
 
+
+// helper type for the visitor #4
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 /**
 Apply function to each member of vector
 */
@@ -29,6 +35,7 @@ Turns a vector of strings into a single string delimited by @del
 */
 std::string intercalate(std::string del, const std::vector<std::string> &v);
 std::string intercalate(std::string del, const std::vector<char> &v);
+std::string intercalate(std::string del, const std::deque<char> &v);
 
 /**
 Remove characters from string after a certain size

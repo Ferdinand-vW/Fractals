@@ -29,14 +29,6 @@ namespace fractals::network::p2p
                 mTail = mTail - queueStart;
             }
 
-            /*
-            -1 0 | 0 - -1 - 1
-            0 1 | 1 - 0 - 1
-            1 2 | 2 - 1 - 1
-            2 0 | 0 - 2
-            0 1
-            */
-
         public:
             WorkQueueImpl() = default;
             WorkQueueImpl(const WorkQueueImpl<SIZE, Event>&) = delete;
@@ -48,15 +40,9 @@ namespace fractals::network::p2p
                 {
                     return;
                 }
-                std::cout << "-----S " << mHead << " " << mTail << " " << this->size() << std::endl;
                 mEvents[mHead % QUEUE_SIZE] = event;
 
-                // Condition implies that we will overwrite the tail event
-                // Therefore the next last event is now the tail
-                std::cout << "S " << mHead << " " << mTail << " " << this->size() << std::endl;
                 ++mHead;
-                std::cout << "S " << mHead << " " << mTail << " " << this->size() << std::endl;
-                std::cout << "S " << mHead << " " << mTail << " " << this->size() << std::endl;
             }
 
             bool isEmpty()
@@ -66,11 +52,10 @@ namespace fractals::network::p2p
 
             Event&& pop()
             {
-                std::cout << "X " << mHead << " " << mTail << " " << this->size() << std::endl;
                 auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
                 ++mTail;
+
                 calibrate();
-                std::cout << "X " << mHead << " " << mTail << " " << this->size() << std::endl;
                 return std::move(res);
             }
 
@@ -79,7 +64,6 @@ namespace fractals::network::p2p
             {
                 for(auto ptr = mTail; ptr < mHead; ++ptr)
                 {
-                    std::cout << "PTR " << ptr << std::endl;
                     f(mEvents[ptr]);   
                 }
             }
@@ -87,17 +71,6 @@ namespace fractals::network::p2p
             size_t size()
             {
                 return mHead - mTail;
-
-                if (mHead >= mTail)
-                {
-                    std::cout << "Size: " << mHead - std::max(mTail, 0) << std::endl;
-                    return mHead - std::max(mTail, 0);
-                }
-                else
-                {
-                    std::cout << "Size: " << QUEUE_SIZE - mTail + mHead << std::endl;
-                    return QUEUE_SIZE - mTail + mHead;
-                }
             }
     };
 

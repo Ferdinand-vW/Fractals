@@ -55,6 +55,20 @@ namespace fractals::common {
         return out;
     }
 
+    std::string intercalate(std::string del, const std::deque<char> &v)
+    {
+        std::string out{""};
+        bool first = true;
+        for(auto c : v)
+        {
+            if (first) { out.append(std::to_string(c)); first = false; }
+            else       { out.append(del + std::to_string(c)); }
+        }
+
+        return out;
+    }
+
+
     std::string make_sized_line(std::string s,int len) {
         return s.substr(0,len) + "\n";
     }

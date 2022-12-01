@@ -4,6 +4,7 @@
 
 #include <deque>
 #include <epoll_wrapper/Error.h>
+#include <ostream>
 #include <string>
 #include <variant>
 
@@ -11,14 +12,14 @@ namespace fractals::network::p2p
 {
     struct EpollError
     {
-        epoll_wrapper::ErrorCodeMask mError;
+        epoll_wrapper::ErrorCode mError;
     };
 
     std::ostream& operator<<(std::ostream& os, const EpollError &e);
 
     struct ReceiveError
     {
-        epoll_wrapper::ErrorCodeMask mError;
+        epoll_wrapper::ErrorCode mError;
         http::PeerId mPeerId;
     };
 
@@ -42,7 +43,7 @@ namespace fractals::network::p2p
     struct ConnectionError
     {
         http::Peer mPeerId;
-        epoll_wrapper::ErrorCodeMask mError;
+        epoll_wrapper::ErrorCode mError;
     };
     
     std::ostream& operator<<(std::ostream& os, const ConnectionError &e);
@@ -53,4 +54,6 @@ namespace fractals::network::p2p
         ,ReceiveEvent
         ,ConnectionCloseEvent
         ,ConnectionError>;
+
+    std::ostream& operator<<(std::ostream& os, const PeerEvent &pe);
 }

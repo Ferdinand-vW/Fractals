@@ -32,6 +32,7 @@ namespace fractals::network::p2p
 
         private:
 
+            std::optional<uint32_t> mSpecialFd;
             bool mIsActive{false};
 
             Epoll &mEpoll;

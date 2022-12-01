@@ -1,3 +1,4 @@
+#include "fractals/common/utils.h"
 #include "fractals/network/p2p/Event.h"
 
 namespace fractals::network::p2p
@@ -14,7 +15,7 @@ namespace fractals::network::p2p
 
     std::ostream& operator<<(std::ostream& os, const ReceiveEvent &e)
     {
-        return os << "ReceiveEvent";
+        return os << "ReceiveEvent: " << common::intercalate(" ", e.mData);
     };
     
     std::ostream& operator<<(std::ostream& os, const ConnectionCloseEvent &e)
@@ -26,4 +27,13 @@ namespace fractals::network::p2p
     {
         return os << "ConnectionError";
     };
+
+    std::ostream& operator<<(std::ostream& os, const PeerEvent &pe)
+    {
+        std::visit(common::overloaded {
+            [&](const auto& v) { os << v; }
+        }, pe);
+
+        return os;
+    }
 }

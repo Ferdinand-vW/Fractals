@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -18,5 +19,8 @@ namespace fractals::common {
     @return string type representing the URL encoding of @bytes
     */
     std::string url_encode (const std::vector<char> &bytes);
+
+    std::string ascii_decode(const std::vector<char> &bytes);
+    std::string ascii_decode(const std::deque<char> &bytes);
 
 }

@@ -1,9 +1,14 @@
 #include "Receiver.h"
 #include "Event.h"
 #include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/Socket.h"
 
+#include <bitset>
+#include <epoll_wrapper/Error.h>
 #include <sstream>
+#include <stdexcept>
+#include <sys/eventfd.h>
 
 namespace fractals::network::p2p
 {
@@ -15,7 +20,8 @@ namespace fractals::network::p2p
     template <typename Peer, typename Epoll, typename RQ>
     typename epoll_wrapper::CtlAction ReceiverWorkerImpl<Peer, Epoll, RQ>::subscribe(const Peer &peer)
     {
-        return mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
+        auto ctl = mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
+        return ctl;
     }
 
     template <typename Peer, typename Epoll, typename RQ>
@@ -57,7 +63,7 @@ namespace fractals::network::p2p
 
         while(mIsActive)
         {
-            const auto wa = mEpoll.wait(100);
+            const auto wa = mEpoll.wait();
 
             if (wa.hasError())
             {
@@ -69,12 +75,17 @@ namespace fractals::network::p2p
             for(auto &[peer, event] : wa.getEvents())
             {
                 const auto p = http::Peer{"", http::PeerId{"",0}};
-                if (!event.mErrors && isSubscribed(peer))
+                if (mSpecialFd && mSpecialFd.value() == peer.getFileDescriptor())
+                {
+                    mSpecialFd.reset();
+                    return;
+                }
+
+                if (isSubscribed(peer))
                 {
                     if (event.mEvents & epoll_wrapper::EventCode::EpollErr)
                     {
-                        std::cout << "EpollErr" << std::endl;
-                        mQueue.push(ConnectionError{p, event.mErrors});
+                        mQueue.push(ConnectionError{p, event.mError});
 
                         unsubscribe(peer);
                         break;
@@ -82,7 +93,6 @@ namespace fractals::network::p2p
 
                     if (event.mEvents & epoll_wrapper::EventCode::EpollHUp )
                     {
-                        std::cout << "EpollHUp" << std::endl;
                         mQueue.push(ConnectionCloseEvent{p});
 
                         unsubscribe(peer);
@@ -91,9 +101,12 @@ namespace fractals::network::p2p
 
                     if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
                     {
-                        std::cout << "EpollIn" << std::endl;
                         auto data = readFromSocket(peer.getFileDescriptor());
                         mQueue.push(ReceiveEvent{p,std::move(data)});
+                    }
+                    else
+                    {
+                        std::cout << "MISSED EVENT: " << event.mEvents << std::endl;
                     }
                 }
             }
@@ -104,6 +117,13 @@ namespace fractals::network::p2p
     void ReceiverWorkerImpl<Peer, Epoll, RQ>::stop()
     {
         mIsActive = false;
+
+        int fd = eventfd(0, EFD_NONBLOCK);
+        mSpecialFd = fd;
+        assert(fd > 0);
+        auto peerfd = PeerFd{"",0,Socket{fd}};
+        subscribe(peerfd);
+        eventfd_write(fd, 10);
     }
 
 }
