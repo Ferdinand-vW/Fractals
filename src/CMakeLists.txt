@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.8)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # file(GLOB SOURCES "*.cpp" "")
 set(SOURCES fractals/app/Client.cpp
@@ -16,6 +16,9 @@ set(SOURCES fractals/app/Client.cpp
             fractals/network/http/Request.cpp
             fractals/network/http/Tracker.cpp
             fractals/network/p2p/AnnounceService.cpp
+            fractals/network/p2p/BitTorrentEncoder.cpp
+            fractals/network/p2p/BitTorrentMsg.cpp
+            fractals/network/p2p/BufferManager.cpp
             fractals/network/p2p/Connection.cpp
             fractals/network/p2p/Event.cpp
             fractals/network/p2p/PeerManager.cpp
@@ -52,7 +55,7 @@ add_executable (Fractals main.cpp)
 target_link_libraries(Fractals Fractals_lib)
 
 set_target_properties(Fractals PROPERTIES
-            CXX_STANDARD 17
+            CXX_STANDARD 20
             CXX_EXTENSIONS OFF
             # CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path}
             )

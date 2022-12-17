@@ -21,7 +21,7 @@ namespace fractals::torrent {
     Torrent::Torrent(TorrentMeta &&tm,TorrentIO &tio,std::set<int> &&pieces)
                     : m_tm(std::move(tm)),m_io(tio),m_pieces(std::move(pieces)) {}
 
-    Torrent::Torrent(const TorrentMeta &tm, TorrentIO &tio, const set<int> &pieces)
+    Torrent::Torrent(const TorrentMeta &tm, TorrentIO &tio, const std::set<int> &pieces)
                     : m_tm(tm),m_io(tio),m_pieces(pieces) {}
 
     void Torrent::add_piece(int p) {

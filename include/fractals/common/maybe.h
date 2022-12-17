@@ -11,6 +11,12 @@ namespace fractals::common {
         else                { return {}; }
     }
 
+    template <class A>
+    static neither::Maybe<A> to_maybe(A* opt) {
+        if(opt) { return *opt; }
+        else    { return {}; }
+    }
+
     static neither::Maybe<bencode::bstring> to_bstring(const bencode::bdata &bd) {
         return to_maybe(bd.get_bstring());
     }
@@ -86,9 +92,9 @@ namespace fractals::common {
     @return returns Left<String> on Empty, otherwise Right<A>
     */
     template <class A>
-    static neither::Either<string,A> maybe_to_either(const neither::Maybe<A> m,const std::string &s) {
+    static neither::Either<std::string,A> maybe_to_either(const neither::Maybe<A>& m,const std::string &s) {
         if(!m.hasValue) { return neither::left(s); }
-        else            { return neither::right(m.value); }
+        else            { return neither::right<A>(m.value); }
     }
 
     /**

@@ -127,7 +127,7 @@ namespace fractals::common {
         return bytes;
     }
 
-    std::vector<char> int_to_bytes(int n)  {
+    std::vector<char> int_to_bytes(uint32_t n)  {
         std::vector<char> v;
         //int is 4 bytes
         //if int n consist of bytes W X Y Z then converting to char leaves us with Z

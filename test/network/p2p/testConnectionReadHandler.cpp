@@ -41,16 +41,6 @@ void writeToFd(int fd, std::string text)
     write (fd, text.c_str(), text.size());
 }
 
-std::vector<char> readFromFd(int fd)
-{
-    int READSIZE=64*1024;
-    std::vector<char> buffer(READSIZE);
-    int bytes_read = read(fd, &buffer[0], READSIZE);
-
-    assert(bytes_read > 0);
-    return buffer;
-}
-
 std::pair<int, PeerFd> createPeer()
 {
     int pipeFds[2];
@@ -119,7 +109,7 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
     });
 
     // Give epoll thread enough time to wait
-    this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_TRUE(!rq.isEmpty());
     PeerEvent pe = rq.pop();
@@ -158,17 +148,17 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
     });
 
     // Give epoll thread enough time to wait
-    this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     writeToFd(writeFd, "test1");
 
-    this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     writeToFd(writeFd, "test2");
 
-    this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     writeToFd(writeFd, "test3");
 
-    this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_TRUE(!rq.isEmpty());
     ASSERT_EQ(rq.size(), 4);
@@ -228,7 +218,7 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     });
 
     // Give epoll thread enough time to wait
-    this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_TRUE(!rq.isEmpty());
     ASSERT_EQ(rq.size(), 3);
@@ -279,11 +269,11 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
         for(int m = 0; m < numMsg; m++)
         {
             ASSERT_TRUE(mr.isSubscribed(peerFd));
-            writeToFd(writeFd, "msg"+to_string(m));
+            writeToFd(writeFd, "msg"+std::to_string(m));
         }
     }
 
-    this_thread::sleep_for(std::chrono::milliseconds(40));
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
 
     ASSERT_EQ(rq.size(), numPeers);
 
@@ -294,7 +284,7 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
         ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
 
         auto re = std::get<ReceiveEvent>(pe);
-        ASSERT_EQ(fractals::common::ascii_decode(re.mData), "msg"+to_string(p));
+        ASSERT_EQ(fractals::common::ascii_decode(re.mData), "msg"+std::to_string(p));
     }
 
     mr.stop();

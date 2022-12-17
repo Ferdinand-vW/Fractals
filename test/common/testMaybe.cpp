@@ -5,8 +5,10 @@
 #include <gmock/gmock.h>
 #include <optional>
 #include <vector>
+#include <string>
 
 using ::testing::_;
+using namespace std::string_literals;
 
 TEST(MAYBE, mmap_vector_maybe_success)
 {
@@ -90,7 +92,7 @@ TEST(MAYBE, choice_maybe)
 TEST(MAYBE, choice_either)
 {
     {
-        neither::Either<std::string,int> m1 = neither::left("f1"s);
+        neither::Either<std::string,int> m1 = neither::left<std::string>("f1"s);
         neither::Either<std::string,int> m2 = neither::right(2);
         auto res = fractals::common::choice(m1,m2);
         ASSERT_TRUE(!res.isLeft);

@@ -1,13 +1,18 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <deque>
 #include <functional>
 #include <iterator>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace fractals::common {
 
+using string_view = std::basic_string_view<char>;
 
 // helper type for the visitor #4
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
@@ -22,6 +27,45 @@ std::vector<B> map_vector(const std::vector<A> &v, std::function<B(A)> f) {
   std::vector<B> vec_out;
   std::transform(v.begin(), v.end(), std::back_inserter(vec_out), f);
   return vec_out;
+}
+
+template <typename>
+struct GetArraySize;
+template <typename A, size_t N>
+struct GetArraySize<std::array<A, N>>
+{
+  constexpr static size_t SIZE = N;
+};
+
+template <typename Container>
+size_t capacity(const Container& c)
+{
+  if constexpr (std::is_same_v<Container, std::basic_string<typename Container::value_type>>)
+  {
+    return c.capacity();
+  }
+  else if constexpr (std::is_same_v<Container, std::basic_string_view<typename Container::value_type>>)
+  {
+    return c.size();
+  }
+  else if constexpr (std::is_same_v<Container, std::vector<typename Container::value_type>>)
+  {
+    return c.capacity();
+  }
+  else if constexpr (std::is_same_v<Container, std::array<typename Container::value_type, GetArraySize<Container>::SIZE>>)
+  {
+    return c.max_size();
+  }
+}
+
+template <class Container1, class Container2>
+void append(Container1& v1, const Container2& v2)
+{
+  if (std::max(capacity<Container1>(v1), capacity<Container2>(v2)) < v1.size() + v2.size())
+  {
+    v1.reserve(v1.size() + v2.size());
+  }
+  v1.insert(v1.end(), v2.begin(), v2.end());
 }
 
 /**
@@ -68,7 +112,7 @@ std::vector<char> hex_to_bytes(const std::string& s);
 /**
 Convert int to bytes
 */
-std::vector<char> int_to_bytes(int n);
+std::vector<char> int_to_bytes(uint32_t n);
 
 /**
 Parse bytes as int

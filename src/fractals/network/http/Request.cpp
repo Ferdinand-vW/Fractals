@@ -132,7 +132,7 @@ namespace fractals::network::http
                         .map(mem_fn(&bstring::to_string));
             auto mport    = common::to_maybe(peer_dict.find("port"))
                         .flatMap(to_bint)
-                        .map(mem_fn(&bint::value));
+                        .map(std::mem_fn(&bint::value));
             
             if(!mpeer_id.hasValue) { return neither::left("Could not find field peer id in peers dictionary"s); }
             if(!mip.hasValue)      { return neither::left("Could not find field ip in peers dictionary"s); }
@@ -141,12 +141,12 @@ namespace fractals::network::http
             return neither::right(Peer { mpeer_id.value, PeerId(mip.value, (uint)mport.value) });
         };
 
-        return common::mmap_vector<bdata,std::string,Peer>(bl.value(),parse_peer);
+        return common::mmap_vector<bdata,std::string,Peer>(bl.values(),parse_peer);
     }
 
     //tracker response peer model in binary format
     //multiples of 6 bytes. First 4 bytes are ip and remaining 2 bytes are port. big endian notation 
-    neither::Either<std::string, std::vector<Peer>> parsePeersBin(vector<char> bytes) {
+    neither::Either<std::string, std::vector<Peer>> parsePeersBin(std::vector<char> bytes) {
         if(bytes.size() % 6 != 0) { return neither::left("Peer binary data is not a multiple of 6"s); }
 
         std::vector<Peer> peers;
@@ -174,7 +174,7 @@ namespace fractals::network::http
     neither::Either<std::string, TrackerResponse> TrackerResponse::decode(const bdict &bd) {
         auto optfailure = bd.find("failure reason");
         std::string failure_reason;
-        if(optfailure.has_value()) { 
+        if(optfailure) { 
             auto mfailure = common::to_maybe(optfailure).flatMap(common::to_bstring);
             return neither::left<std::string>(mfailure.value.to_string()); 
         }
@@ -185,23 +185,23 @@ namespace fractals::network::http
         
         auto minterval = common::to_maybe(bd.find("interval"))
                         .flatMap(to_bint)
-                        .map(mem_fn(&bint::value));
+                        .map(std::mem_fn(&bint::value));
         
         auto min_interval = common::to_maybe(bd.find("min interval"))
                         .flatMap(to_bint)
-                        .map(mem_fn(&bint::value));
+                        .map(std::mem_fn(&bint::value));
 
         auto tracker_id = common::to_maybe(bd.find("tracker id"))
                         .flatMap(to_bstring)
-                        .map(mem_fn(&bstring::to_string));
+                        .map(std::mem_fn(&bstring::to_string));
 
         auto mcomplete = common::to_maybe(bd.find("complete"))
                         .flatMap(to_bint)
-                        .map(mem_fn(&bint::value));
+                        .map(std::mem_fn(&bint::value));
 
         auto mincomplete = common::to_maybe(bd.find("incomplete"))
                         .flatMap(to_bint)
-                        .map(mem_fn(&bint::value));
+                        .map(std::mem_fn(&bint::value));
 
         auto mpeers_unk = common::to_maybe(bd.find("peers"));
         auto mpeers_dict = mpeers_unk.flatMap(to_blist);

@@ -35,14 +35,14 @@ namespace fractals::network::http {
 
     namespace {
         std::size_t writeTrackerResponseData(void *contents,std::size_t size,std::size_t nmemb,void *userp) {
-            std::string *uptr = reinterpret_cast<string*>(userp);
+            std::string *uptr = reinterpret_cast<std::string*>(userp);
             char * conts      = reinterpret_cast<char*>(contents);
             uptr->append(conts,size * nmemb);
             return size * nmemb;
         }
     }
 
-    TrackerClient::TrackerClient(string &&url) : mUrl(std::move(url)) {};
+    TrackerClient::TrackerClient(std::string &&url) : mUrl(std::move(url)) {};
     TrackerClient::TrackerClient(const std::string &url) : mUrl(url) {};
 
     std::string TrackerClient::getUrl() const {
@@ -57,7 +57,7 @@ namespace fractals::network::http {
         curl_global_init(0);
         CURL *curl = curl_easy_init();
         std::string readBuffer;
-        string url = tr.toHttpGetUrl();
+        std::string url = tr.toHttpGetUrl();
 
         if(url.substr(0,3) == "udp") {
             return left ("udp trackers are not supported"s);
@@ -83,7 +83,7 @@ namespace fractals::network::http {
 
         curl_easy_cleanup(curl);
 
-        stringstream ss(readBuffer);
+        std::stringstream ss(readBuffer);
         auto mresp = bencode::decode<bencode::bdict>(ss);
 
         if (!mresp.has_value()) { return neither::left(mresp.error().message()); }
@@ -93,7 +93,7 @@ namespace fractals::network::http {
         return TrackerResponse::decode(resp);
     }
 
-    std::ostream &operator<<(ostream &os, const TrackerClient &t) {
+    std::ostream &operator<<(std::ostream &os, const TrackerClient &t) {
         os << "TrackerClient(" + t.getUrl() + ")";
         return os;
     }

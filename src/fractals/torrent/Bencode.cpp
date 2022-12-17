@@ -3,6 +3,7 @@
 //
 
 #include "fractals/torrent/Bencode.h"
+#include <boost/bind/mem_fn.hpp>
 
 namespace fractals::torrent {
     
@@ -13,7 +14,7 @@ namespace fractals::torrent {
                 .map(mem_fn(&bstring::to_string));
         auto m_length = to_maybe(bd.find("length"))
                 .flatMap(to_bint)
-                .map(mem_fn(&bint::value));
+                .map(std::mem_fn(&bint::value));
         auto e_length = maybe_to_either(m_length,"Missing length field for structure SingleFile");
 
         auto md5sum = to_maybe(bd.find("md5sum"))
@@ -29,7 +30,7 @@ namespace fractals::torrent {
     Either<std::string,FileInfo> from_bdict<FileInfo>(const bdict &bd) {
         auto m_length = to_maybe(bd.find("length"))
                 .flatMap(to_bint)
-                .map(mem_fn(&bint::value));
+                .map(std::mem_fn(&bint::value));
         auto e_length = maybe_to_either(m_length,"Missing length field for structure SingleFile");
 
         auto md5sum = to_maybe(bd.find("md5sum"))
@@ -38,13 +39,13 @@ namespace fractals::torrent {
 
         auto m_bdpath = to_maybe(bd.find("path"))
                 .flatMap(to_blist)
-                .map(mem_fn(&blist::value));
+                .map(std::mem_fn<std::vector<bdata>()>(&blist::values));
 
-        auto f = [](const auto &bd) -> Maybe<string> { return to_bstring(bd).map(mem_fn(&bstring::to_string)); };
-        auto m_path = m_bdpath.flatMap([f](const auto &v) -> Maybe<vector<string>> {
-            return mmap_vector<bdata,string>(v, f);
+        auto f = [](const auto &bd) -> Maybe<std::string> { return to_bstring(bd).map(mem_fn(&bstring::to_string)); };
+        auto m_path = m_bdpath.flatMap([f](const auto &v) -> Maybe<std::vector<std::string>> {
+            return mmap_vector<bdata,std::string>(v, f);
         });
-        vector<string> path;
+        std::vector<std::string> path;
         if(!m_path.hasValue) { return left("Missing path field for structure FileInfo"s); }
         else                 { path = m_path.value; }
 
@@ -70,11 +71,11 @@ namespace fractals::torrent {
         auto e_bdfiles = maybe_to_either(
                 to_maybe(bd.find("files"))
                         .flatMap(to_blist)
-                        .map(mem_fn(&blist::value))
+                        .map(std::mem_fn<std::vector<bdata>()>(&blist::values))
                 ,"Missing files field for structure MultiFile");
 
-        auto e_files = e_bdfiles.rightFlatMap([](const auto &v) -> Either<string,vector<FileInfo>> {
-            return mmap_vector<bdata,string,FileInfo>(v,from_bdata<FileInfo>);
+        auto e_files = e_bdfiles.rightFlatMap([](const auto &v) -> Either<std::string, std::vector<FileInfo>> {
+            return mmap_vector<bdata, std::string, FileInfo>(v,from_bdata<FileInfo>);
         });
 
 
@@ -87,7 +88,7 @@ namespace fractals::torrent {
     Either<std::string,InfoDict> from_bdict<InfoDict>(const bdict &bd) {
         auto m_piece_length = to_maybe(bd.find("piece length"))
                 .flatMap(to_bint)
-                .map(mem_fn(&bint::value));
+                .map(std::mem_fn(&bint::value));
         int64_t piece_length;
         if(!m_piece_length.hasValue)
         { return left("Attribute piece length missing from info"s);}
@@ -103,7 +104,7 @@ namespace fractals::torrent {
 
         auto publish = to_maybe(bd.find("private"))
                 .flatMap(to_bint)
-                .map(mem_fn(&bint::value));
+                .map(std::mem_fn(&bint::value));
 
         const auto e_single_file = from_bdict<SingleFile>(bd);
         const auto e_multi_file  = from_bdict<MultiFile>(bd);
@@ -129,18 +130,18 @@ namespace fractals::torrent {
         const bint val_l(fi.length);
 
         const bstring key_ps("path");
-        auto paths = map_vector<string,bdata>(fi.path,[](const auto &s) { return bdata(bstring(s)); });
-        const blist val_ps(paths);
+        auto paths = map_vector<std::string,bdata>(fi.path,[](const auto &s) { return bdata(bstring(s)); });
+        const blist val_ps(std::move(paths));
 
-        map<bstring,bdata> kv_map;
+        std::map<bstring,bdata> kv_map;
         kv_map.insert({key_l,bdata(val_l)});
         kv_map.insert({key_ps,bdata(val_ps)});
 
-        return {kv_map };
+        return {std::move(kv_map)};
     }
 
     bdict to_bdict(const SingleFile &sf) {
-        map<bstring, bdata> kv_map;
+        std::map<bstring, bdata> kv_map;
         const bstring key_l("length");
         const bint val_l(sf.length);
         kv_map.insert({key_l,bdata(val_l)});
@@ -158,11 +159,11 @@ namespace fractals::torrent {
         }
 
 
-        return {kv_map };
+        return {std::move(kv_map)};
     }
 
     bdict to_bdict(const MultiFile &mf) {
-        map<bstring, bdata> kv_map;
+        std::map<bstring, bdata> kv_map;
         const bstring key_fs("files");
 
         std::function<bdata(FileInfo)> fi_lam = [](const auto &fi) { return bdata(to_bdict(fi)); };
@@ -175,14 +176,14 @@ namespace fractals::torrent {
         }
 
         kv_map.insert({key_fs,bdata(val_fs)});
-        return {kv_map };
+        return {std::move(kv_map)};
     }
 
     bdict to_bdict(const InfoDict &id) {
-        string key_pl("piece length");
+        std::string key_pl("piece length");
         bint val_pl(id.piece_length);
 
-        string key_pcs("pieces");
+        std::string key_pcs("pieces");
         bstring val_pcs(id.pieces);
 
         std::function<bdict(SingleFile)> sf_lam = [](const auto &sf){ return to_bdict(sf); };
@@ -192,7 +193,7 @@ namespace fractals::torrent {
         fm.insert({key_pcs,val_pcs});
 
         if(id.publish.hasValue) {
-            string key_prvt("private");
+            std::string key_prvt("private");
             bint val_prvt(id.publish.value);
             fm.insert({key_prvt,val_prvt});
         }
@@ -201,34 +202,34 @@ namespace fractals::torrent {
     }
 
     template <>
-    Either<string,MetaInfo> from_bdata<MetaInfo>(const bdata &bd) {
+    Either<std::string,MetaInfo> from_bdata<MetaInfo>(const bdata &bd) {
         auto m_bd_mi = to_maybe(bd.get_bdict());
 
-        auto to_metainfo = [](const bdict &m) -> Either<string,MetaInfo> {
+        auto to_metainfo = [](const bdict &m) -> Either<std::string,MetaInfo> {
             auto m_ann = to_maybe(m.find("announce"))
                     .flatMap(to_bstring)
                     .map(mem_fn(&bstring::to_string));
 
             auto make_announce_list =
-                    [](const blist& bl) -> Maybe<vector<vector<string>>> {
-                            auto bl_val = bl.value();
+                    [](const blist& bl) -> Maybe<std::vector<std::vector<std::string>>> {
+                            auto bl_val = bl.values();
 
-                            auto bdata_to_vec = [](const auto &bd) -> Maybe<vector<string>> {
-                                Maybe<vector<bdata>> outer_vec = to_blist(bd).map(mem_fn(&blist::value));
+                            auto bdata_to_vec = [](const auto &bd) -> Maybe<std::vector<std::string>> {
+                                Maybe<std::vector<bdata>> outer_vec = to_blist(bd).map(std::mem_fn<std::vector<bdata>()>(&blist::values));
 
-                                auto bdata_to_string = [](const auto &bd) -> Maybe<string> {
+                                auto bdata_to_string = [](const auto &bd) -> Maybe<std::string> {
                                     return to_bstring(bd).map(mem_fn(&bstring::to_string));
                                 };
 
-                                Maybe<vector<string>> vec_of_string =
+                                Maybe<std::vector<std::string>> vec_of_string =
                                         outer_vec.flatMap([bdata_to_string](auto &v) {
-                                            return mmap_vector<bdata,string>(v,bdata_to_string);
+                                            return mmap_vector<bdata,std::string>(v,bdata_to_string);
                                         });
 
                                 return vec_of_string;
                             };
 
-                            return mmap_vector<bdata,vector<string>>(bl_val,bdata_to_vec);
+                            return mmap_vector<bdata,std::vector<std::string>>(bl_val,bdata_to_vec);
                     };
             auto m_ann_l = to_maybe(m.find("announce-list"))
                     .flatMap(to_blist)
@@ -236,7 +237,7 @@ namespace fractals::torrent {
 
             auto m_cd = to_maybe(m.find("creation date"))
                     .flatMap(to_bint)
-                    .map(mem_fn(&bint::value));
+                    .map(std::mem_fn(&bint::value));
 
             auto m_cm = to_maybe(m.find("comment"))
                     .flatMap(to_bstring)
@@ -253,7 +254,7 @@ namespace fractals::torrent {
             auto e_id = maybe_to_either(to_maybe(m.find("info")),"Missing field info in meta info bdict")
                     .rightFlatMap(from_bdata<InfoDict>);
 
-            auto make_metainfo = [m_ann,m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &inf) -> Either<string,MetaInfo> {
+            auto make_metainfo = [m_ann,m_ann_l,m_cb,m_cd,m_cm,m_ec,e_id](const auto &inf) -> Either<std::string,MetaInfo> {
                 if(!m_ann.hasValue) { return left("Missing field announce in meta info dict"s); }
                 const MetaInfo mi = { m_ann.value,m_ann_l,m_cd,m_cm,m_cb,m_ec,inf };
                 return right(mi);

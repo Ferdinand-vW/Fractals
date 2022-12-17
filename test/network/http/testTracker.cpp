@@ -18,7 +18,7 @@ using ::testing::_;
 
 std::string getByteData()
 {
-    std::fstream fs("../../../../examples/10000_bytes.txt", ios::binary | ios::in);
+    std::fstream fs("../../../../examples/10000_bytes.txt", std::ios::binary | std::ios::in);
 
     if(!fs.is_open())
     {

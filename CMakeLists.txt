@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.8)
 project(Fractals)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 add_definitions( -DBOOST_STACKTRACE_USE_ADDR2LINE )
 set (CMAKE_CXX_FLAGS "-DSQLITE_THREADSAFE=1")
