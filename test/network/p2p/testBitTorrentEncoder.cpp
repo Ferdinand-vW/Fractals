@@ -35,4 +35,99 @@ TEST(BT_ENCODER, HandShake)
     ASSERT_EQ(encoder.decodeHandShake(encodedView, encoded[0]), hs);
 }
 
+TEST(BT_ENCODER, KeepAlive)
+{
+    BitTorrentEncoder encoder;
+
+    KeepAlive ka;
+
+    std::vector<char> bytes{0,0,0,0}; 
+
+    auto encoded = encoder.encode(ka);
+    ASSERT_EQ(encoded, bytes);
+
+    common::string_view view(bytes.begin()+4, bytes.end());
+    KeepAlive decoded = *encoder.decodeOpt<KeepAlive>(view, 4);
+    ASSERT_EQ(decoded, ka);
+
+    common::string_view encodedView(encoded.begin()+4, encoded.end());
+    ASSERT_EQ(encoder.decodeOpt<KeepAlive>(encodedView, 4), ka);
+}
+
+TEST(BT_ENCODER, Choke)
+{
+    BitTorrentEncoder encoder;
+
+    Choke choke;
+
+    std::vector<char> bytes{0,0,0,0,1}; 
+
+    auto encoded = encoder.encode(choke);
+    ASSERT_EQ(encoded, bytes);
+
+    common::string_view view(bytes.begin()+4, bytes.end());
+    Choke decoded = *encoder.decodeOpt<Choke>(view, 4);
+    ASSERT_EQ(decoded, choke);
+
+    common::string_view encodedView(encoded.begin()+4, encoded.end());
+    ASSERT_EQ(encoder.decodeOpt<Choke>(encodedView, 4), choke);
+}
+
+TEST(BT_ENCODER, UnChoke)
+{
+    BitTorrentEncoder encoder;
+
+    KeepAlive ka;
+
+    std::vector<char> bytes{0,0,0,0}; 
+
+    auto encoded = encoder.encode(ka);
+    ASSERT_EQ(encoded, bytes);
+
+    common::string_view view(bytes.begin()+4, bytes.end());
+    KeepAlive decoded = *encoder.decodeOpt<KeepAlive>(view, 4);
+    ASSERT_EQ(decoded, ka);
+
+    common::string_view encodedView(encoded.begin()+4, encoded.end());
+    ASSERT_EQ(encoder.decodeOpt<KeepAlive>(encodedView, 4), ka);
+}
+
+TEST(BT_ENCODER, Interested)
+{
+    BitTorrentEncoder encoder;
+
+    KeepAlive ka;
+
+    std::vector<char> bytes{0,0,0,0}; 
+
+    auto encoded = encoder.encode(ka);
+    ASSERT_EQ(encoded, bytes);
+
+    common::string_view view(bytes.begin()+4, bytes.end());
+    KeepAlive decoded = *encoder.decodeOpt<KeepAlive>(view, 4);
+    ASSERT_EQ(decoded, ka);
+
+    common::string_view encodedView(encoded.begin()+4, encoded.end());
+    ASSERT_EQ(encoder.decodeOpt<KeepAlive>(encodedView, 4), ka);
+}
+
+TEST(BT_ENCODER, NotInterested)
+{
+    BitTorrentEncoder encoder;
+
+    KeepAlive ka;
+
+    std::vector<char> bytes{0,0,0,0}; 
+
+    auto encoded = encoder.encode(ka);
+    ASSERT_EQ(encoded, bytes);
+
+    common::string_view view(bytes.begin()+4, bytes.end());
+    KeepAlive decoded = *encoder.decodeOpt<KeepAlive>(view, 4);
+    ASSERT_EQ(decoded, ka);
+
+    common::string_view encodedView(encoded.begin()+4, encoded.end());
+    ASSERT_EQ(encoder.decodeOpt<KeepAlive>(encodedView, 4), ka);
+}
+
 }

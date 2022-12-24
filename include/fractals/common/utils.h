@@ -117,6 +117,7 @@ std::vector<char> int_to_bytes(uint32_t n);
 /**
 Parse bytes as int
 */
+int bytes_to_int(common::string_view &d);
 int bytes_to_int(std::deque<char> &d);
 
 /**

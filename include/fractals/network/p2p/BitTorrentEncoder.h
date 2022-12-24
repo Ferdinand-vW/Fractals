@@ -4,6 +4,7 @@
 #include "fractals/common/utils.h"
 
 #include <cstdint>
+#include <optional>
 #include <type_traits>
 #include <vector>
 #include <variant>
@@ -19,7 +20,23 @@ namespace fractals::network::p2p
             template <typename T>
             std::vector<char> encode(const T& t)
             {
-                return encodePayload<T>(t);
+                using A = std::decay_t<T>;
+                if constexpr (A::MSG_TYPE >= 0)
+                {
+                    std::vector<char> buf;
+                    buf.reserve(t.getLen());
+                    common::append(buf, common::int_to_bytes(t.getLen()));
+                    common::append(buf, common::int_to_bytes(A::MSG_TYPE));
+                    common::append(buf, encodePayload(t));
+                    return buf;
+                }
+                else
+                {
+                    std::vector<char> buf;
+                    buf.reserve(t.getLen());
+                    common::append(buf, encodePayload(t));
+                    return buf;
+                }
             }
 
             std::vector<char> encode(const BitTorrentMessage &m)
@@ -37,30 +54,43 @@ namespace fractals::network::p2p
                 return decodePayloadImpl<HandShake>(view, pstrLen);
             }
 
+            template <typename A, typename Container>
+            std::optional<A> decodeOpt(const Container& buf, uint32_t len)
+            {
+                const auto btm = decode<Container>(buf, len);
+
+                if (std::holds_alternative<A>(btm))
+                {
+                    return std::get<A>(btm);
+                }
+
+                return std::nullopt;
+            }
+
             template <typename Container>
-            BitTorrentMessage decode(const Container& buf)
+            BitTorrentMessage decode(const Container& buf, uint32_t len)
             {
                 common::string_view view(buf.begin(), buf.end());
 
                 if (buf.size() <= 0)
                 {
-                    return decodePayload<KeepAlive>(view);
+                    return decodePayload<KeepAlive>(view, len);
                 }
 
                 uint32_t msgType = buf[0];
 
                 switch(msgType)
                 {
-                    case Choke::MSG_TYPE: return decodePayload<Choke>(view);
-                    case UnChoke::MSG_TYPE: return decodePayload<UnChoke>(view);
-                    case Interested::MSG_TYPE: return decodePayload<Interested>(view);
-                    case NotInterested::MSG_TYPE: return decodePayload<NotInterested>(view);
-                    case Have::MSG_TYPE: return decodePayload<Have>(view);
-                    case Bitfield::MSG_TYPE: return decodePayload<Bitfield>(view);
-                    case Request::MSG_TYPE: return decodePayload<Request>(view);
-                    case Piece::MSG_TYPE: return decodePayload<Piece>(view);
-                    case Cancel::MSG_TYPE: return decodePayload<Cancel>(view);
-                    case Port::MSG_TYPE: return decodePayload<Port>(view);
+                    case Choke::MSG_TYPE: return decodePayload<Choke>(view, len);
+                    case UnChoke::MSG_TYPE: return decodePayload<UnChoke>(view, len);
+                    case Interested::MSG_TYPE: return decodePayload<Interested>(view, len);
+                    case NotInterested::MSG_TYPE: return decodePayload<NotInterested>(view, len);
+                    case Have::MSG_TYPE: return decodePayload<Have>(view, len);
+                    case Bitfield::MSG_TYPE: return decodePayload<Bitfield>(view, len);
+                    case Request::MSG_TYPE: return decodePayload<Request>(view, len);
+                    case Piece::MSG_TYPE: return decodePayload<Piece>(view, len);
+                    case Cancel::MSG_TYPE: return decodePayload<Cancel>(view, len);
+                    case Port::MSG_TYPE: return decodePayload<Port>(view, len);
                     default:
                         return SerializeError{msgType, buf, "Cannot match parsed msgType to message"};
                 }
@@ -68,7 +98,7 @@ namespace fractals::network::p2p
 
         private:
             template <typename T>
-            BitTorrentMessage handleFailure(const std::optional<T> decoded, const common::string_view& view)
+            BitTorrentMessage handleFailure(const std::optional<T> decoded, common::string_view& view)
             {
                 if (decoded)
                 {
@@ -76,7 +106,7 @@ namespace fractals::network::p2p
                 }
                 else
                 {
-                    return SerializeError{std::vector(view.begin(), view.end()), "Failed to decode"};
+                    return SerializeError{view,  "Failed to decode"};
                 }
             }
 
@@ -108,35 +138,37 @@ namespace fractals::network::p2p
             std::vector<char> encodePayload(const Port& t);
 
             template <typename T>
-            BitTorrentMessage decodePayload(const common::string_view& buf, int len = -1)
+            BitTorrentMessage decodePayload(common::string_view& buf, uint32_t len = -1)
             {
-                return handleFailure(decodePayloadImpl<T>(buf, len));
+                return handleFailure(decodePayloadImpl<T>(buf, len), buf);
             }
 
             template <typename T>
-            std::optional<T> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<T> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<HandShake> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<KeepAlive> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Choke> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<HandShake> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<UnChoke> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Choke> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Interested> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<UnChoke> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<NotInterested> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Interested> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Have> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<NotInterested> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Bitfield> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Have> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Request> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Bitfield> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Piece> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Request> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Cancel> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Piece> decodePayloadImpl(common::string_view& buf, uint32_t len);
             template<>
-            std::optional<Port> decodePayloadImpl(const common::string_view& buf, int len);
+            std::optional<Cancel> decodePayloadImpl(common::string_view& buf, uint32_t len);
+            template<>
+            std::optional<Port> decodePayloadImpl(common::string_view& buf, uint32_t len);
     };
     
 }

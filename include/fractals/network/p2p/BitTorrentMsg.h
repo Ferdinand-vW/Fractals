@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <cstring>
 #include <type_traits>
 
@@ -49,6 +50,7 @@ struct SerializeError;
     class HandShake
     {
         public:
+            static constexpr int8_t MSG_TYPE = -1;
             static constexpr uint32_t MSG_MIN_LEN = 49;
         public:
             HandShake() = default;
@@ -75,18 +77,23 @@ struct SerializeError;
     class KeepAlive 
     {
         public:
+            static constexpr int8_t MSG_TYPE = -1;
             static constexpr uint32_t MSG_LEN = 1;
         public:
-            constexpr uint32_t getLen() const;
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
+
+            friend bool operator==(const KeepAlive&, const KeepAlive&);
     };
 
     class Choke 
     {
         public:
-            constexpr uint32_t getLen() const;
+            uint32_t getLen() const;
             static constexpr uint32_t MSG_LEN = 1;
-            static constexpr uint32_t MSG_TYPE = 0;
+            static constexpr int8_t MSG_TYPE = 0;
+
+            friend bool operator==(const Choke&, const Choke&);
 
         public:
             std::vector<char> getPrefix() const;
@@ -95,46 +102,57 @@ struct SerializeError;
     class UnChoke 
     {
         public:
-            constexpr uint32_t getLen() const;
+            uint32_t getLen() const;
             static constexpr uint32_t MSG_LEN = 1;
-            static constexpr uint32_t MSG_TYPE = 1;
+            static constexpr int8_t MSG_TYPE = 1;
 
         public:
             std::vector<char> getPrefix() const;
+
+            friend bool operator==(const UnChoke&, const UnChoke&);
     };
 
     class Interested 
     {
         public:
-            constexpr uint32_t getLen() const;
+            uint32_t getLen() const;
             static constexpr uint32_t MSG_LEN = 1;
-            static constexpr uint32_t MSG_TYPE = 2;
+            static constexpr int8_t MSG_TYPE = 2;
 
         public:
             std::vector<char> getPrefix() const;
+
+            friend bool operator==(const Interested&, const Interested&);
     };
 
     class NotInterested 
     {
         public:
             static constexpr uint32_t MSG_LEN = 1;
-            static constexpr uint32_t MSG_TYPE = 3;
+            static constexpr int8_t MSG_TYPE = 3;
 
         public:
-            constexpr uint32_t getLen() const;
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
+
+            friend bool operator==(const NotInterested&, const NotInterested&);
     };
 
     class Have 
     {
         public:
             static constexpr uint32_t MSG_LEN = 5;
-            static constexpr uint32_t MSG_TYPE = 4;
+            static constexpr int8_t MSG_TYPE = 4;
 
         public:
-            constexpr uint32_t getLen() const;
+            Have() = default;
+            Have(uint32_t pieceIndex);
+
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             uint32_t getPieceIndex() const;
+
+            friend bool operator==(const Have&, const Have&);
         
         private:
             uint32_t mPieceIndex;
@@ -145,10 +163,15 @@ struct SerializeError;
     {
         public:
             static constexpr uint32_t MSG_MIN_LEN = 1;
-            static constexpr uint32_t MSG_TYPE = 5;
+            static constexpr int8_t MSG_TYPE = 5;
 
         public:
-            constexpr uint32_t getLen() const;
+            Bitfield() = default;
+            template <typename Container>
+            Bitfield(const Container& c) : mBitfield(c.begin(), c.end()) {}
+            
+
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             const common::string_view getBitfield() const;
 
@@ -160,10 +183,13 @@ struct SerializeError;
     {
         public:
             static constexpr uint32_t MSG_LEN = 13;
-            static constexpr uint32_t MSG_TYPE = 6;
+            static constexpr int8_t MSG_TYPE = 6;
 
         public:
-            constexpr uint32_t getLen() const;
+            Request() = default;
+            Request(uint32_t reqIndex, uint32_t reqBegin, uint32_t reqLen);
+
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             uint32_t getReqIndex() const;
             uint32_t getReqBegin() const;
@@ -179,10 +205,15 @@ struct SerializeError;
     {
         public:
             static constexpr uint32_t MSG_MIN_LEN = 9;
-            static constexpr uint32_t MSG_TYPE = 7;
+            static constexpr int8_t MSG_TYPE = 7;
 
         public:
-            constexpr uint32_t getLen() const;
+            Piece() = default;
+            template <typename Container>
+            Piece(uint32_t pieceIndex, uint32_t pieceBegin, Container&& block) 
+                : mIndex(pieceIndex), mBegin(pieceBegin), mBlock(block.begin(), block.end()) {}
+
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             uint32_t getPieceIndex() const;
             uint32_t getPieceBegin() const;
@@ -198,10 +229,13 @@ struct SerializeError;
     {
         public:
             static constexpr uint32_t MSG_LEN = 13;
-            static constexpr uint32_t MSG_TYPE = 8;
+            static constexpr int8_t MSG_TYPE = 8;
 
         public:
-            constexpr uint32_t getLen() const;
+            Cancel() = default;
+            Cancel(uint32_t index, uint32_t begin, uint32_t len);
+
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             uint32_t getCancelIndex() const;
             uint32_t getCancelBegin() const;
@@ -210,17 +244,20 @@ struct SerializeError;
         private:
             uint32_t mIndex;
             uint32_t mBegin;
-            uint32_t MSG_LENgth;
+            uint32_t mLen;
     };
 
     class Port 
     {
         public:
-            static constexpr uint32_t MSG_TYPE = 9;
+            static constexpr int8_t MSG_TYPE = 9;
             static constexpr uint32_t MSG_LEN = 3;
 
         public:
-            constexpr uint32_t getLen() const;
+            Port() = default;
+            Port(uint16_t port);
+
+            uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             uint32_t getPort() const;
         
@@ -231,13 +268,23 @@ struct SerializeError;
     class SerializeError
     {
         public:
+            static constexpr int8_t MSG_TYPE = -1;
+
             SerializeError() = default;
-            SerializeError(uint32_t msgType, std::vector<char> && buffer);
-            SerializeError(uint32_t msgType, std::vector<char> && buffer, std::string&& reason);
-            SerializeError(std::vector<char> && buffer, std::string&& reason);
+            template <typename Container>
+            SerializeError(uint32_t msgType, Container && buffer)
+                : msgType(msgType), mBuffer(buffer.begin(), buffer.end()) {}
+            
+            template <typename Container>
+            SerializeError(uint32_t msgType, Container && buffer, std::string&& reason)
+                : msgType(msgType), mBuffer(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
+            template <typename Container>
+            SerializeError(Container && buffer, std::string&& reason)
+                : mBuffer(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
 
             std::vector<char> getPrefix() const;
             const common::string_view getBuffer() const;
+            uint32_t getLen() const;
         
         private:
             int32_t msgType{-1};

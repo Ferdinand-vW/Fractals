@@ -162,6 +162,29 @@ namespace fractals::common {
         return n;
     }
 
+    int bytes_to_int(common::string_view &d) {
+        if (d.size() < 1) { return {}; }
+
+        int n = 0;
+        int size = d.size() > 4 ? 4 : d.size(); //We may have fewer than 4 bytes
+        for(int i = 0; i < size; i++) {
+            //Example:
+            //Assume size = 3 (X Y Z) and start with 0 0 0 0, then
+            //byte X must be moved 16bits left: 3*8 - (0+1)*8 = 16, 0 X 0 0
+            //byte Y must be moved 8bits left: 3*8 - (1+1)*8 = 8, 0 X Y 0
+            //byte Z must be moved 0bits left: 3*8 - (2+1)*8 = 0, 0 X Y Z
+            // note that the | operator does or operations between bytes:
+            // 0 X 0 0
+            // 0 0 Y 0
+            // ------- or (|)
+            // 0 X Y 0
+            n |= (unsigned char)d.front() << (size*8 - (i+1) * 8);
+            d.substr(1);
+        }
+
+        return n;
+    }
+
     std::vector<char> bitfield_to_bytes(const std::vector<bool> &bits) {
         std::vector<char> v;
         char c = 0;

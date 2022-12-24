@@ -56,12 +56,32 @@ namespace fractals::network::p2p
         return common::int_to_bytes(MSG_LEN);
     }
 
+    bool operator==(const KeepAlive&, const KeepAlive&)
+    {
+        return true;
+    }
+
+    uint32_t KeepAlive::getLen() const
+    {
+        return MSG_LEN;
+    }
+
     std::vector<char> Choke::getPrefix() const
     {   
         auto result = common::int_to_bytes(MSG_LEN);
         result.push_back(MSG_TYPE);
 
         return result;
+    }
+
+    bool operator==(const Choke&, const Choke&)
+    {
+        return true;
+    }
+
+    uint32_t Choke::getLen() const
+    {
+        return MSG_LEN;
     }
 
     std::vector<char> UnChoke::getPrefix() const
@@ -72,12 +92,32 @@ namespace fractals::network::p2p
         return result;
     }
 
+    bool operator==(const UnChoke&, const UnChoke&)
+    {
+        return true;
+    }
+
+    uint32_t UnChoke::getLen() const
+    {
+        return MSG_LEN;
+    }
+
     std::vector<char> Interested::getPrefix() const
     {
         auto result = common::int_to_bytes(MSG_LEN);
         result.push_back(MSG_TYPE);
 
         return result;
+    }
+
+    bool operator==(const Interested&, const Interested&)
+    {
+        return true;
+    }
+
+    uint32_t Interested::getLen() const
+    {
+        return MSG_LEN;
     }
 
     std::vector<char> NotInterested::getPrefix() const
@@ -88,6 +128,18 @@ namespace fractals::network::p2p
         return result;
     }
 
+    bool operator==(const NotInterested&, const NotInterested&)
+    {
+        return true;
+    }
+
+    uint32_t NotInterested::getLen() const
+    {
+        return MSG_LEN;
+    }
+
+    Have::Have(uint32_t pieceIndex) : mPieceIndex(pieceIndex) {}
+
     std::vector<char> Have::getPrefix() const
     {
         auto result = common::int_to_bytes(MSG_LEN);
@@ -96,9 +148,19 @@ namespace fractals::network::p2p
         return result;
     }
 
+    bool operator==(const Have& h1, const Have& h2)
+    {
+        return h1.getPieceIndex() == h2.getPieceIndex();
+    }
+
     uint32_t Have::getPieceIndex() const
     {
         return mPieceIndex;
+    }
+
+    uint32_t Have::getLen() const
+    {
+        return MSG_LEN;
     }
 
     std::vector<char> Bitfield::getPrefix() const
@@ -109,7 +171,7 @@ namespace fractals::network::p2p
         return result;
     }
 
-    constexpr uint32_t Bitfield::getLen() const
+    uint32_t Bitfield::getLen() const
     {
         return MSG_MIN_LEN + mBitfield.size();
     }
@@ -118,6 +180,9 @@ namespace fractals::network::p2p
     {
         return common::string_view(mBitfield.begin(), mBitfield.end());
     }
+
+    Request::Request(uint32_t reqIndex, uint32_t reqBegin, uint32_t reqLen)
+        : mReqIndex(reqIndex), mReqBegin(reqBegin), mReqLength(reqLen) {}
 
     std::vector<char> Request::getPrefix() const
     {
@@ -142,6 +207,11 @@ namespace fractals::network::p2p
         return mReqLength;
     }
 
+    uint32_t Request::getLen() const
+    {
+        return MSG_LEN;
+    }
+
     std::vector<char> Piece::getPrefix() const
     {
         auto result = common::int_to_bytes(getLen());
@@ -150,7 +220,7 @@ namespace fractals::network::p2p
         return result;
     }
 
-    constexpr uint32_t Piece::getLen() const
+    uint32_t Piece::getLen() const
     {
         return MSG_MIN_LEN + mBlock.size();
     }
@@ -169,6 +239,8 @@ namespace fractals::network::p2p
     {
         return common::string_view(mBlock.begin(), mBlock.end());
     }
+
+    Cancel::Cancel(uint32_t index, uint32_t begin, uint32_t len) : mIndex(index), mBegin(begin), mLen(len) {}
 
     std::vector<char> Cancel::getPrefix() const
     {
@@ -190,8 +262,15 @@ namespace fractals::network::p2p
 
     uint32_t Cancel::getCancelLength() const
     {
-        return MSG_LENgth;
+        return mLen;
     }
+
+    uint32_t Cancel::getLen() const
+    {
+        return MSG_LEN;
+    }
+
+    Port::Port(uint16_t port) : mPort(port) {}
 
     std::vector<char> Port::getPrefix() const
     {
@@ -206,14 +285,10 @@ namespace fractals::network::p2p
         return mPort;
     }
 
-    SerializeError::SerializeError(uint32_t msgType, std::vector<char> && buffer)
-        : msgType(msgType), mBuffer(std::move(buffer)) {}
-
-    SerializeError::SerializeError(uint32_t msgType, std::vector<char> && buffer, std::string&& reason)
-        : msgType(msgType), mBuffer(std::move(buffer)), mError(std::move(reason)) {};
-
-    SerializeError::SerializeError(std::vector<char> && buffer, std::string&& reason)
-        : mBuffer(std::move(buffer)), mError(std::move(reason)) {};
+    uint32_t Port::getLen() const
+    {
+        return MSG_LEN;
+    }
 
     std::vector<char> SerializeError::getPrefix() const
     {
@@ -223,6 +298,11 @@ namespace fractals::network::p2p
     const common::string_view SerializeError::getBuffer() const
     {
         return common::string_view(mBuffer.begin(), mBuffer.end());
+    }
+
+    uint32_t SerializeError::getLen() const
+    {
+        return mError.size();
     }
 
 }
