@@ -181,6 +181,11 @@ namespace fractals::network::p2p
         return common::string_view(mBitfield.begin(), mBitfield.end());
     }
 
+    bool operator==(const Bitfield& bf1, const Bitfield& bf2)
+    {
+        return bf1.getBitfield() == bf2.getBitfield();
+    }
+
     Request::Request(uint32_t reqIndex, uint32_t reqBegin, uint32_t reqLen)
         : mReqIndex(reqIndex), mReqBegin(reqBegin), mReqLength(reqLen) {}
 
@@ -202,7 +207,7 @@ namespace fractals::network::p2p
         return mReqBegin;
     }
 
-    uint32_t Request::geReqtLength() const
+    uint32_t Request::getReqLength() const
     {
         return mReqLength;
     }
@@ -210,6 +215,13 @@ namespace fractals::network::p2p
     uint32_t Request::getLen() const
     {
         return MSG_LEN;
+    }
+
+    bool operator==(const Request& rq1, const Request& rq2)
+    {
+        return rq1.getReqIndex() == rq2.getReqIndex()
+            && rq1.getReqBegin() == rq2.getReqBegin()
+            && rq1.getReqLength() == rq2.getReqLength();
     }
 
     std::vector<char> Piece::getPrefix() const
@@ -238,6 +250,13 @@ namespace fractals::network::p2p
     const common::string_view Piece::getBlock() const
     {
         return common::string_view(mBlock.begin(), mBlock.end());
+    }
+
+    bool operator==(const Piece& p1, const Piece& p2)
+    {
+        return p1.getPieceIndex() == p2.getPieceIndex()
+            && p1.getPieceBegin() == p2.getPieceBegin()
+            && p1.getBlock() == p2.getBlock();
     }
 
     Cancel::Cancel(uint32_t index, uint32_t begin, uint32_t len) : mIndex(index), mBegin(begin), mLen(len) {}
@@ -270,6 +289,13 @@ namespace fractals::network::p2p
         return MSG_LEN;
     }
 
+    bool operator==(const Cancel& c1, const Cancel& c2)
+    {
+        return c1.getCancelIndex() == c2.getCancelIndex()
+            && c1.getCancelBegin() == c2.getCancelBegin()
+            && c1.getCancelLength() == c2.getCancelLength();
+    }
+
     Port::Port(uint16_t port) : mPort(port) {}
 
     std::vector<char> Port::getPrefix() const
@@ -280,7 +306,7 @@ namespace fractals::network::p2p
         return result;
     }
 
-    uint32_t Port::getPort() const
+    uint16_t Port::getPort() const
     {
         return mPort;
     }
@@ -288,6 +314,11 @@ namespace fractals::network::p2p
     uint32_t Port::getLen() const
     {
         return MSG_LEN;
+    }
+
+    bool operator==(const Port& p1, const Port& p2)
+    {
+        return p1.getPort() == p2.getPort();
     }
 
     std::vector<char> SerializeError::getPrefix() const

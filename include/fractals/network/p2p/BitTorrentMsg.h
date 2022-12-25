@@ -78,7 +78,7 @@ struct SerializeError;
     {
         public:
             static constexpr int8_t MSG_TYPE = -1;
-            static constexpr uint32_t MSG_LEN = 1;
+            static constexpr uint32_t MSG_LEN = 0;
         public:
             uint32_t getLen() const;
             std::vector<char> getPrefix() const;
@@ -167,13 +167,15 @@ struct SerializeError;
 
         public:
             Bitfield() = default;
-            template <typename Container>
-            Bitfield(const Container& c) : mBitfield(c.begin(), c.end()) {}
+            explicit Bitfield(const std::vector<char>& c) : mBitfield(c.begin(), c.end()) {}
+            explicit Bitfield(const common::string_view& c) : mBitfield(c.begin(), c.end()) {}
             
 
             uint32_t getLen() const;
             std::vector<char> getPrefix() const;
             const common::string_view getBitfield() const;
+
+            friend bool operator==(const Bitfield&, const Bitfield&);
 
         private:
             std::vector<char> mBitfield;
@@ -193,7 +195,9 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
             uint32_t getReqIndex() const;
             uint32_t getReqBegin() const;
-            uint32_t geReqtLength() const;
+            uint32_t getReqLength() const;
+
+            friend bool operator==(const Request&, const Request&);
 
         private:
             uint32_t mReqIndex;
@@ -219,6 +223,8 @@ struct SerializeError;
             uint32_t getPieceBegin() const;
             const common::string_view getBlock() const;
 
+            friend bool operator==(const Piece&, const Piece&);
+
         private:
             uint32_t mIndex;
             uint32_t mBegin;
@@ -241,6 +247,8 @@ struct SerializeError;
             uint32_t getCancelBegin() const;
             uint32_t getCancelLength() const;
 
+            friend bool operator==(const Cancel&, const Cancel&);
+
         private:
             uint32_t mIndex;
             uint32_t mBegin;
@@ -259,7 +267,9 @@ struct SerializeError;
 
             uint32_t getLen() const;
             std::vector<char> getPrefix() const;
-            uint32_t getPort() const;
+            uint16_t getPort() const;
+
+            friend bool operator==(const Port&, const Port&);
         
         private:
             uint16_t mPort;

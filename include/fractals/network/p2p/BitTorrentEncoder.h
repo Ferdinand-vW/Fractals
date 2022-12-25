@@ -27,14 +27,14 @@ namespace fractals::network::p2p
                     buf.reserve(t.getLen());
                     common::append(buf, common::int_to_bytes(t.getLen()));
                     common::append(buf, common::int_to_bytes(A::MSG_TYPE));
-                    common::append(buf, encodePayload(t));
+                    encodePayload(t, buf);
                     return buf;
                 }
                 else
                 {
                     std::vector<char> buf;
                     buf.reserve(t.getLen());
-                    common::append(buf, encodePayload(t));
+                    encodePayload(t, buf);
                     return buf;
                 }
             }
@@ -47,17 +47,25 @@ namespace fractals::network::p2p
             }
 
             template <typename Container>
-            std::optional<HandShake> decodeHandShake(const Container& buf, char pstrLen)
+            std::optional<HandShake> decodeHandShake(const Container& buf)
             {
+                if (buf.size() <= 0)
+                {
+                    return std::nullopt;
+                }
+
                 common::string_view view(buf.begin(), buf.end());
+
+                uint32_t pstrLen = view.front();
+                view.remove_prefix(1);
 
                 return decodePayloadImpl<HandShake>(view, pstrLen);
             }
 
             template <typename A, typename Container>
-            std::optional<A> decodeOpt(const Container& buf, uint32_t len)
+            std::optional<A> decodeOpt(const Container& buf)
             {
-                const auto btm = decode<Container>(buf, len);
+                const auto btm = decode<Container>(buf);
 
                 if (std::holds_alternative<A>(btm))
                 {
@@ -68,16 +76,25 @@ namespace fractals::network::p2p
             }
 
             template <typename Container>
-            BitTorrentMessage decode(const Container& buf, uint32_t len)
+            BitTorrentMessage decode(const Container& buf)
             {
                 common::string_view view(buf.begin(), buf.end());
 
-                if (buf.size() <= 0)
+                // Takes at most 4 bytes
+                uint32_t len = common::bytes_to_int<uint32_t>(view);
+
+                if (len != view.size())
+                {
+                    return SerializeError{buf, "Parsed length does not match buffer size"};
+                }
+
+                if (len == 0 && view.size() == 0)
                 {
                     return decodePayload<KeepAlive>(view, len);
                 }
 
-                uint32_t msgType = buf[0];
+                uint32_t msgType = view.front();
+                view.remove_prefix(1);
 
                 switch(msgType)
                 {
@@ -111,34 +128,34 @@ namespace fractals::network::p2p
             }
 
             template <typename T>
-            std::vector<char> encodePayload(const T& t);
+            void encodePayload(const T& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const HandShake& t);
+            void encodePayload(const HandShake& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const KeepAlive& t);
+            void encodePayload(const KeepAlive& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Choke& t);
+            void encodePayload(const Choke& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const UnChoke& t);
+            void encodePayload(const UnChoke& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Interested& t);
+            void encodePayload(const Interested& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const NotInterested& t);
+            void encodePayload(const NotInterested& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Have& t);
+            void encodePayload(const Have& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Bitfield& t);
+            void encodePayload(const Bitfield& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Request& t);
+            void encodePayload(const Request& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Piece& t);
+            void encodePayload(const Piece& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Cancel& t);
+            void encodePayload(const Cancel& t, std::vector<char>& buf);
             template <>
-            std::vector<char> encodePayload(const Port& t);
+            void encodePayload(const Port& t, std::vector<char>& buf);
 
             template <typename T>
-            BitTorrentMessage decodePayload(common::string_view& buf, uint32_t len = -1)
+            BitTorrentMessage decodePayload(common::string_view& buf, uint32_t len)
             {
                 return handleFailure(decodePayloadImpl<T>(buf, len), buf);
             }

@@ -99,7 +99,7 @@ namespace fractals::network::p2p
             {
                 if (m.isComplete())
                 {
-                    mMsgQueue.push(mEncoder.decode(m.getBuffer(), m.lengthBufferSize()));
+                    mMsgQueue.push(mEncoder.decode(m.getBuffer()));
                     mReadBuffers[p] = ReadMsgState();
                 }
             }

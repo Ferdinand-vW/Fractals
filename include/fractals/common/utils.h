@@ -109,15 +109,54 @@ Convert hex format to bytes
 */
 std::vector<char> hex_to_bytes(const std::string& s);
 
-/**
-Convert int to bytes
-*/
-std::vector<char> int_to_bytes(uint32_t n);
+//int is 4 bytes
+//if int n consist of bytes W X Y Z then converting to char leaves us with Z
+// v.push_back(n >> 24); //Move W to 0 0 0 W
+// v.push_back(n >> 16); //Move X to 0 0 W X
+// v.push_back(n >> 8); //Move Y to 0 W X Y
+// v.push_back(n); //Z is already in right location
+template <class T>
+std::vector<char> int_to_bytes(T t)  {
+    auto size = sizeof(T);
+    std::vector<char> v;
+    v.reserve(size);
+
+    while(size > 0)
+    {
+        --size;
+        v.emplace_back(t >> 8 * size);
+    }
+
+    return v;
+}
 
 /**
 Parse bytes as int
 */
-int bytes_to_int(common::string_view &d);
+template <typename T>
+T bytes_to_int(common::string_view &d)
+{
+    if (d.size() < 1) { return {}; }
+
+    T n = 0;
+    int size = d.size() > sizeof(T) ? sizeof(T) : d.size(); //We may have fewer than 4 bytes
+    for(int i = 0; i < size; i++) {
+        //Example:
+        //Assume size = 3 (X Y Z) and start with 0 0 0 0, then
+        //byte X must be moved 16bits left: 3*8 - (0+1)*8 = 16, 0 X 0 0
+        //byte Y must be moved 8bits left: 3*8 - (1+1)*8 = 8, 0 X Y 0
+        //byte Z must be moved 0bits left: 3*8 - (2+1)*8 = 0, 0 X Y Z
+        // note that the | operator does or operations between bytes:
+        // 0 X 0 0
+        // 0 0 Y 0
+        // ------- or (|)
+        // 0 X Y 0
+        n |= (unsigned char)d.front() << (size*8 - (i+1) * 8);
+        d.remove_prefix(1);
+    }
+
+    return n;
+}
 int bytes_to_int(std::deque<char> &d);
 
 /**
