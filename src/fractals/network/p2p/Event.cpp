@@ -15,7 +15,7 @@ namespace fractals::network::p2p
 
     std::ostream& operator<<(std::ostream& os, const ReceiveEvent &e)
     {
-        return os << "ReceiveEvent: " << common::intercalate(" ", e.mData);
+        return os << "ReceiveEvent: " << e.mMessage;
     };
     
     std::ostream& operator<<(std::ostream& os, const ConnectionCloseEvent &e)

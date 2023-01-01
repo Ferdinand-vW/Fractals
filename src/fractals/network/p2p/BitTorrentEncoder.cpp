@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 
 namespace fractals::network::p2p
 {
@@ -97,6 +98,12 @@ void BitTorrentEncoder::encodePayload<Port>(const Port& t, std::vector<char>& bu
     common::append(buf, common::int_to_bytes<uint16_t>(t.getPort()));
 }
 
+
+template <>
+void BitTorrentEncoder::encodePayload<SerializeError>(const SerializeError& t, std::vector<char>& buf)
+{
+    throw std::invalid_argument("Cannot encode serialize error");
+}
 
 template<>
 std::optional<HandShake> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t pstrLen)

@@ -51,6 +51,27 @@ namespace fractals::network::p2p
             && h1.getPeerId() == h2.getPeerId();
     }
 
+    std::ostream& operator<<(std::ostream& os, const HandShake& msg)
+    {
+        os << "HandShake{";
+        os << "PstrLen: " << msg.getPstrLn() << ", ";
+        os << "Pstr: " << msg.getPstr() << ", ";
+
+        const auto reservedBytes = 
+            common::bytes_to_hex(std::vector<char>(msg.getReserved().begin(), msg.getReserved().end()));
+        os << "Reserved: " << reservedBytes << ", ";
+        
+        const auto ihBytes = 
+            common::bytes_to_hex(std::vector<char>(msg.getInfoHash().begin(), msg.getInfoHash().end()));
+        os << "InfoHash: " << ihBytes << ", ";
+
+        const auto pBytes = 
+            common::bytes_to_hex(std::vector<char>(msg.getPeerId().begin(), msg.getPeerId().end()));
+        os << "PeerId: " << pBytes << "}";
+
+        return os;
+    }
+
     std::vector<char> KeepAlive::getPrefix() const
     {
         return common::int_to_bytes(MSG_LEN);
@@ -59,6 +80,11 @@ namespace fractals::network::p2p
     bool operator==(const KeepAlive&, const KeepAlive&)
     {
         return true;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const KeepAlive& msg)
+    {
+        return os << "KeepAlive{}";
     }
 
     uint32_t KeepAlive::getLen() const
@@ -79,6 +105,11 @@ namespace fractals::network::p2p
         return true;
     }
 
+    std::ostream& operator<<(std::ostream& os, const Choke& msg)
+    {
+        return os << "Choke{}";
+    }
+
     uint32_t Choke::getLen() const
     {
         return MSG_LEN;
@@ -95,6 +126,11 @@ namespace fractals::network::p2p
     bool operator==(const UnChoke&, const UnChoke&)
     {
         return true;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const UnChoke& msg)
+    {
+        return os << "UnChoke{}";
     }
 
     uint32_t UnChoke::getLen() const
@@ -115,6 +151,11 @@ namespace fractals::network::p2p
         return true;
     }
 
+    std::ostream& operator<<(std::ostream& os, const Interested& msg)
+    {
+        return os << "Interested{}";
+    }
+
     uint32_t Interested::getLen() const
     {
         return MSG_LEN;
@@ -131,6 +172,11 @@ namespace fractals::network::p2p
     bool operator==(const NotInterested&, const NotInterested&)
     {
         return true;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const NotInterested& msg)
+    {
+        return os << "NotInterested{}";
     }
 
     uint32_t NotInterested::getLen() const
@@ -151,6 +197,11 @@ namespace fractals::network::p2p
     bool operator==(const Have& h1, const Have& h2)
     {
         return h1.getPieceIndex() == h2.getPieceIndex();
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Have& msg)
+    {
+        return os << "Have{PieceIndex: " << msg.getPieceIndex() << "}";
     }
 
     uint32_t Have::getPieceIndex() const
@@ -184,6 +235,11 @@ namespace fractals::network::p2p
     bool operator==(const Bitfield& bf1, const Bitfield& bf2)
     {
         return bf1.getBitfield() == bf2.getBitfield();
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Bitfield& msg)
+    {
+        return os << "Bitfield{Bitfield: " << msg.getBitfield() << "}";
     }
 
     Request::Request(uint32_t reqIndex, uint32_t reqBegin, uint32_t reqLen)
@@ -224,6 +280,15 @@ namespace fractals::network::p2p
             && rq1.getReqLength() == rq2.getReqLength();
     }
 
+    std::ostream& operator<<(std::ostream& os, const Request& msg)
+    {
+        os << "Request{Index: " << msg.getReqIndex() << ", ";
+        os << "Begin: " << msg.getReqBegin() << ", ";
+        os << "Length: " << msg.getReqLength() << "}";
+
+        return os;
+    }
+
     std::vector<char> Piece::getPrefix() const
     {
         auto result = common::int_to_bytes(getLen());
@@ -257,6 +322,15 @@ namespace fractals::network::p2p
         return p1.getPieceIndex() == p2.getPieceIndex()
             && p1.getPieceBegin() == p2.getPieceBegin()
             && p1.getBlock() == p2.getBlock();
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Piece& msg)
+    {
+        os << "Piece{Index: " << msg.getPieceIndex() << ", ";
+        os << "Begin: " << msg.getPieceBegin() << ", ";
+        os << "Block: " << msg.getBlock() << "}";
+
+        return os;
     }
 
     Cancel::Cancel(uint32_t index, uint32_t begin, uint32_t len) : mIndex(index), mBegin(begin), mLen(len) {}
@@ -296,6 +370,15 @@ namespace fractals::network::p2p
             && c1.getCancelLength() == c2.getCancelLength();
     }
 
+    std::ostream& operator<<(std::ostream& os, const Cancel& msg)
+    {
+        os << "Cancel{Index: " << msg.getCancelIndex() << ", ";
+        os << "Begin: " << msg.getCancelBegin() << ", ";
+        os << "Length: " << msg.getCancelLength() << "}";
+
+        return os;
+    }
+
     Port::Port(uint16_t port) : mPort(port) {}
 
     std::vector<char> Port::getPrefix() const
@@ -321,6 +404,11 @@ namespace fractals::network::p2p
         return p1.getPort() == p2.getPort();
     }
 
+    std::ostream& operator<<(std::ostream& os, const Port& msg)
+    {
+        return os << "Port{Port: " << msg.getPort() << "}";
+    }
+
     std::vector<char> SerializeError::getPrefix() const
     {
         return {};
@@ -334,6 +422,14 @@ namespace fractals::network::p2p
     uint32_t SerializeError::getLen() const
     {
         return mError.size();
+    }
+
+    std::ostream& operator<<(std::ostream& os, const SerializeError& msg)
+    {
+        os << "SerializeError{MsgType: " << msg.msgType << ", ";
+        os << "Error: " << msg.mError << ", ";
+        os << "Buffer: " << common::bytes_to_hex(msg.mBuffer) << "}";
+        return os;
     }
 
 }

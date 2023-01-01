@@ -66,6 +66,7 @@ struct SerializeError;
             const std::array<char, 20>& getPeerId() const;
 
             friend bool operator==(const HandShake&, const HandShake&);
+            friend std::ostream& operator<<(std::ostream& os, const HandShake& msg);
 
         private:
             std::string mPstr;
@@ -84,6 +85,7 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
 
             friend bool operator==(const KeepAlive&, const KeepAlive&);
+            friend std::ostream& operator<<(std::ostream& os, const KeepAlive& msg);
     };
 
     class Choke 
@@ -94,6 +96,7 @@ struct SerializeError;
             static constexpr int8_t MSG_TYPE = 0;
 
             friend bool operator==(const Choke&, const Choke&);
+            friend std::ostream& operator<<(std::ostream& os, const Choke& msg);
 
         public:
             std::vector<char> getPrefix() const;
@@ -110,6 +113,7 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
 
             friend bool operator==(const UnChoke&, const UnChoke&);
+            friend std::ostream& operator<<(std::ostream& os, const UnChoke& msg);
     };
 
     class Interested 
@@ -123,6 +127,7 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
 
             friend bool operator==(const Interested&, const Interested&);
+            friend std::ostream& operator<<(std::ostream& os, const Interested& msg);
     };
 
     class NotInterested 
@@ -136,6 +141,7 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
 
             friend bool operator==(const NotInterested&, const NotInterested&);
+            friend std::ostream& operator<<(std::ostream& os, const NotInterested& msg);
     };
 
     class Have 
@@ -153,6 +159,7 @@ struct SerializeError;
             uint32_t getPieceIndex() const;
 
             friend bool operator==(const Have&, const Have&);
+            friend std::ostream& operator<<(std::ostream& os, const Have& msg);
         
         private:
             uint32_t mPieceIndex;
@@ -176,6 +183,7 @@ struct SerializeError;
             const common::string_view getBitfield() const;
 
             friend bool operator==(const Bitfield&, const Bitfield&);
+            friend std::ostream& operator<<(std::ostream& os, const Bitfield& msg);
 
         private:
             std::vector<char> mBitfield;
@@ -198,6 +206,7 @@ struct SerializeError;
             uint32_t getReqLength() const;
 
             friend bool operator==(const Request&, const Request&);
+            friend std::ostream& operator<<(std::ostream& os, const Request& msg);
 
         private:
             uint32_t mReqIndex;
@@ -224,6 +233,7 @@ struct SerializeError;
             const common::string_view getBlock() const;
 
             friend bool operator==(const Piece&, const Piece&);
+            friend std::ostream& operator<<(std::ostream& os, const Piece& msg);
 
         private:
             uint32_t mIndex;
@@ -248,6 +258,7 @@ struct SerializeError;
             uint32_t getCancelLength() const;
 
             friend bool operator==(const Cancel&, const Cancel&);
+            friend std::ostream& operator<<(std::ostream& os, const Cancel& msg);
 
         private:
             uint32_t mIndex;
@@ -270,6 +281,7 @@ struct SerializeError;
             uint16_t getPort() const;
 
             friend bool operator==(const Port&, const Port&);
+            friend std::ostream& operator<<(std::ostream& os, const Port& msg);
         
         private:
             uint16_t mPort;
@@ -295,10 +307,14 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
             const common::string_view getBuffer() const;
             uint32_t getLen() const;
+
+            friend std::ostream& operator<<(std::ostream& os, const SerializeError& msg);
         
         private:
             int32_t msgType{-1};
             std::string mError{""};
             std::vector<char> mBuffer;
     };
+
+    std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg);
 }

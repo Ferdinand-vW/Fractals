@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/BitTorrentMsg.h"
 
 #include <deque>
 #include <epoll_wrapper/Error.h>
@@ -27,8 +28,8 @@ namespace fractals::network::p2p
 
     struct ReceiveEvent
     {
-        http::Peer mPeerId;
-        std::deque<char> mData;
+        http::PeerId mPeerId;
+        BitTorrentMessage mMessage;
     };
 
     std::ostream& operator<<(std::ostream& os, const ReceiveEvent &e);

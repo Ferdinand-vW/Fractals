@@ -16,6 +16,7 @@
 # Library dependencies
 libs/
 libs/FTXUI/
+.vscode/
 
 # example torrent files
 examples/

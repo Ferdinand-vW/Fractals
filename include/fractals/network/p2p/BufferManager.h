@@ -16,21 +16,16 @@ namespace fractals::network::p2p
     class ReadMsgState
     {
         public:
-            ReadMsgState();
-
             bool isComplete() const;
             bool isInitialized() const;
             void initialize(uint32_t length);
-            void append(const std::vector<char>& data, uint8_t skip = 0);
-            void appendLength(const std::vector<char>& data, uint32_t take);
-            uint32_t lengthBufferSize() const;
+            void append(const std::vector<char>& data);
             void reset();
 
-            const common::string_view getBuffer() const;
+            common::string_view getBuffer() const;
 
         private:
             int32_t mLength{-1};
-            std::vector<char> mLengthBuffer;
             std::vector<char> mBuffer;
     };
 
@@ -40,12 +35,12 @@ namespace fractals::network::p2p
             WriteMsgState(std::vector<char>&& data);
 
             bool isComplete() const;
-            const common::string_view getBuffer() const;
+            common::string_view& getBuffer();
             // Shift should be equal to amount of data written
-            void moveWritePointer(uint32_t shift);
+            void flush(uint32_t shift);
 
         private:
-            uint32_t mPos{0};
+            common::string_view mBufferView;
             std::vector<char> mBuffer;
     };
 
@@ -64,8 +59,8 @@ namespace fractals::network::p2p
                 {
                     ReadMsgState m;
                     uint8_t len = data[0];
-                    m.initialize(49 + len); // Size of HandShake message
-                    m.append(data, 1);
+                    m.initialize(49 + len - 1); // Size of HandShake message without len
+                    m.append(data);
                     mReadBuffers[p] = m;
 
                     maybePublish(p, m);
@@ -80,15 +75,14 @@ namespace fractals::network::p2p
                 else
                 {
                     ReadMsgState &m = it->second;
-                    uint32_t curLenSize = m.lengthBufferSize();
-                    if (curLenSize + data.size() < 4) // Not enough bytes for length
+
+                    m.append(data);
+
+                    if (m.getBuffer().size() >= 4)
                     {
-                        m.appendLength(data, data.size());
-                    }
-                    else
-                    {
-                        m.appendLength(data, 4 - curLenSize);
-                        m.append(data, 4 - curLenSize);
+                        auto bufView = m.getBuffer();
+                        const auto len = common::bytes_to_int<uint32_t>(bufView);
+                        m.initialize(len);
                     }
 
                     maybePublish(p, m);
@@ -99,24 +93,54 @@ namespace fractals::network::p2p
             {
                 if (m.isComplete())
                 {
-                    mMsgQueue.push(mEncoder.decode(m.getBuffer()));
+                    mMsgQueue.push(ReceiveEvent{p, mEncoder.decode(m.getBuffer())});
                     mReadBuffers[p] = ReadMsgState();
                 }
             }
 
             void addToWriteBuffer(const http::PeerId& p, const BitTorrentMessage& m)
             {
-                mWriteBuffers[p] = WriteMsgState(mEncoder.encode(m));
+                mWriteBuffers.emplace(p, WriteMsgState(mEncoder.encode(m)));
             }
 
-            common::string_view getWriteBufferFor(const http::PeerId& p)
+            void flush(const http::PeerId& p, uint32_t bytes)
             {
-                return mWriteBuffers.at(p).getBuffer();
+                auto it = mWriteBuffers.find(p);
+
+                if (it != mWriteBuffers.end())
+                {
+                    it->second.flush(bytes);
+                }
             }
+
+            const ReadMsgState* getReadBuffer(const http::PeerId& p) const
+            {
+                auto it = mReadBuffers.find(p);
+
+                if (it != mReadBuffers.end())
+                {
+                    return &(it->second);
+                }
+
+                return nullptr;
+            }
+
+            WriteMsgState* getWriteBuffer(const http::PeerId& p)
+            {
+                auto it = mWriteBuffers.find(p);
+
+                if (it != mWriteBuffers.end())
+                {
+                    return &(it->second);
+                }
+
+                return nullptr;
+            }
+
 
             void notifyWrittenBytes(const http::PeerId &p, uint32_t numBytes)
             {
-                mWriteBuffers[p].moveWritePointer(numBytes);
+                mWriteBuffers[p].flush(numBytes);
             }
 
         private:
@@ -127,5 +151,5 @@ namespace fractals::network::p2p
             std::unordered_map<http::PeerId, WriteMsgState> mWriteBuffers;
     };
 
-    using ReadBufferManager = BufferManagerImpl<WorkQueue>;
+    using BufferManager = BufferManagerImpl<WorkQueue>;
 }

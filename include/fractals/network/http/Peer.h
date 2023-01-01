@@ -31,3 +31,21 @@ namespace fractals::network::http {
     };
 
 }
+
+namespace std
+{
+    template <>
+    struct std::hash<fractals::network::http::PeerId>
+    {
+        std::size_t operator()(const fractals::network::http::PeerId& p) const
+        {
+
+        // Compute individual hash values for first,
+        // second and third and combine them using XOR
+        // and bit shifting:
+
+        return ((std::hash<std::string>()(p.m_ip)
+                ^ (std::hash<uint>()(p.m_port) << 1)) >> 1);
+        }
+    };
+}
