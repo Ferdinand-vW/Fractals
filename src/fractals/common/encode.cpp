@@ -32,6 +32,11 @@ namespace fractals::common {
 
     }
 
+    std::string ascii_decode(const std::vector<char> &bytes)
+    {
+        return std::string(bytes.begin(), bytes.end());
+    }
+
     std::string ascii_decode(const std::deque<char> &bytes)
     {
         return std::string(bytes.begin(), bytes.end());

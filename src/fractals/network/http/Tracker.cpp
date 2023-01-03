@@ -56,7 +56,7 @@ namespace fractals::network::http {
         CURLcode res;
         curl_global_init(0);
         CURL *curl = curl_easy_init();
-        std::string readBuffer;
+        std::string readBufferedQueueManager;
         std::string url = tr.toHttpGetUrl();
 
         if(url.substr(0,3) == "udp") {
@@ -67,7 +67,7 @@ namespace fractals::network::http {
             curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeTrackerResponseData);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBufferedQueueManager);
             // curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
             curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
         
@@ -83,7 +83,7 @@ namespace fractals::network::http {
 
         curl_easy_cleanup(curl);
 
-        std::stringstream ss(readBuffer);
+        std::stringstream ss(readBufferedQueueManager);
         auto mresp = bencode::decode<bencode::bdict>(ss);
 
         if (!mresp.has_value()) { return neither::left(mresp.error().message()); }

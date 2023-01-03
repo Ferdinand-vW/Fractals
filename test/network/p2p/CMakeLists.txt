@@ -20,11 +20,11 @@ add_executable(
 target_link_libraries(testWorkQueue gtest_main gmock_main Fractals_lib)
 
 add_executable(
-    testBufferManager
-    testBufferManager.cpp
+    testBufferedQueueManager
+    testBufferedQueueManager.cpp
 )
 
-target_link_libraries(testBufferManager gtest_main gmock_main Fractals_lib)
+target_link_libraries(testBufferedQueueManager gtest_main gmock_main Fractals_lib)
 
 
 add_executable(

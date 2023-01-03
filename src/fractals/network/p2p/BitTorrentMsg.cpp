@@ -414,9 +414,9 @@ namespace fractals::network::p2p
         return {};
     }
 
-    const common::string_view SerializeError::getBuffer() const
+    const common::string_view SerializeError::getBufferedQueueManager() const
     {
-        return common::string_view(mBuffer.begin(), mBuffer.end());
+        return common::string_view(mBufferedQueueManager.begin(), mBufferedQueueManager.end());
     }
 
     uint32_t SerializeError::getLen() const
@@ -428,7 +428,7 @@ namespace fractals::network::p2p
     {
         os << "SerializeError{MsgType: " << msg.msgType << ", ";
         os << "Error: " << msg.mError << ", ";
-        os << "Buffer: " << common::bytes_to_hex(msg.mBuffer) << "}";
+        os << "BufferedQueueManager: " << common::bytes_to_hex(msg.mBufferedQueueManager) << "}";
         return os;
     }
 

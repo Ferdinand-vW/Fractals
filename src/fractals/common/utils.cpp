@@ -150,10 +150,6 @@ namespace fractals::common {
         return n;
     }
 
-    int bytes_to_int(common::string_view &d) {
-        
-    }
-
     std::vector<char> bitfield_to_bytes(const std::vector<bool> &bits) {
         std::vector<char> v;
         char c = 0;

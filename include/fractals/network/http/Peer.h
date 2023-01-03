@@ -10,10 +10,10 @@ namespace fractals::network::http {
     */
     class PeerId {
         public:
-            std::string m_ip;
-            uint m_port;
+            std::string m_ip{""};
+            uint16_t m_port{0};
 
-            PeerId(std::string ip,uint port);
+            PeerId(std::string ip,uint16_t port);
 
             //Required for ordered data structures
             bool operator<(const PeerId &p2) const;

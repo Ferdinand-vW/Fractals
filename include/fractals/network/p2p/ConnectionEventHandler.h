@@ -2,6 +2,7 @@
 
 #include "PeerFd.h"
 #include "Event.h"
+#include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/WorkQueue.h"
 
 #include <epoll_wrapper/Epoll.h>
@@ -12,11 +13,11 @@ namespace fractals::network::p2p
 {
     enum class ActionType {READ , WRITE};
 
-    template <ActionType Action, typename Peer, typename Epoll, typename ReceiveQueue>
+    template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
     class ConnectionEventHandler
     {
         public:
-            ConnectionEventHandler(Epoll &epoll, ReceiveQueue &rq);
+            ConnectionEventHandler(Epoll &epoll, BufferedQueueManagerT &rq);
             ConnectionEventHandler(const ConnectionEventHandler&) = delete;
             ConnectionEventHandler(ConnectionEventHandler&&) = delete;
 
@@ -30,14 +31,15 @@ namespace fractals::network::p2p
             void stop();
 
         private:
+            void readSocket(const Peer &peer);
 
             std::optional<uint32_t> mSpecialFd;
             bool mIsActive{false};
 
             Epoll &mEpoll;
-            ReceiveQueue &mQueue;
+            BufferedQueueManagerT &mBufferedQueueManager;
     };
 
-    using ConnectionReadHandler = ConnectionEventHandler<ActionType::READ, PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueueImpl<256, PeerEvent>>;
-    using ConnectionWriteHandler = ConnectionEventHandler<ActionType::WRITE, PeerFd, epoll_wrapper::Epoll<PeerFd>, WorkQueueImpl<256, PeerEvent>>;
+    using ConnectionReadHandler = ConnectionEventHandler<ActionType::READ, PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager>;
+    using ConnectionWriteHandler = ConnectionEventHandler<ActionType::WRITE, PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager>;
 }

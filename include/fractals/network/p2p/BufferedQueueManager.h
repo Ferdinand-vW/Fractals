@@ -3,6 +3,7 @@
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentEncoder.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
+#include "fractals/network/p2p/Event.h"
 #include "fractals/network/p2p/WorkQueue.h"
 #include "fractals/common/utils.h"
 
@@ -19,14 +20,20 @@ namespace fractals::network::p2p
             bool isComplete() const;
             bool isInitialized() const;
             void initialize(uint32_t length);
-            void append(const std::vector<char>& data);
+            
+            template <typename Container>
+            void append(Container&& data)
+            {
+                mBufferedQueueManager.insert(mBufferedQueueManager.end(), data.begin(), data.end());
+            }
+
             void reset();
 
-            common::string_view getBuffer() const;
+            common::string_view getBufferedQueueManager() const;
 
         private:
             int32_t mLength{-1};
-            std::vector<char> mBuffer;
+            std::vector<char> mBufferedQueueManager;
     };
 
     class WriteMsgState
@@ -35,22 +42,23 @@ namespace fractals::network::p2p
             WriteMsgState(std::vector<char>&& data);
 
             bool isComplete() const;
-            common::string_view& getBuffer();
+            common::string_view& getBufferedQueueManager();
             // Shift should be equal to amount of data written
             void flush(uint32_t shift);
 
         private:
-            common::string_view mBufferView;
-            std::vector<char> mBuffer;
+            common::string_view mBufferedQueueManagerView;
+            std::vector<char> mBufferedQueueManager;
     };
 
     template <typename MsgQueue>
-    class BufferManagerImpl
+    class BufferedQueueManagerImpl
     {
         public:
-            BufferManagerImpl(MsgQueue &mq) : mMsgQueue(mq) {}
+            BufferedQueueManagerImpl(MsgQueue &mq) : mMsgQueue(mq) {}
 
-            void addToReadBuffer(const http::PeerId& p, std::vector<char>&& data)
+            template <typename Container>
+            void addToReadBuffers(const http::PeerId& p, Container&& data)
             {
                 const auto it = mReadBuffers.find(p);
                 
@@ -78,9 +86,9 @@ namespace fractals::network::p2p
 
                     m.append(data);
 
-                    if (m.getBuffer().size() >= 4)
+                    if (m.getBufferedQueueManager().size() >= 4)
                     {
-                        auto bufView = m.getBuffer();
+                        auto bufView = m.getBufferedQueueManager();
                         const auto len = common::bytes_to_int<uint32_t>(bufView);
                         m.initialize(len);
                     }
@@ -93,12 +101,17 @@ namespace fractals::network::p2p
             {
                 if (m.isComplete())
                 {
-                    mMsgQueue.push(ReceiveEvent{p, mEncoder.decode(m.getBuffer())});
+                    mMsgQueue.push(ReceiveEvent{p, mEncoder.decode(m.getBufferedQueueManager())});
                     mReadBuffers[p] = ReadMsgState();
                 }
             }
 
-            void addToWriteBuffer(const http::PeerId& p, const BitTorrentMessage& m)
+            void publishToQueue(const PeerEvent& pe)
+            {
+                mMsgQueue.push(pe);
+            }
+
+            void addToWriteBufferedQueueManager(const http::PeerId& p, const BitTorrentMessage& m)
             {
                 mWriteBuffers.emplace(p, WriteMsgState(mEncoder.encode(m)));
             }
@@ -151,5 +164,5 @@ namespace fractals::network::p2p
             std::unordered_map<http::PeerId, WriteMsgState> mWriteBuffers;
     };
 
-    using BufferManager = BufferManagerImpl<WorkQueue>;
+    using BufferedQueueManager = BufferedQueueManagerImpl<WorkQueue>;
 }

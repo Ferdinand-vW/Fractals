@@ -1,6 +1,7 @@
 #include "fractals/common/encode.h"
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Request.h"
+#include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/Event.h"
 #include "fractals/network/p2p/ConnectionEventHandler.h"
 #include "fractals/network/p2p/ConnectionEventHandler.ipp"
@@ -35,6 +36,7 @@
 #include <vector>
 
 using namespace fractals::network::p2p;
+using namespace fractals::network::http;
 
 std::vector<char> readFromFd(int fd)
 {
@@ -53,7 +55,8 @@ std::pair<int, PeerFd> createPeer()
 
     assert(pipeRes == 0);
 
-    return {pipeFds[0], PeerFd{"host",0, Socket(pipeFds[1])}};
+    PeerId pId{"host", 0};
+    return {pipeFds[0], PeerFd{pId, Socket(pipeFds[1])}};
 }
 
 // TEST(CONNECTION_WRITE, sub_and_unsub)

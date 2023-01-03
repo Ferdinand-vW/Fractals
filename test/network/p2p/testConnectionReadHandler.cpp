@@ -1,16 +1,21 @@
 #include "fractals/common/encode.h"
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Request.h"
+#include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/Event.h"
 #include "fractals/network/p2p/ConnectionEventHandler.h"
 #include "fractals/network/p2p/ConnectionEventHandler.ipp"
 #include "fractals/network/p2p/PeerFd.h"
+#include "fractals/network/p2p/WorkQueue.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
+#include "gmock/gmock.h"
 #include <boost/mp11/algorithm.hpp>
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <epoll_wrapper/Epoll.h>
 #include <epoll_wrapper/EpollImpl.ipp>
 #include <epoll_wrapper/Event.h>
 #include <fractals/network/http/Tracker.h>
@@ -35,6 +40,39 @@
 #include <vector>
 
 using namespace fractals::network::p2p;
+using namespace fractals::network::http;
+
+
+
+
+struct MockEvent
+{
+    std::vector<char> mData;
+};
+
+using MockQueue = WorkQueueImpl<128, MockEvent>;
+
+class MockBufferedQueueManager
+{
+    public:
+        MockBufferedQueueManager(MockQueue &queue) : mQueue(queue) {}
+
+        void addToReadBuffers(const PeerId& p, fractals::common::string_view data)
+        {
+            std::cout << "PUSH " << data.size() << std::endl;
+            mQueue.push(MockEvent{std::vector<char>(data.begin(), data.end())});
+        }
+
+        void publishToQueue(PeerEvent)
+        {
+
+        }
+
+    MockQueue &mQueue;
+};
+
+using MockReadHandler = ConnectionEventHandler<ActionType::READ, PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager>;
+
 
 void writeToFd(int fd, std::string text)
 {
@@ -51,7 +89,8 @@ std::pair<int, PeerFd> createPeer()
 
     assert(pipeRes == 0);
 
-    return {pipeFds[1], PeerFd{"host",0, Socket(pipeFds[0])}};
+    PeerId pId("host",0);
+    return {pipeFds[1], PeerFd{pId, Socket(pipeFds[0])}};
 }
 
 TEST(CONNECTION_READ, sub_and_unsub)
@@ -60,8 +99,9 @@ TEST(CONNECTION_READ, sub_and_unsub)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue rq;
-    ConnectionReadHandler mr(epoll.getEpoll(), rq);
+    MockQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockReadHandler mr(epoll.getEpoll(), bqm);
 
     auto t = std::thread([&](){
         mr.run();
@@ -93,8 +133,9 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue rq;
-    ConnectionReadHandler mr(epoll.getEpoll(), rq);
+    MockQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockReadHandler mr(epoll.getEpoll(), bqm);
 
     auto [writeFd, peer] = createPeer();
 
@@ -111,15 +152,12 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
     // Give epoll thread enough time to wait
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    ASSERT_TRUE(!rq.isEmpty());
-    PeerEvent pe = rq.pop();
+    ASSERT_TRUE(!wq.isEmpty());
+    MockEvent me = wq.pop();
 
-    ASSERT_TRUE(rq.isEmpty());
+    ASSERT_TRUE(wq.isEmpty());
 
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
-
-    auto re = std::get<ReceiveEvent>(pe);
-    ASSERT_EQ(re.mData, std::deque<char>({'t','e','s','t'}));
+    EXPECT_THAT(me.mData, testing::ContainerEq<std::vector<char>>({'t','e','s','t'}));
 
     mr.stop();
 
@@ -132,8 +170,9 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue rq;
-    ConnectionReadHandler mr(epoll.getEpoll(), rq);
+    MockQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockReadHandler mr(epoll.getEpoll(), bqm);
 
     auto [writeFd, peer] = createPeer();
 
@@ -160,29 +199,21 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    ASSERT_TRUE(!rq.isEmpty());
-    ASSERT_EQ(rq.size(), 4);
-    PeerEvent pe = rq.pop();
-    PeerEvent p2 = rq.pop();
-    PeerEvent p3 = rq.pop();
-    PeerEvent p4 = rq.pop();
-    ASSERT_TRUE(rq.isEmpty());
+    ASSERT_TRUE(!wq.isEmpty());
+    ASSERT_EQ(wq.size(), 4);
+    MockEvent me = wq.pop();
+    MockEvent me2 = wq.pop();
+    MockEvent me3 = wq.pop();
+    MockEvent me4 = wq.pop();
+    ASSERT_TRUE(wq.isEmpty());
 
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
-    auto re = std::get<ReceiveEvent>(pe);
-    ASSERT_EQ(re.mData, std::deque<char>({'t','e','s','t'}));
+    EXPECT_THAT(me.mData, testing::ContainerEq<std::vector<char>>({'t','e','s','t'}));
 
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(p2));
-    auto re2 = std::get<ReceiveEvent>(p2);
-    ASSERT_EQ(re2.mData, std::deque<char>({'t','e','s','t','1'}));
+    EXPECT_THAT(me2.mData, testing::ContainerEq<std::vector<char>>({'t','e','s','t','1'}));
 
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(p3));
-    auto re3 = std::get<ReceiveEvent>(p3);
-    ASSERT_EQ(re3.mData, std::deque<char>({'t','e','s','t','2'}));
+    EXPECT_THAT(me3.mData, testing::ContainerEq<std::vector<char>>({'t','e','s','t','2'}));
 
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(p4));
-    auto re4 = std::get<ReceiveEvent>(p4);
-    ASSERT_EQ(re4.mData, std::deque<char>({'t','e','s','t','3'}));
+    EXPECT_THAT(me4.mData, testing::ContainerEq<std::vector<char>>({'t','e','s','t','3'}));
 
     mr.stop();
 
@@ -195,8 +226,9 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue rq;
-    ConnectionReadHandler mr(epoll.getEpoll(), rq);
+    MockQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockReadHandler mr(epoll.getEpoll(), bqm);
 
     auto [writeFd1, peer1] = createPeer();
     auto [writeFd2, peer2] = createPeer();
@@ -220,23 +252,16 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     // Give epoll thread enough time to wait
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    ASSERT_TRUE(!rq.isEmpty());
-    ASSERT_EQ(rq.size(), 3);
-    PeerEvent pe1 = rq.pop();
-    PeerEvent pe2 = rq.pop();
-    PeerEvent pe3 = rq.pop();
-    ASSERT_TRUE(rq.isEmpty());
+    ASSERT_TRUE(!wq.isEmpty());
+    ASSERT_EQ(wq.size(), 3);
+    MockEvent me1 = wq.pop();
+    MockEvent me2 = wq.pop();
+    MockEvent me3 = wq.pop();
+    ASSERT_TRUE(wq.isEmpty());
 
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe1));
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe2));
-    ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe3));
-
-    auto re1 = std::get<ReceiveEvent>(pe1);
-    auto re2 = std::get<ReceiveEvent>(pe2);
-    auto re3 = std::get<ReceiveEvent>(pe3);
-    ASSERT_EQ(re1.mData, std::deque<char>({'p','e','e','r','1'}));
-    ASSERT_EQ(re2.mData, std::deque<char>({'p','e','e','r','2'}));
-    ASSERT_EQ(re3.mData, std::deque<char>({'p','e','e','r','3'}));
+    EXPECT_THAT(me1.mData, testing::ContainerEq<std::vector<char>>({'p','e','e','r','1'}));
+    EXPECT_THAT(me2.mData, testing::ContainerEq<std::vector<char>>({'p','e','e','r','2'}));
+    EXPECT_THAT(me3.mData, testing::ContainerEq<std::vector<char>>({'p','e','e','r','3'}));
 
     mr.stop();
 
@@ -249,8 +274,9 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue rq;
-    ConnectionReadHandler mr(epoll.getEpoll(), rq);
+    MockQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockReadHandler mr(epoll.getEpoll(), bqm);
 
     auto t = std::thread([&](){
         mr.run();
@@ -275,16 +301,13 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(40));
 
-    ASSERT_EQ(rq.size(), numPeers);
+    ASSERT_EQ(wq.size(), numPeers);
 
     for (int p = 0; p << numPeers; p++)
     {
-        PeerEvent pe = rq.pop();
+        MockEvent me = wq.pop();
 
-        ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
-
-        auto re = std::get<ReceiveEvent>(pe);
-        ASSERT_EQ(fractals::common::ascii_decode(re.mData), "msg"+std::to_string(p));
+        ASSERT_EQ(fractals::common::ascii_decode(me.mData), "msg"+std::to_string(p));
     }
 
     mr.stop();

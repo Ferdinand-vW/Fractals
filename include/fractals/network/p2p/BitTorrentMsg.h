@@ -295,17 +295,17 @@ struct SerializeError;
             SerializeError() = default;
             template <typename Container>
             SerializeError(uint32_t msgType, Container && buffer)
-                : msgType(msgType), mBuffer(buffer.begin(), buffer.end()) {}
+                : msgType(msgType), mBufferedQueueManager(buffer.begin(), buffer.end()) {}
             
             template <typename Container>
             SerializeError(uint32_t msgType, Container && buffer, std::string&& reason)
-                : msgType(msgType), mBuffer(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
+                : msgType(msgType), mBufferedQueueManager(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
             template <typename Container>
             SerializeError(Container && buffer, std::string&& reason)
-                : mBuffer(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
+                : mBufferedQueueManager(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
 
             std::vector<char> getPrefix() const;
-            const common::string_view getBuffer() const;
+            const common::string_view getBufferedQueueManager() const;
             uint32_t getLen() const;
 
             friend std::ostream& operator<<(std::ostream& os, const SerializeError& msg);
@@ -313,7 +313,7 @@ struct SerializeError;
         private:
             int32_t msgType{-1};
             std::string mError{""};
-            std::vector<char> mBuffer;
+            std::vector<char> mBufferedQueueManager;
     };
 
     std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg);
