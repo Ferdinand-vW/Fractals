@@ -17,7 +17,10 @@ namespace fractals::network::p2p
 {
     template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
     ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::ConnectionEventHandler(Epoll& epoll, BufferedQueueManagerT &bufMan)
-        : mEpoll(epoll), mBufferedQueueManager(bufMan) {}
+        : mEpoll(epoll), mBufferedQueueManager(bufMan) 
+    {
+        mBufferedQueueManager.setWriteNotifier([this](const Peer& peer) { subscribe(peer); });
+    }
 
     
     template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
@@ -57,12 +60,16 @@ namespace fractals::network::p2p
                 break;
             }
 
-            std::cout << "READ: " << n << std::endl;
-            std::cout << "BUFSIZE " << buf.size() << std::endl;
-
             common::string_view view(buf.begin(), buf.begin() + n);
             mBufferedQueueManager.addToReadBuffers(peer.getId(), view);
         }
+    }
+
+    template<typename Peer>
+    void writeSocket(const Peer& peer, WriteMsgState* msgState)
+    {
+        int n = write(peer.getFileDescriptor(), msgState->getBuffer().data(), msgState->remaining());
+        msgState->flush(n);
     }
 
     template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
@@ -114,13 +121,20 @@ namespace fractals::network::p2p
                         {
                             readSocket(peer);
                         }
-                        else
-                        {
-                            std::cout << "MISSED EVENT: " << event.mEvents << std::endl;
-                        }
                     }
                     else
                     {
+                        if (event.mEvents & epoll_wrapper::EventCode::EpollOut)
+                        {
+                            
+                            auto *writeMsg = mBufferedQueueManager.getWriteBuffer(peer);
+                            writeSocket(peer, writeMsg);
+
+                            if (writeMsg->isComplete())
+                            {
+                                unsubscribe(peer);
+                            }
+                        }
                     }
                 }
             }

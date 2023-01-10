@@ -76,10 +76,6 @@ TEST(WORKQUEUE, CIRCLE_ONCE_THEN_CLEAR)
     queue.push(Item{6});
     queue.push(Item{7});
 
-    queue.forEach([](auto item) {
-        std::cout << item.n << std::endl;
-    });
-
     ASSERT_EQ(queue.size(), 5);
     auto res1 = queue.pop();
     ASSERT_EQ(queue.size(), 4);
@@ -96,10 +92,6 @@ TEST(WORKQUEUE, CIRCLE_ONCE_THEN_CLEAR)
     auto res5 = queue.pop();
     ASSERT_EQ(queue.size(), 0);
     ASSERT_EQ(res5.n, 4);
-
-    queue.forEach([](auto item) {
-        std::cout << item.n << std::endl;
-    });
 
 }
 

@@ -28,7 +28,7 @@ namespace fractals::network::p2p
         mLength = -1;
     }
 
-    std::string_view ReadMsgState::getBufferedQueueManager() const
+    std::string_view ReadMsgState::getBuffer() const
     {
         return std::basic_string_view<char>(mBufferedQueueManager.cbegin(),mBufferedQueueManager.cend());
     }
@@ -41,12 +41,18 @@ namespace fractals::network::p2p
 
     bool WriteMsgState::isComplete() const
     {
+        std::cout << "IS complete " << mBufferedQueueManagerView.size() << " " << mBufferedQueueManagerView.empty() << std::endl;
         return mBufferedQueueManagerView.empty();
     }
 
-    std::string_view& WriteMsgState::getBufferedQueueManager()
+    std::string_view& WriteMsgState::getBuffer()
     {
         return mBufferedQueueManagerView;
+    }
+
+    uint32_t WriteMsgState::remaining() const
+    {
+        return mBufferedQueueManagerView.size();
     }
 
     void WriteMsgState::flush(uint32_t shift)

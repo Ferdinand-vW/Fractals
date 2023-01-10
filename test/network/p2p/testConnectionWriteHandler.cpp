@@ -2,16 +2,21 @@
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Request.h"
 #include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/BitTorrentMsg.h"
+#include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/Event.h"
 #include "fractals/network/p2p/ConnectionEventHandler.h"
 #include "fractals/network/p2p/ConnectionEventHandler.ipp"
 #include "fractals/network/p2p/PeerFd.h"
+#include "fractals/network/p2p/WorkQueue.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
+#include "gmock/gmock.h"
 #include <boost/mp11/algorithm.hpp>
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <epoll_wrapper/Epoll.h>
 #include <epoll_wrapper/EpollImpl.ipp>
 #include <epoll_wrapper/Event.h>
 #include <fractals/network/http/Tracker.h>
@@ -37,15 +42,66 @@
 
 using namespace fractals::network::p2p;
 using namespace fractals::network::http;
+using namespace fractals;
+
+
+class MockBufferedQueueManager
+{
+    public:
+        MockBufferedQueueManager(WorkQueue &queue) : mQueue(queue) {}
+
+        void addToWriteBufferedQueueManager(const PeerFd& p, std::vector<char> m)
+            {
+                const auto it = mBuffers.find(p);
+                if (it == mBuffers.end())
+                {
+                    mBuffers.emplace(p, WriteMsgState(std::move(m)));
+                }
+                else if (it->second.isComplete())
+                {
+                    mBuffers.at(p) = WriteMsgState(std::move(m));
+                }
+
+                notifyWriter(p);
+            }
+
+        void publishToQueue(PeerEvent)
+        {
+
+        }
+
+        void setWriteNotifier(std::function<void(PeerFd)> notifyWriter)
+        {
+            this->notifyWriter = notifyWriter;
+        }
+
+        WriteMsgState* getWriteBuffer(const PeerFd p)
+        {
+            return &mBuffers.at(p);
+        }
+
+    std::unordered_map<PeerFd, WriteMsgState> mBuffers;
+    WorkQueue &mQueue;
+
+    std::function<void(PeerFd)> notifyWriter;  
+
+};
+
+using MockWriteHandler = ConnectionEventHandler<ActionType::WRITE, PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager>;
 
 std::vector<char> readFromFd(int fd)
 {
-    int READSIZE=64*1024;
-    std::vector<char> buffer(READSIZE);
-    int bytes_read = read(fd, &buffer[0], READSIZE);
+    char c[512];
+    int n = read(fd,&c[0],512);
 
-    assert(bytes_read > 0);
-    return buffer;
+    assert(n > 0);
+
+    return std::vector<char>(std::begin(c), std::begin(c) + n);
+}
+
+void writeToFd(int fd, std::string text)
+{
+    write (fd, text.c_str(), text.size());
 }
 
 std::pair<int, PeerFd> createPeer()
@@ -53,246 +109,199 @@ std::pair<int, PeerFd> createPeer()
     int pipeFds[2];
     int pipeRes = pipe(pipeFds);
 
+    // Set file descriptor to non blocking
+    fcntl(pipeFds[0], F_SETFL, O_NONBLOCK);
+
     assert(pipeRes == 0);
 
-    PeerId pId{"host", 0};
+    PeerId pId("host",pipeFds[0]);
     return {pipeFds[0], PeerFd{pId, Socket(pipeFds[1])}};
 }
 
-// TEST(CONNECTION_WRITE, sub_and_unsub)
-// {
-//     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+TEST(CONNECTION_WRITE, sub_and_unsub)
+{
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
-//     ASSERT_TRUE(epoll);
+    ASSERT_TRUE(epoll);
 
-//     WorkQueue rq;
-//     ConnectionWriteHandler mr(epoll.getEpoll(), rq);
+    WorkQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockWriteHandler mw(epoll.getEpoll(), bqm);
 
-//     auto t = std::thread([&](){
-//         mr.run();
-//     });
+    auto t = std::thread([&](){
+        mw.run();
+    });
 
-//     auto [readFd1, peer1] = createPeer();
-//     auto ctl1 = mr.subscribe(peer1);
-//     ASSERT_FALSE(ctl1.hasError());
+    auto [writeFd1, peer1] = createPeer();
+    auto ctl1 = mw.subscribe(peer1);
+    ASSERT_FALSE(ctl1.hasError());
 
-//     auto [readFd2, peer2] = createPeer();
-//     auto ctl2 = mr.subscribe(peer2);
-//     ASSERT_FALSE(ctl2.hasError());
+    auto [writeFd2, peer2] = createPeer();
+    auto ctl2 = mw.subscribe(peer2);
+    ASSERT_FALSE(ctl2.hasError());
 
-//     auto ctl3 = mr.unsubscribe(peer1);
-//     ASSERT_FALSE(ctl3.hasError());
+    auto ctl3 = mw.unsubscribe(peer1);
+    ASSERT_FALSE(ctl3.hasError());
 
-//     auto ctl4 = mr.unsubscribe(peer2);
-//     ASSERT_FALSE(ctl4.hasError());
+    auto ctl4 = mw.unsubscribe(peer2);
+    ASSERT_FALSE(ctl4.hasError());
 
-//     mr.stop();
+    mw.stop();
 
-//     t.join();
+    t.join();
 
-// }
+}
 
-// TEST(CONNECTION_WRITE, one_subscriber_write_one)
-// {
-//     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+TEST(CONNECTION_WRITE, one_subscriber_write_one)
+{
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
-//     ASSERT_TRUE(epoll);
+    ASSERT_TRUE(epoll);
 
-//     WorkQueue rq;
-//     ConnectionWriteHandler mr(epoll.getEpoll(), rq);
+    WorkQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockWriteHandler mw(epoll.getEpoll(), bqm);
+    
+    auto [readFd, peer] = createPeer();
 
-//     auto [readFd, peer] = createPeer();
+    const std::vector<char> writeData{'t','e','s','t'};
 
-//     auto ctl = mr.subscribe(peer);
+    bqm.addToWriteBufferedQueueManager(peer, writeData);
 
-//     ASSERT_FALSE(ctl.hasError());
+    auto t = std::thread([&](){
+        mw.run();
+    });
 
-//     writeToFd(readFd, "test");
+    // Give epoll thread enough time to wait
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     auto t = std::thread([&](){
-//         mr.run();
-//     });
+    const auto receiveData = readFromFd(readFd);
 
-//     // Give epoll thread enough time to wait
-//     this_thread::sleep_for(std::chrono::milliseconds(10));
+    EXPECT_THAT(writeData, testing::ContainerEq(receiveData));
 
-//     ASSERT_TRUE(!rq.isEmpty());
-//     PeerEvent pe = rq.pop();
+    mw.stop();
 
-//     ASSERT_TRUE(rq.isEmpty());
+    t.join();
+}
 
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
+TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
+{
+       epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
-//     auto re = std::get<ReceiveEvent>(pe);
-//     ASSERT_EQ(re.mData, std::deque<char>({'t','e','s','t'}));
+    ASSERT_TRUE(epoll);
 
-//     mr.stop();
+    WorkQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockWriteHandler mw(epoll.getEpoll(), bqm);
+    
+    auto [readFd, peer] = createPeer();
 
-//     t.join();
-// }
+    auto t = std::thread([&](){
+        mw.run();
+    });
 
-// TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
-// {
-//     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    {
+        const std::vector<char> writeData{'t','e','s','t'};
 
-//     ASSERT_TRUE(epoll);
+        bqm.addToWriteBufferedQueueManager(peer, writeData);
 
-//     WorkQueue rq;
-//     ConnectionWriteHandler mr(epoll.getEpoll(), rq);
+        // Give epoll thread enough time to wait
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     auto [readFd, peer] = createPeer();
+        const auto receiveData = readFromFd(readFd);
 
-//     auto ctl = mr.subscribe(peer);
+        EXPECT_THAT(writeData, testing::ContainerEq(receiveData));
 
-//     ASSERT_FALSE(ctl.hasError());
+    }
+    {
 
-//     writeToFd(readFd, "test");
+        const std::vector<char> writeData{'t','e','s','t','1'};
 
-//     auto t = std::thread([&](){
-//         mr.run();
-//     });
+        bqm.addToWriteBufferedQueueManager(peer, writeData);
 
-//     // Give epoll thread enough time to wait
-//     this_thread::sleep_for(std::chrono::milliseconds(10));
+        // Give epoll thread enough time to wait
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     writeToFd(readFd, "test1");
+        const auto receiveData = readFromFd(readFd);
 
-//     this_thread::sleep_for(std::chrono::milliseconds(10));
-//     writeToFd(readFd, "test2");
+        EXPECT_THAT(writeData, testing::ContainerEq(receiveData));
 
-//     this_thread::sleep_for(std::chrono::milliseconds(10));
-//     writeToFd(readFd, "test3");
+    }
+    {
 
-//     this_thread::sleep_for(std::chrono::milliseconds(10));
+        const std::vector<char> writeData{'t','e','s','t','2'};
 
-//     ASSERT_TRUE(!rq.isEmpty());
-//     ASSERT_EQ(rq.size(), 4);
-//     PeerEvent pe = rq.pop();
-//     PeerEvent p2 = rq.pop();
-//     PeerEvent p3 = rq.pop();
-//     PeerEvent p4 = rq.pop();
-//     ASSERT_TRUE(rq.isEmpty());
+        bqm.addToWriteBufferedQueueManager(peer, writeData);
 
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
-//     auto re = std::get<ReceiveEvent>(pe);
-//     ASSERT_EQ(re.mData, std::deque<char>({'t','e','s','t'}));
+        // Give epoll thread enough time to wait
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(p2));
-//     auto re2 = std::get<ReceiveEvent>(p2);
-//     ASSERT_EQ(re2.mData, std::deque<char>({'t','e','s','t','1'}));
+        const auto receiveData = readFromFd(readFd);
 
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(p3));
-//     auto re3 = std::get<ReceiveEvent>(p3);
-//     ASSERT_EQ(re3.mData, std::deque<char>({'t','e','s','t','2'}));
+        EXPECT_THAT(writeData, testing::ContainerEq(receiveData));
 
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(p4));
-//     auto re4 = std::get<ReceiveEvent>(p4);
-//     ASSERT_EQ(re4.mData, std::deque<char>({'t','e','s','t','3'}));
+    }
 
-//     mr.stop();
+    {
+        const std::vector<char> writeData{'t','e','s','t','3'};
 
-//     t.join();
-// }
+        bqm.addToWriteBufferedQueueManager(peer, writeData);
 
-// TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
-// {
-//     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+        // Give epoll thread enough time to wait
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     ASSERT_TRUE(epoll);
+        const auto receiveData = readFromFd(readFd);
 
-//     WorkQueue rq;
-//     ConnectionWriteHandler mr(epoll.getEpoll(), rq);
+        EXPECT_THAT(writeData, testing::ContainerEq(receiveData));
 
-//     auto [readFd1, peer1] = createPeer();
-//     auto [readFd2, peer2] = createPeer();
-//     auto [readFd3, peer3] = createPeer();
+    }
 
-//     auto ctl1 = mr.subscribe(peer1);
-//     ASSERT_FALSE(ctl1.hasError());
-//     auto ctl2 = mr.subscribe(peer2);
-//     ASSERT_FALSE(ctl2.hasError());
-//     auto ctl3 = mr.subscribe(peer3);
-//     ASSERT_FALSE(ctl3.hasError());
+    mw.stop();
 
-//     writeToFd(readFd1, "peer1");
-//     writeToFd(readFd2, "peer2");
-//     writeToFd(readFd3, "peer3");
+    t.join();
+}
 
-//     auto t = std::thread([&](){
-//         mr.run();
-//     });
+TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
+{
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
-//     // Give epoll thread enough time to wait
-//     this_thread::sleep_for(std::chrono::milliseconds(10));
+    ASSERT_TRUE(epoll);
 
-//     ASSERT_TRUE(!rq.isEmpty());
-//     ASSERT_EQ(rq.size(), 3);
-//     PeerEvent pe1 = rq.pop();
-//     PeerEvent pe2 = rq.pop();
-//     PeerEvent pe3 = rq.pop();
-//     ASSERT_TRUE(rq.isEmpty());
+    WorkQueue wq;
+    MockBufferedQueueManager bqm(wq);
+    MockWriteHandler mw(epoll.getEpoll(), bqm);
 
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe1));
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe2));
-//     ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe3));
+    auto [readFd1, peer1] = createPeer();
+    auto [readFd2, peer2] = createPeer();
+    auto [readFd3, peer3] = createPeer();
 
-//     auto re1 = std::get<ReceiveEvent>(pe1);
-//     auto re2 = std::get<ReceiveEvent>(pe2);
-//     auto re3 = std::get<ReceiveEvent>(pe3);
-//     ASSERT_EQ(re1.mData, std::deque<char>({'p','e','e','r','1'}));
-//     ASSERT_EQ(re2.mData, std::deque<char>({'p','e','e','r','2'}));
-//     ASSERT_EQ(re3.mData, std::deque<char>({'p','e','e','r','3'}));
+    
+    auto t = std::thread([&](){
+        mw.run();
+    });
 
-//     mr.stop();
+    // Give epoll thread enough time to wait
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     t.join();
-// }
+    const auto peer1Write = {'p','e','e','r','1'};
+    const auto peer2Write = {'p','e','e','r','2'};
+    const auto peer3Write = {'p','e','e','r','3'};
+    bqm.addToWriteBufferedQueueManager(peer1, peer1Write);
+    bqm.addToWriteBufferedQueueManager(peer2, peer2Write);
+    bqm.addToWriteBufferedQueueManager(peer3, peer3Write);
 
-// TEST(CONNECTION_WRITE, multiple_subscribed_write_multiple)
-// {
-//     epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-//     ASSERT_TRUE(epoll);
 
-//     WorkQueue rq;
-//     ConnectionWriteHandler mr(epoll.getEpoll(), rq);
+    const auto peer1Receive = readFromFd(readFd1);
+    const auto peer2Receive = readFromFd(readFd2);
+    const auto peer3Receive = readFromFd(readFd3);
 
-//     auto t = std::thread([&](){
-//         mr.run();
-//     });
+    EXPECT_THAT(peer1Write, testing::ContainerEq(peer1Receive));
+    EXPECT_THAT(peer2Write, testing::ContainerEq(peer2Receive));
+    EXPECT_THAT(peer3Write, testing::ContainerEq(peer3Receive));
 
-//     constexpr int numPeers = 5;
-//     constexpr int numMsg = 4;
-//     for (int p = 0; p < numPeers; p++)
-//     {
-//         auto [readFd, peerFd] = createPeer();
+    mw.stop();
 
-//         auto subCtl = mr.subscribe(peerFd);
-
-//         ASSERT_FALSE(subCtl.hasError());
-
-//         for(int m = 0; m < numMsg; m++)
-//         {
-//             ASSERT_TRUE(mr.isSubscribed(peerFd));
-//             writeToFd(readFd, "msg"+to_string(m));
-//         }
-//     }
-
-//     this_thread::sleep_for(std::chrono::milliseconds(40));
-
-//     ASSERT_EQ(rq.size(), numPeers);
-
-//     for (int p = 0; p << numPeers; p++)
-//     {
-//         PeerEvent pe = rq.pop();
-
-//         ASSERT_TRUE(std::holds_alternative<ReceiveEvent>(pe));
-
-//         auto re = std::get<ReceiveEvent>(pe);
-//         ASSERT_EQ(fractals::common::ascii_decode(re.mData), "msg"+to_string(p));
-//     }
-
-//     mr.stop();
-
-//     t.join();
-// }
+    t.join();
+}

@@ -414,7 +414,7 @@ namespace fractals::network::p2p
         return {};
     }
 
-    const common::string_view SerializeError::getBufferedQueueManager() const
+    const common::string_view SerializeError::getBuffer() const
     {
         return common::string_view(mBufferedQueueManager.begin(), mBufferedQueueManager.end());
     }

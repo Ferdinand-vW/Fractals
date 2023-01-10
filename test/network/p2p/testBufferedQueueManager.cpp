@@ -75,7 +75,7 @@ TEST(BUFFER_MANAGER, HandShakeWrite)
 
     ASSERT_TRUE(wmsg);
     
-    auto &view = wmsg->getBufferedQueueManager();
+    auto &view = wmsg->getBuffer();
 
     char len = view.front();
     ASSERT_EQ(len, pstr.size());
@@ -162,7 +162,7 @@ TEST(BUFFER_MANAGER, KeepAliveWrite)
 
     ASSERT_TRUE(wmsg);
     
-    auto &view = wmsg->getBufferedQueueManager();
+    auto &view = wmsg->getBuffer();
 
     EXPECT_THAT(view.substr(0, 4), testing::ElementsAre(0,0,0,0));
 
@@ -238,7 +238,7 @@ TEST(BUFFER_MANAGER, BitfieldWrite)
 
     ASSERT_TRUE(wmsg);
     
-    auto &view = wmsg->getBufferedQueueManager();
+    auto &view = wmsg->getBuffer();
 
     EXPECT_THAT(view.substr(0, 4), testing::ElementsAre(0,0,0,6));
 

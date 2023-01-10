@@ -305,7 +305,7 @@ struct SerializeError;
                 : mBufferedQueueManager(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
 
             std::vector<char> getPrefix() const;
-            const common::string_view getBufferedQueueManager() const;
+            const common::string_view getBuffer() const;
             uint32_t getLen() const;
 
             friend std::ostream& operator<<(std::ostream& os, const SerializeError& msg);
