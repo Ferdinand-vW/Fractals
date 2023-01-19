@@ -35,6 +35,13 @@ add_executable(
 target_link_libraries(testBitTorrentEncoder gtest_main gmock_main Fractals_lib)
 
 
+add_executable(
+    testPieceStateManager
+    testPieceStateManager.cpp
+)
+
+target_link_libraries(testPieceStateManager gtest_main gmock_main Fractals_lib)
+
 include(GoogleTest)
 gtest_discover_tests(testConnectionReadHandler)
 gtest_discover_tests(testConnectionWriteHandler)

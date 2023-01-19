@@ -41,7 +41,6 @@ namespace fractals::network::p2p
 
     bool WriteMsgState::isComplete() const
     {
-        std::cout << "IS complete " << mBufferedQueueManagerView.size() << " " << mBufferedQueueManagerView.empty() << std::endl;
         return mBufferedQueueManagerView.empty();
     }
 

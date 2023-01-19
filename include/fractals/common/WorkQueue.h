@@ -1,14 +1,11 @@
 #pragma once
 
-#include "Event.h"
-#include "fractals/network/p2p/AnnounceService.h"
-
 #include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <optional>
 
-namespace fractals::network::p2p
+namespace fractals::common
 {
     
 
@@ -73,7 +70,4 @@ namespace fractals::network::p2p
                 return mHead - mTail;
             }
     };
-
-    static constexpr uint32_t WORK_QUEUE_SIZE = 256;
-    using WorkQueue = WorkQueueImpl<WORK_QUEUE_SIZE, PeerEvent>;
 }

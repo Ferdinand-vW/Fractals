@@ -11,6 +11,7 @@
 #include <vector>
 #include <variant>
 
+#include "fractals/common/WorkQueue.h"
 #include "fractals/network/p2p/MessageType.h"
 
 #include "fractals/common/utils.h"
@@ -317,4 +318,7 @@ struct SerializeError;
     };
 
     std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg);
+
+
+    using BitTorrentMsgQueue = common::WorkQueueImpl<256, BitTorrentMessage>;
 }
