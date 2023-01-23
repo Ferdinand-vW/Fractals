@@ -317,6 +317,11 @@ namespace fractals::network::p2p
         return common::string_view(mBlock.begin(), mBlock.end());
     }
 
+    std::vector<char>&& Piece::extractBlock()
+    {
+        return std::move(mBlock);
+    }
+
     bool operator==(const Piece& p1, const Piece& p2)
     {
         return p1.getPieceIndex() == p2.getPieceIndex()

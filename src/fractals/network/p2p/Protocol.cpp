@@ -1,109 +1,149 @@
 #include "fractals/network/p2p/Protocol.h"
+#include "fractals/common/utils.h"
+#include "fractals/disk/DiskEventQueue.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/PieceStateManager.h"
 #include "fractals/persist/Event.h"
 #include "fractals/persist/StorageEventQueue.h"
 #include <cstdint>
+#include <new>
 
 namespace fractals::network::p2p
 {
     Protocol::Protocol(http::PeerId peer
-            , PeerEventQueue& sendQueue
-            , persist::StorageEventQueue& storageQueue)
-            , PieceStateManager& pieceRepository
+            , BitTorrentMsgQueue& sendQueue
+            , persist::StorageEventQueue& storageQueue
+            , disk::DiskEventQueue& diskQueue
+            , PieceStateManager& pieceRepository)
             : peer(peer)
             , sendQueue(sendQueue)
             , storageQueue(storageQueue)
+            , diskQueue(diskQueue)
             , pieceRepository(pieceRepository)
             {}
 
 
-    void Protocol::onMessage(const HandShake& hs)
+    ProtocolState Protocol::onMessage(const HandShake& hs)
     {
         //TODO
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const KeepAlive& hs)
+    ProtocolState Protocol::onMessage(const KeepAlive& hs)
     {
-
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const Choke& hs)
+    ProtocolState Protocol::onMessage(const Choke& hs)
     {
         mPeerChoking = true;
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const UnChoke& hs)
+    ProtocolState Protocol::onMessage(const UnChoke& hs)
     {
         mPeerChoking = false;
 
-        requestNextPiece();
+        return requestNextPiece();
     }
 
-    void Protocol::onMessage(const Interested& hs)
+    ProtocolState Protocol::onMessage(const Interested& hs)
     {
         mPeerInterested = true;
+
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const NotInterested& hs)
+    ProtocolState Protocol::onMessage(const NotInterested& hs)
     {
         mPeerInterested = false;
+
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const Have& hs)
+    ProtocolState Protocol::onMessage(const Have& hs)
     {
-        // Check if we already have piece
-        mAvailablePieces.emplace(hs.getPieceIndex());
+        if (!pieceRepository.isCompleted(hs.getPieceIndex()))
+        {
+            availablePieces.emplace(hs.getPieceIndex());
+
+            sendInterested();
+        }
+
+        return ProtocolState::OPEN;
+    }
+
+    ProtocolState Protocol::onMessage(const Bitfield& hs)
+    {
+        // hs.getBitfield()
+        const auto vb = common::bytes_to_bitfield(hs.getBitfield().size(), hs.getBitfield());
+        uint32_t pieceIndex = 0;
+        for (bool b : vb)
+        {
+            if (b) 
+            {
+                availablePieces.emplace(pieceIndex);
+            }
+
+            pieceIndex++;
+        }
 
         sendInterested();
+
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const Bitfield& hs)
-    {
-        mAvailablePieces.insert(hs.getBitfield().begin(), hs.getBitfield().end());
-        sendInterested();
-    }
-
-    void Protocol::onMessage(const Request& hs)
+    ProtocolState Protocol::onMessage(const Request& hs)
     {
         //TODO
+        return ProtocolState::OPEN;
     }
 
-    void Protocol::onMessage(const Piece& p)
+    ProtocolState Protocol::onMessage(Piece&& p)
     {
         PieceState* ps = pieceRepository.getPieceState(p.getPieceIndex());
         if (!ps)
         {
-            return;
+            return ProtocolState::ERROR;
         }
 
         // Sanity check that we receive the block of data that we requested
-        if (p.getBeginIndex() == ps->getNextBeginIndex())
+        if (p.getPieceBegin() == ps->getNextBeginIndex())
         {
-            ps->addBlock(p.getBlock());
+            ps->addBlock(p.extractBlock());
 
             if (ps->isComplete())
             {
-                // Update local state
-                storageQueue.push(persist::AddPieces{p.getPieceIndex(), ps.getPieceData()});
+                // Ensure integrity of data
+                if (pieceRepository.hashCheck(ps->getPieceIndex(), ps->getBuffer()))
+                {
+                    // Update local state
+                    storageQueue.push(persist::AddPieces{p.getPieceIndex()});
+                    diskQueue.push(disk::WriteData{p.getPieceIndex(), std::move(ps->extractData())});
 
-                // Update in-memory state
-                mAvailablePieces.erase(p.getPieceIndex());
+                    // Update in-memory state
+                    pieceRepository.makeCompleted(p.getPieceIndex());
+                    availablePieces.erase(p.getPieceIndex());
+                }
+                else
+                {
+                    return ProtocolState::ERROR;
+                }
             }
         }
 
-        requestNextPiece();
+        return requestNextPiece();
     }
 
-    void Protocol::onMessage(const Cancel& hs)
+    ProtocolState Protocol::onMessage(const Cancel& hs)
     {
-
+        return ProtocolState::CLOSED;
     }
 
-    void Protocol::onMessage(const Port& hs)
+    ProtocolState Protocol::onMessage(const Port& hs)
     {
-
+        return ProtocolState::OPEN;
     }
 
     void Protocol::sendInterested()
@@ -115,21 +155,34 @@ namespace fractals::network::p2p
         }
     }
 
-    void Protocol::requestNextPiece()
+    ProtocolState Protocol::requestNextPiece()
     {
-        if (!mAvailablePieces.empty())
+        const auto nextPiece = getNextAvailablePiece();
+        if (nextPiece)
         {
-            uint32_t pieceIndex = *mAvailablePieces.begin();
-            const auto* pieceState = pieceRepository.getPieceState(pieceIndex);
-            if (!pieceState) { return; }
-            
-            uint64_t standardPacketSize = 1 << 14; // 16 KB
-            uint64_t remainingOfPiece = pieceState.getRemainingSize();
-            uint64_t requestSize = std::min(standardPacketSize, remainingOfPiece);
+            uint32_t standardPacketSize = 1 << 14; // 16 KB
+            uint32_t remainingOfPiece = nextPiece->getRemainingSize();
+            uint32_t requestSize = std::min(standardPacketSize, remainingOfPiece);
 
-            Request request{pieceIndex, pieceState.getNextBeginIndex(), requestSize};
+            Request request{nextPiece->getPieceIndex(), nextPiece->getNextBeginIndex(), requestSize};
 
             sendQueue.push(request);
+
+            return ProtocolState::ERROR;
         }
+
+        return ProtocolState::CLOSED;
+    }
+
+    PieceState* Protocol::getNextAvailablePiece()
+    {
+        auto it = availablePieces.begin();
+
+        if (it != availablePieces.end())
+        {
+            return pieceRepository.getPieceState(*it);
+        }
+
+        return nullptr;
     }
 }

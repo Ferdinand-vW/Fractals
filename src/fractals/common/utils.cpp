@@ -188,7 +188,7 @@ namespace fractals::common {
         return v;
     }
 
-    std::vector<bool> bytes_to_bitfield(int len,std::vector<char> &bytes) {
+    std::vector<bool> bytes_to_bitfield(int len,common::string_view bytes) {
         std::vector<bool> v;
         for(int i = 0; i < len; i++) {
             char c = bytes[i];

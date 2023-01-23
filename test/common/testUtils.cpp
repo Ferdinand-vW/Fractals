@@ -138,10 +138,15 @@ TEST(UTILS, bytes_to_bitfield)
     std::vector<char> bytes3{'\x98','\xC4'};
     std::vector<char> bytes4{'\xFF'};
 
-    auto res1 = fractals::common::bytes_to_bitfield(0, bytes1);
-    auto res2 = fractals::common::bytes_to_bitfield(1, bytes2);
-    auto res3 = fractals::common::bytes_to_bitfield(2, bytes3);
-    auto res4 = fractals::common::bytes_to_bitfield(1, bytes4);
+    fractals::common::string_view v1(bytes1.begin(), bytes1.end());
+    fractals::common::string_view v2(bytes2.begin(), bytes2.end());
+    fractals::common::string_view v3(bytes3.begin(), bytes3.end());
+    fractals::common::string_view v4(bytes4.begin(), bytes4.end());
+
+    auto res1 = fractals::common::bytes_to_bitfield(0, v1);
+    auto res2 = fractals::common::bytes_to_bitfield(1, v2);
+    auto res3 = fractals::common::bytes_to_bitfield(2, v3);
+    auto res4 = fractals::common::bytes_to_bitfield(1, v4);
 
     ASSERT_TRUE(res1.size() == 0);
     EXPECT_THAT(res2, testing::ElementsAre(0,0,0,0,0,0,0,0));

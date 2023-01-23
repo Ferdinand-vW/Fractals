@@ -20,6 +20,7 @@ set(SOURCES fractals/app/Client.cpp
             fractals/network/p2p/BitTorrentMsg.cpp
             fractals/network/p2p/BufferedQueueManager.cpp
             fractals/network/p2p/PieceStateManager.cpp
+            fractals/network/p2p/Protocol.cpp
             fractals/network/p2p/Connection.cpp
             fractals/network/p2p/Event.cpp
             fractals/network/p2p/PeerManager.cpp

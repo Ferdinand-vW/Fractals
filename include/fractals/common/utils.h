@@ -167,7 +167,7 @@ std::vector<char> bitfield_to_bytes(const std::vector<bool> &bitfields);
 Byte representation of BitTorrent bitfield to actual
 */
 std::vector<bool> bytes_to_bitfield(int len, std::deque<char> &bitfields);
-std::vector<bool> bytes_to_bitfield(int len, std::vector<char> &bitfields);
+std::vector<bool> bytes_to_bitfield(int len, common::string_view bitfields);
 
 std::wstring pp_bytes(int64_t bytes);
 std::wstring pp_bytes_per_second(int64_t bytes);

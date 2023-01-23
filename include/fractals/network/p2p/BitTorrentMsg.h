@@ -233,6 +233,8 @@ struct SerializeError;
             uint32_t getPieceBegin() const;
             const common::string_view getBlock() const;
 
+            std::vector<char>&& extractBlock();
+
             friend bool operator==(const Piece&, const Piece&);
             friend std::ostream& operator<<(std::ostream& os, const Piece& msg);
 

@@ -1,12 +1,15 @@
 #include "fractals/network/p2p/PieceStateManager.h"
 
+#include "fractals/common/encode.h"
 #include "fractals/common/utils.h"
 #include <cstdint>
 #include <unordered_set>
 
 namespace fractals::network::p2p
 {
-    PieceState::PieceState(uint64_t maxSize) : mMaxSize(maxSize) 
+    PieceState::PieceState(uint32_t pieceIndex, uint32_t maxSize) 
+                         : mPieceIndex(pieceIndex)
+                         , mMaxSize(maxSize) 
     {
     }
 
@@ -15,19 +18,29 @@ namespace fractals::network::p2p
         mPieceData.reserve(mMaxSize);
     }
 
-    uint64_t PieceState::getRemainingSize() const
+    void PieceState::clear()
+    {
+        mPieceData.clear();
+    }
+
+    uint32_t PieceState::getRemainingSize() const
     {
         return mMaxSize - mPieceData.size();
     }
 
-    uint64_t PieceState::getMaxSize() const
+    uint32_t PieceState::getMaxSize() const
     {
         return mMaxSize;
     }
 
-    uint64_t PieceState::getNextBeginIndex() const
+    uint32_t PieceState::getNextBeginIndex() const
     {
         return mPieceData.size();
+    }
+
+    uint32_t PieceState::getPieceIndex() const
+    {
+        return mPieceIndex;
     }
 
     bool PieceState::isComplete() const
@@ -40,12 +53,22 @@ namespace fractals::network::p2p
         common::append(mPieceData, block);
     }
 
+    std::vector<char>&& PieceState::extractData()
+    {
+        return std::move(mPieceData);
+    }
+
     common::string_view PieceState::getBuffer()
     {
         return common::string_view{mPieceData.begin(), mPieceData.end()};
     }
 
-    PieceStateManager::PieceStateManager(std::unordered_set<uint32_t> allPieces, uint64_t totalSize)
+    PieceStateManager::PieceStateManager(const std::vector<uint32_t>& allPieces
+                                        ,const std::vector<uint32_t>& completedPieces
+                                        ,uint64_t totalSize
+                                        ,const std::unordered_map<uint32_t, std::vector<char>>& hashes)
+                                        :mCompletedPieces(completedPieces.begin(), completedPieces.end())
+                                        ,mHashes(hashes)
     {
         if (allPieces.size() > 0)
         {
@@ -59,13 +82,13 @@ namespace fractals::network::p2p
             while(i < numPiecesExceptLast)
             {
                 const auto pieceIndex = *it;
-                mAllPieces.emplace(pieceIndex, PieceState{pieceSize});
+                mAllPieces.emplace(pieceIndex, PieceState{pieceIndex, pieceSize});
 
                 ++i;
                 ++it;
             }
 
-            mAllPieces.emplace(*it, PieceState{lastSize});
+            mAllPieces.emplace(*it, PieceState{*it, lastSize});
         }
     }
 
@@ -89,5 +112,30 @@ namespace fractals::network::p2p
         {
             ps->initialize();
         }
+    }
+
+    bool PieceStateManager::isCompleted(uint32_t pieceIndex)
+    {
+        return mCompletedPieces.count(pieceIndex);
+    }
+
+    void PieceStateManager::makeCompleted(uint32_t pieceIndex)
+    {
+        auto it = mAllPieces.find(pieceIndex);
+        if (it != mAllPieces.end())
+        {
+            mCompletedPieces.emplace(pieceIndex);
+            it->second.clear();
+        }
+    }
+
+    std::unordered_map<uint32_t, PieceState>::iterator PieceStateManager::begin()
+    {
+        return mAllPieces.begin();
+    }
+
+    std::unordered_map<uint32_t, PieceState>::iterator PieceStateManager::end()
+    {
+        return mAllPieces.end();
     }
 }

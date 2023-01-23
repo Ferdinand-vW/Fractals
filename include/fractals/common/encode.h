@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 
+#include <openssl/sha.h>
+
+
 namespace fractals::common {
 
     /**
@@ -11,7 +14,15 @@ namespace fractals::common {
     @param bytes input string where each individual character is considered a byte
     @return a vectorized sequence of bytes returned by the SHA1 encoder
     */
-    std::vector<char> sha1_encode(std::string bytes);
+    template <typename Container>
+    std::vector<char> sha1_encode(const Container& bytes)
+    {
+         //use openssl lib to generate a SHA1 hash
+        unsigned char info_hash[SHA_DIGEST_LENGTH];
+        SHA1((unsigned char*)(&bytes[0]), bytes.size(), info_hash);
+
+        return std::vector<char>(info_hash,info_hash + SHA_DIGEST_LENGTH);
+    }
 
     /**
     URL encoding of byte data

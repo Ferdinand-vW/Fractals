@@ -231,12 +231,12 @@ namespace fractals::network::p2p {
 
     void Client::received_bitfield(PeerId p, Bitfield &bf) {
         int piece_index = 0;
-        std::vector<bool> vec_bools = common::bytes_to_bitfield(bf.m_bitfield.size(),bf.m_bitfield);
+        // std::vector<bool> vec_bools = common::bytes_to_bitfield(bf.m_bitfield.size(),bf.m_bitfield);
         
-        for(auto b : vec_bools) {
-            if(b) { m_peer_status[p].m_available_pieces.insert(piece_index); }
-            piece_index++;
-        }
+        // for(auto b : vec_bools) {
+        //     if(b) { m_peer_status[p].m_available_pieces.insert(piece_index); }
+        //     piece_index++;
+        // }
 
         send_interested(p); //only sends a message if not interested yet
     }
