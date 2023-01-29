@@ -1,11 +1,12 @@
 #include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/WorkQueue.h"
+#include "fractals/common/WorkQueue.h"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 using ::testing::StrictMock;
 using namespace fractals::network::p2p;
+using namespace fractals::common;
 
 struct Item
 {

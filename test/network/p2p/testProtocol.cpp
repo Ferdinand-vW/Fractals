@@ -131,6 +131,7 @@ TEST_F(ProtocolTest, standardEval)
     const auto storageEvent1 = storageQueue.pop();
     ASSERT_TRUE(std::holds_alternative<persist::AddPieces>(storageEvent1));
     ASSERT_EQ(std::get<persist::AddPieces>(storageEvent1).mPieceIndex, reqPieceIndex);
+    
     ASSERT_EQ(diskQueue.size(), 1);
     const auto diskEvent1 = diskQueue.pop();
     ASSERT_TRUE(std::holds_alternative<disk::WriteData>(diskEvent1));
@@ -138,8 +139,68 @@ TEST_F(ProtocolTest, standardEval)
     ASSERT_EQ(std::get<disk::WriteData>(diskEvent1).mPieceIndex, reqPieceIndex);
 
     ASSERT_EQ(sendQueue.size(), 0); // Nothing more to request
-
 }
 
+TEST_F(ProtocolTest, partial_pieces)
+{
+    {
+        prot.onMessage(Have{0});
+
+        ASSERT_EQ(sendQueue.size(), 1);
+
+        const auto msg = sendQueue.pop();
+
+        ASSERT_TRUE(std::holds_alternative<Interested>(msg));
+    }
+
+    {
+        prot.onMessage(Piece(0, 0, std::vector<char>{'a'}));
+
+        ASSERT_EQ(sendQueue.size(), 1);
+
+        const auto msg = sendQueue.pop();
+                
+        ASSERT_TRUE(std::holds_alternative<Request>(msg));
+        const auto reqPieceIndex = std::get<Request>(msg).getReqIndex();
+        const auto reqPieceBegin = std::get<Request>(msg).getReqBegin();
+
+        ASSERT_EQ(reqPieceIndex, 0);
+        ASSERT_EQ(reqPieceBegin, 1);
+
+        // Not enough data has been downloaded
+        ASSERT_EQ(storageQueue.size(), 0);
+        ASSERT_EQ(diskQueue.size(), 0);
+    }
+
+    {
+        prot.onMessage(Piece(0, 1, std::vector<char>{'b'}));
+
+        ASSERT_EQ(storageQueue.size(), 1);
+        ASSERT_EQ(diskQueue.size(), 1);
+        ASSERT_EQ(sendQueue.size(), 0);
+    }
+}
+
+TEST_F(ProtocolTest, hash_check_fail)
+{
+    {
+        prot.onMessage(Have{0});
+
+        ASSERT_EQ(sendQueue.size(), 1);
+        sendQueue.pop();
+    }
+
+    {
+        const auto result = prot.onMessage(Piece(0, 0, std::vector<char>{'a','c'}));
+
+        ASSERT_EQ(result, ProtocolState::HASH_CHECK_FAIL);
+    }
+
+    {
+        const auto result = prot.onMessage(Piece(1, 0, std::vector<char>{'d','e'}));
+
+        ASSERT_EQ(result, ProtocolState::OPEN);
+    }
+}
 
 

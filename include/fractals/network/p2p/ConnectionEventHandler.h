@@ -3,7 +3,6 @@
 #include "PeerFd.h"
 #include "Event.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/WorkQueue.h"
 
 #include <epoll_wrapper/Epoll.h>
 #include <epoll_wrapper/Error.h>

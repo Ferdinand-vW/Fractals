@@ -8,7 +8,7 @@
 #include "fractals/network/p2p/ConnectionEventHandler.h"
 #include "fractals/network/p2p/ConnectionEventHandler.ipp"
 #include "fractals/network/p2p/PeerFd.h"
-#include "fractals/network/p2p/WorkQueue.h"
+#include "fractals/network/p2p/PeerEventQueue.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
 #include "gmock/gmock.h"
@@ -48,7 +48,7 @@ using namespace fractals;
 class MockBufferedQueueManager
 {
     public:
-        MockBufferedQueueManager(WorkQueue &queue) : mQueue(queue) {}
+        MockBufferedQueueManager(PeerEventQueue &queue) : mQueue(queue) {}
 
         void addToWriteBufferedQueueManager(const PeerFd& p, std::vector<char> m)
             {
@@ -81,7 +81,7 @@ class MockBufferedQueueManager
         }
 
     std::unordered_map<PeerFd, WriteMsgState> mBuffers;
-    WorkQueue &mQueue;
+    PeerEventQueue &mQueue;
 
     std::function<void(PeerFd)> notifyWriter;  
 
@@ -124,7 +124,7 @@ TEST(CONNECTION_WRITE, sub_and_unsub)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue wq;
+    PeerEventQueue wq;
     MockBufferedQueueManager bqm(wq);
     MockWriteHandler mw(epoll.getEpoll(), bqm);
 
@@ -158,7 +158,7 @@ TEST(CONNECTION_WRITE, one_subscriber_write_one)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue wq;
+    PeerEventQueue wq;
     MockBufferedQueueManager bqm(wq);
     MockWriteHandler mw(epoll.getEpoll(), bqm);
     
@@ -190,7 +190,7 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue wq;
+    PeerEventQueue wq;
     MockBufferedQueueManager bqm(wq);
     MockWriteHandler mw(epoll.getEpoll(), bqm);
     
@@ -267,7 +267,7 @@ TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
 
     ASSERT_TRUE(epoll);
 
-    WorkQueue wq;
+    PeerEventQueue wq;
     MockBufferedQueueManager bqm(wq);
     MockWriteHandler mw(epoll.getEpoll(), bqm);
 

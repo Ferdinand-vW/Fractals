@@ -128,7 +128,7 @@ namespace fractals::network::p2p
                 }
                 else
                 {
-                    return ProtocolState::ERROR;
+                    return ProtocolState::HASH_CHECK_FAIL;
                 }
             }
         }
@@ -168,7 +168,7 @@ namespace fractals::network::p2p
 
             sendQueue.push(request);
 
-            return ProtocolState::ERROR;
+            return ProtocolState::OPEN;
         }
 
         return ProtocolState::CLOSED;

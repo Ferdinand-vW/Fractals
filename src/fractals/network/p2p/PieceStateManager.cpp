@@ -2,6 +2,8 @@
 
 #include "fractals/common/encode.h"
 #include "fractals/common/utils.h"
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <unordered_set>
 
@@ -67,7 +69,10 @@ namespace fractals::network::p2p
                                         ,const std::vector<uint32_t>& completedPieces
                                         ,uint64_t totalSize
                                         ,const std::unordered_map<uint32_t, std::vector<char>>& hashes)
-                                        :mCompletedPieces(completedPieces.begin(), completedPieces.end())
+                                        :mAvailable(common::setDifference(
+                                            std::unordered_set(allPieces.begin(), allPieces.end())
+                                            , std::unordered_set(completedPieces.begin(), completedPieces.end())))
+                                        ,mCompletedPieces(completedPieces.begin(), completedPieces.end())
                                         ,mHashes(hashes)
     {
         if (allPieces.size() > 0)
@@ -104,14 +109,28 @@ namespace fractals::network::p2p
         return nullptr;
     }
 
-    void PieceStateManager::initializePiece(uint32_t pieceIndex)
+    PieceState* PieceStateManager::nextAvailablePiece(const std::unordered_set<uint32_t>& peerPieces)
     {
-        auto *ps = getPieceState(pieceIndex);
+        std::unordered_set<uint32_t> pieces;
 
-        if (ps)
+        for(auto piece : peerPieces)
         {
-            ps->initialize();
+            if (mAvailable.count(piece))
+            {
+                auto it = mAllPieces.find(piece);
+
+                if (it != mAllPieces.end())
+                {
+                    mAvailable.erase(piece);
+                    mInProgress.insert(piece);
+
+                    it->second.initialize();
+                    return &it->second;
+                }
+            }
         }
+
+        return nullptr;
     }
 
     bool PieceStateManager::isCompleted(uint32_t pieceIndex)

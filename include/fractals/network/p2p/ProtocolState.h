@@ -6,6 +6,7 @@ namespace fractals::network::p2p
     {
         OPEN = 0,
         CLOSED = 1,
-        ERROR = 2
+        ERROR = 2,
+        HASH_CHECK_FAIL = 3
     };
 }

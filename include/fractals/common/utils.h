@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <deque>
@@ -8,6 +9,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_set>
+#include <set>
 #include <vector>
 
 namespace fractals::common {
@@ -174,6 +177,35 @@ std::wstring pp_bytes_per_second(int64_t bytes);
 std::wstring pp_time(int64_t seconds);
 std::wstring make_wide(const std::string &s);
 std::string unwide(const std::wstring &ws);
+
+template <typename A>
+std::unordered_set<A> setDifference(const std::unordered_set<A>& c1, const std::unordered_set<A>& c2)
+{
+    std::unordered_set<A> s;
+
+    for(const auto& a : c1)
+    {
+        if (!c2.count(a))
+        {
+            s.emplace(a);
+        }
+    }
+
+    return s;
+}
+
+template <typename Container>
+std::unordered_set<typename Container::key_type> keysOfMap(const Container& c)
+{
+    std::unordered_set<typename Container::key_type> s;
+
+    for(const auto& kvp : c)
+    {
+        s.emplace(kvp.first);
+    }
+
+    return s;
+}
 
 void print_err(std::string &&s);
 

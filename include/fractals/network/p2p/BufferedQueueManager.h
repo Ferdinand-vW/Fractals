@@ -5,6 +5,7 @@
 #include "fractals/network/p2p/BitTorrentEncoder.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/Event.h"
+#include "fractals/network/p2p/PeerEventQueue.h"
 #include "fractals/common/utils.h"
 #include "fractals/common/WorkQueue.h"
 
@@ -15,9 +16,6 @@
 
 namespace fractals::network::p2p
 {
-    static constexpr uint32_t WORK_QUEUE_SIZE = 256;
-    using PeerEventQueue = common::WorkQueueImpl<WORK_QUEUE_SIZE, PeerEvent>;
-
     class ReadMsgState
     {
         public:
@@ -118,14 +116,14 @@ namespace fractals::network::p2p
 
             void addToWriteBufferedQueueManager(const PeerFd& p, const BitTorrentMessage& m)
             {
-                const auto it = mWriteBuffers.find(p);
+                auto it = mWriteBuffers.find(p);
                 if (it == mWriteBuffers.end())
                 {
                     mWriteBuffers.emplace(p, WriteMsgState(mEncoder.encode(m)));
                 }
                 else if (it->second.isComplete())
                 {
-                    mWriteBuffers[p] = WriteMsgState(mEncoder.encode(m));
+                    it->second = WriteMsgState(std::move(mEncoder.encode(m)));
                 }
             }
 

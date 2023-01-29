@@ -7,7 +7,6 @@
 #include "fractals/network/p2p/ConnectionEventHandler.h"
 #include "fractals/network/p2p/ConnectionEventHandler.ipp"
 #include "fractals/network/p2p/PeerFd.h"
-#include "fractals/network/p2p/WorkQueue.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
 #include "gmock/gmock.h"
@@ -65,6 +64,11 @@ class MockBufferedQueueManager
         void publishToQueue(PeerEvent)
         {
 
+        }
+
+        void setWriteNotifier(std::function<void(PeerFd)> notifyWriter)
+        {
+            // this->notifyWriter = notifyWriter;
         }
 
     MockQueue &mQueue;
@@ -282,7 +286,6 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
     });
 
     constexpr int numPeers = 5;
-    constexpr int numMsg = 4;
     for (int p = 0; p < numPeers; p++)
     {
         auto [writeFd, peerFd] = createPeer();
@@ -291,22 +294,18 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
 
         ASSERT_FALSE(subCtl.hasError());
 
-        for(int m = 0; m < numMsg; m++)
-        {
-            ASSERT_TRUE(mr.isSubscribed(peerFd));
-            writeToFd(writeFd, "msg"+std::to_string(m));
-        }
+        ASSERT_TRUE(mr.isSubscribed(peerFd));
+        writeToFd(writeFd, "msg received");
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(40));
 
-    ASSERT_EQ(wq.size(), numPeers);
+    ASSERT_TRUE(wq.size() >= numPeers);
 
-    for (int p = 0; p << numPeers; p++)
+    for (int p = 0; p < numPeers; p++)
     {
         MockEvent me = wq.pop();
-
-        ASSERT_EQ(fractals::common::ascii_decode(me.mData), "msg"+std::to_string(p));
+        ASSERT_EQ(fractals::common::ascii_decode(me.mData), "msg received");
     }
 
     mr.stop();

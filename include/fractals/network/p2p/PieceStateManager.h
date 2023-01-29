@@ -49,7 +49,7 @@ namespace fractals::network::p2p
 
             PieceState* getPieceState(uint32_t pieceIndex);
 
-            void initializePiece(uint32_t pieceIndex);
+            PieceState* nextAvailablePiece(const std::unordered_set<uint32_t>& peerPieces);
 
             bool isCompleted(uint32_t pieceIndex);
             void makeCompleted(uint32_t pieceIndex);
@@ -72,6 +72,8 @@ namespace fractals::network::p2p
             std::unordered_map<uint32_t, PieceState>::iterator end();
 
         std::unordered_map<uint32_t, PieceState> mAllPieces;
+        std::unordered_set<uint32_t> mAvailable;
+        std::unordered_set<uint32_t> mInProgress;
         std::unordered_set<uint32_t> mCompletedPieces;
         std::unordered_map<uint32_t, std::vector<char>> mHashes;
 
