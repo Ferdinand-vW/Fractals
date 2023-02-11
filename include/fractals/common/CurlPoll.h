@@ -48,6 +48,16 @@ class CurlResponse
         return false;
     }
 
+    const std::vector<char> &getData() const
+    {
+        return data;
+    }
+
+    std::vector<char> &&extractData()
+    {
+        return std::move(data);
+    }
+
   private:
     std::vector<char> data;
     std::optional<CURLMcode> multiStatusCode;

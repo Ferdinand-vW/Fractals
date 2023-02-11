@@ -20,6 +20,7 @@ TEST(CURLPOLL, live_test)
     } while (curl.hasRunningTransfers());
 
     ASSERT_TRUE(result);
+    ASSERT_TRUE(result.getData().size() > 0);
 }
 
 TEST(CURLPOLL, live_test_timeout)
@@ -35,6 +36,7 @@ TEST(CURLPOLL, live_test_timeout)
     } while (curl.hasRunningTransfers());
 
     ASSERT_FALSE(result);
+    ASSERT_TRUE(result.getData().size() <= 0);
 }
 
 TEST(CURLPOLL, bad_host)
@@ -50,6 +52,7 @@ TEST(CURLPOLL, bad_host)
     } while (curl.hasRunningTransfers());
 
     ASSERT_FALSE(result);
+    ASSERT_TRUE(result.getData().size() <= 0);
 }
 
 } // namespace fractals::common
