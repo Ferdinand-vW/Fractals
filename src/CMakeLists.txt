@@ -2,20 +2,24 @@ cmake_minimum_required (VERSION 3.8)
 set(CMAKE_CXX_STANDARD 20)
 
 # file(GLOB SOURCES "*.cpp" "")
-set(SOURCES fractals/app/Client.cpp
-            fractals/app/Feedback.cpp
-            fractals/app/ScreenTicker.cpp
-            fractals/app/TorrentController.cpp
-            fractals/app/TerminalInput.cpp
-            fractals/app/TorrentDisplay.cpp
-            fractals/app/TorrentView.cpp
+set(SOURCES 
+            fractals/app/Client.cpp
+            # fractals/app/Feedback.cpp
+            # fractals/app/ScreenTicker.cpp
+            # fractals/app/TorrentController.cpp
+            # fractals/app/TerminalInput.cpp
+            # fractals/app/TorrentDisplay.cpp
+            # fractals/app/TorrentView.cpp
+            fractals/common/CurlPoll.cpp
             fractals/common/encode.cpp
             fractals/common/utils.cpp
             fractals/network/http/Announce.cpp
             fractals/network/http/Peer.cpp
             fractals/network/http/Request.cpp
-            fractals/network/http/Tracker.cpp
-            fractals/network/p2p/AnnounceService.cpp
+            # fractals/network/http/Tracker.cpp
+            fractals/network/http/TrackerClient.cpp
+            fractals/network/http/TrackerService.cpp
+            # fractals/network/p2p/AnnounceService.cpp
             fractals/network/p2p/BitTorrentEncoder.cpp
             fractals/network/p2p/BitTorrentMsg.cpp
             fractals/network/p2p/BufferedQueueManager.cpp
@@ -24,17 +28,17 @@ set(SOURCES fractals/app/Client.cpp
             fractals/network/p2p/Connection.cpp
             fractals/network/p2p/Event.cpp
             fractals/network/p2p/PeerManager.cpp
-            fractals/network/p2p/BitTorrent.cpp
-            fractals/network/p2p/Client.cpp
+            # fractals/network/p2p/BitTorrent.cpp
+            # fractals/network/p2p/Client.cpp
             fractals/network/p2p/Message.cpp 
             fractals/network/p2p/MessageType.cpp
             fractals/network/http/Peer.cpp
             fractals/torrent/Bencode.cpp
-            fractals/torrent/File.cpp
-            fractals/torrent/Piece.cpp
-            fractals/torrent/Torrent.cpp
-            fractals/torrent/TorrentMeta.cpp
-            fractals/torrent/TorrentIO.cpp
+            # fractals/torrent/File.cpp
+            # fractals/torrent/Piece.cpp
+            # fractals/torrent/Torrent.cpp
+            # fractals/torrent/TorrentMeta.cpp
+            # fractals/torrent/TorrentIO.cpp
             fractals/persist/storage.cpp
             fractals/persist/data.cpp fractals/torrent/File.cpp)
 

@@ -77,30 +77,39 @@ namespace fractals::network::http
 
     }
 
-    TrackerRequest makeTrackerRequest(const torrent::MetaInfo &mi) {
-        bencode::bdict info_dict = torrent::to_bdict(mi.info);
+    TrackerRequest::TrackerRequest(const torrent::MetaInfo &mi) 
+        : announce(mi.announce)
+        , info_hash(common::sha1_encode(bencode::encode(torrent::to_bdict(mi.info))))
+        , url_info_hash(common::url_encode(info_hash))
+        , peer_id(app::generate_peerId())
+        , url_peer_id(common::url_encode(peer_id))
+        , port(6882)
+        , uploaded(0)
+        , downloaded(0)
+        , left(0)
+        , compact(0)
+    {}
 
-        auto encoded = bencode::encode(info_dict);
-        auto info_hash = common::sha1_encode(encoded);
-        //tracker expects url encoded sha1 hash of info
-        auto uri_info  = common::url_encode(info_hash);
-        auto peer_id   = app::generate_peerId(); //unique id for this instance
-        //peer id must also be url encoded
-        auto str_peer_id = common::url_encode(peer_id);
-        int port = 6882; //port used by this app
-        int uploaded = 0;
-        int downloaded = 0;
-        int left = 0;
-        int compact = 0;
-        const TrackerRequest request = TrackerRequest { 
-                                    mi.announce
-                                    , info_hash, uri_info
-                                    , peer_id, str_peer_id, port
-                                    , uploaded, downloaded
-                                    , left, compact
-                                    };
-        return request;
-    }
+    TrackerRequest::TrackerRequest(const std::string& announce
+                          ,const std::vector<char>& infoHash
+                          ,const std::string urlInfoHash
+                          ,const std::vector<char> peerId
+                          ,const std::string urlPeerId
+                          ,int port
+                          ,int uploaded
+                          ,int downloaded
+                          ,int left
+                          ,int compact)
+                          : announce(announce)
+                          , info_hash(infoHash)
+                          , url_info_hash(urlInfoHash)
+                          , peer_id(peerId)
+                          , url_peer_id(urlPeerId)
+                          , port(port)
+                          , uploaded(uploaded)
+                          , downloaded(downloaded)
+                          , left(left)
+                          , compact(compact) {};
 
     std::string TrackerRequest::toHttpGetUrl() const {
         std::string ann_base = announce + "?";
@@ -171,12 +180,12 @@ namespace fractals::network::http
     }
 
 
-    neither::Either<std::string, TrackerResponse> TrackerResponse::decode(const bdict &bd) {
+    std::variant<std::string, TrackerResponse> TrackerResponse::decode(const bdict &bd) {
         auto optfailure = bd.find("failure reason");
         std::string failure_reason;
         if(optfailure) { 
             auto mfailure = common::to_maybe(optfailure).flatMap(common::to_bstring);
-            return neither::left<std::string>(mfailure.value.to_string()); 
+            return mfailure.value.to_string(); 
         }
 
         auto warning_message = common::to_maybe(bd.find("warning message"))
@@ -211,34 +220,33 @@ namespace fractals::network::http
         std::vector<Peer> peers;
         if(mpeers_dict.hasValue) { 
             auto epeers = parsePeersDict(mpeers_dict.value);
-            if (epeers.isLeft) { return left<std::string>(epeers.leftValue); }
+            if (epeers.isLeft) { return epeers.leftValue; }
             else { peers = epeers.rightValue; }
         }
         else {
             if(mpeers_bin.hasValue) {
                 auto epeers = parsePeersBin(mpeers_bin.value);
-                if(epeers.isLeft) { return left<std::string>(epeers.leftValue); }
+                if(epeers.isLeft) { return epeers.leftValue; }
                 else { peers = epeers.rightValue; }
             }
             else {
-                return neither::left("Could not find field peers in tracker response"s);
+                return "Could not find field peers in tracker response"s;
             }
         }
 
-        if(!minterval.hasValue) { return neither::left("Could not find field interval in tracker response"s); }
-        if(!mcomplete.hasValue) { return neither::left("Could not find field complete in tracker respone"s); }
-        if(!mincomplete.hasValue) { return neither::left("Could not find field incomplete in tracker response"s); }
+        if(!minterval.hasValue) { return "Could not find field interval in tracker response"s; }
+        if(!mcomplete.hasValue) { return "Could not find field complete in tracker respone"s; }
+        if(!mincomplete.hasValue) { return "Could not find field incomplete in tracker response"s; }
         
-        return neither::right(
-                TrackerResponse { warning_message
-                                , (int)minterval.value
-                                , (int)min_interval
-                                , tracker_id
-                                , (int)mcomplete.value
-                                , (int)mincomplete.value
-                                , peers
-                                });                   
-        
+        return TrackerResponse 
+            { warning_message
+            , (int)minterval.value
+            , (int)min_interval
+            , tracker_id
+            , (int)mcomplete.value
+            , (int)mincomplete.value
+            , peers
+            };                   
     }
 
     Announce TrackerResponse::toAnnounce(time_t now) const {

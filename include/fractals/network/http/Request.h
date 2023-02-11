@@ -1,12 +1,15 @@
 #pragma once
 
-#include "Peer.h"
 #include "Announce.h"
+#include "Peer.h"
+#include "fractals/torrent/MetaInfo.h"
 
-#include <neither.hpp>
 #include <bencode/bencode.h>
+#include <neither.hpp>
 
+#include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace fractals::network::http
@@ -14,118 +17,137 @@ namespace fractals::network::http
 /**
     Request to be sent to the tracker
     */
-    struct TrackerRequest {
-        public:
-            std::string announce;
+struct TrackerRequest
+{
+  public:
+    TrackerRequest(const torrent::MetaInfo &metaInfo);
+    TrackerRequest(const std::string &announce, const std::vector<char> &infoHash, const std::string urlInfoHash,
+                   const std::vector<char> peerId, const std::string urlPeerId, int port, int uploaded, int downloaded,
+                   int left, int compact);
 
-            /**
-            20-byte SHA1 hash of info value in MetaInfo file
-            */
-            std::vector<char> info_hash; 
-
-            /**
-            URL encoding of @info_hash
-            */
-            std::string url_info_hash;
-            
-            /**
-            20-byte string used as unique id for client
-            */
-            std::vector<char> peer_id;
-
-            /**
-            URL encoding of 20-byte string used as unique id for client
-            */
-            std::string url_peer_id;
-
-            /** 
-            port number that client is listening on
-            */
-            int port;
-
-            /** 
-            total amount uploaded in base 10 ASCII
-            */
-            int uploaded;
-            
-            /** 
-            total amount downloaded in base 10 ASCII
-            */
-            int downloaded;
-            
-            /** 
-            number of bytes this client still has to download in base 10 ASCII
-            */
-            int left;
-
-            
-            /** 
-            client accepts a compact response
-            */
-            int compact;
-
-            // optional keys that we don't currently use
-            //
-            // Started on first request, Stopped if client is shutting down, Completed when downloaded completes
-            // Maybe<Event> event;
-            // Maybe<std::string> ip;
-            // Maybe<std::int16_t> numwant;
-            //
-            //
-
-            std::string toHttpGetUrl() const;
-
-            friend std::ostream& operator<<(std::ostream&, const TrackerRequest& tr);
-
-            bool operator==(const TrackerRequest& tr) const;
-    };
+    std::string announce;
 
     /**
-    Expected response from tracker
+    20-byte SHA1 hash of info value in MetaInfo file
     */
-    struct TrackerResponse {
-        public:
-            /**
-            Populated if tracker returns error
-            */
-            neither::Maybe<std::string> warning_message;
+    std::vector<char> info_hash;
 
-            /**
-            Expected time interval between each tracker request 
-            */
-            int interval;
+    /**
+    URL encoding of @info_hash
+    */
+    std::string url_info_hash;
 
-            /**
-            Minimum time interval allowed between each tracker request
-            */
-            neither::Maybe<int> min_interval;
+    /**
+    20-byte string used as unique id for client
+    */
+    std::vector<char> peer_id;
 
-            neither::Maybe<std::string> tracker_id;
-            
-            /**
-            Number of seeders
-            */
-            int complete;
+    /**
+    URL encoding of 20-byte string used as unique id for client
+    */
+    std::string url_peer_id;
 
-            /**
-            Number of leechers
-            */
-            int incomplete;
+    /**
+    port number that client is listening on
+    */
+    int port;
 
-            /**
-            Set of peers that we can try connecting to
-            */
-            std::vector<Peer> peers;
+    /**
+    total amount uploaded in base 10 ASCII
+    */
+    int uploaded;
 
-            friend std::ostream & operator<<(std::ostream& out, const TrackerResponse & s);
+    /**
+    total amount downloaded in base 10 ASCII
+    */
+    int downloaded;
 
-            bool operator==(const TrackerResponse& tr) const;
+    /**
+    number of bytes this client still has to download in base 10 ASCII
+    */
+    int left;
 
-            static neither::Either<std::string, TrackerResponse> decode(const bencode::bdict &bd);
+    /**
+    client accepts a compact response
+    */
+    int compact;
 
-            Announce toAnnounce(time_t now) const;
-    };
+    // optional keys that we don't currently use
+    //
+    // Started on first request, Stopped if client is shutting down, Completed when downloaded completes
+    // Maybe<Event> event;
+    // Maybe<std::string> ip;
+    // Maybe<std::int16_t> numwant;
+    //
+    //
 
-    
+    std::string toHttpGetUrl() const;
 
-}
+    friend std::ostream &operator<<(std::ostream &, const TrackerRequest &tr);
+
+    bool operator==(const TrackerRequest &tr) const;
+};
+
+/**
+Expected response from tracker
+*/
+struct TrackerResponse
+{
+  public:
+    /**
+    Populated if tracker returns error
+    */
+    neither::Maybe<std::string> warning_message;
+
+    /**
+    Expected time interval between each tracker request
+    */
+    int interval;
+
+    /**
+    Minimum time interval allowed between each tracker request
+    */
+    neither::Maybe<int> min_interval;
+
+    neither::Maybe<std::string> tracker_id;
+
+    /**
+    Number of seeders
+    */
+    int complete;
+
+    /**
+    Number of leechers
+    */
+    int incomplete;
+
+    /**
+    Set of peers that we can try connecting to
+    */
+    std::vector<Peer> peers;
+
+    friend std::ostream &operator<<(std::ostream &out, const TrackerResponse &s);
+
+    bool operator==(const TrackerResponse &tr) const;
+
+    static std::variant<std::string, TrackerResponse> decode(const bencode::bdict &bd);
+
+    Announce toAnnounce(time_t now) const;
+};
+
+struct TrackerResult
+{
+    TrackerResult(const std::string error) : error(error){};
+    TrackerResult(const TrackerResponse &resp) : response(resp){};
+    TrackerResult(const std::variant<std::string, TrackerResponse> &res)
+        : error(res.index() == 0 ? std::get<0>(res) : ""),
+          response(res.index() == 1 ? std::optional(std::get<1>(res)) : std::nullopt){};
+    std::string error{""};
+    std::optional<TrackerResponse> response;
+
+    operator bool() const
+    {
+        return response.has_value();
+    }
+};
+} // namespace fractals::network::http

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <sys/types.h>
 #include <iosfwd>
@@ -19,19 +20,14 @@ namespace fractals::network::http {
 
     struct Announce;
 
-    struct ITrackerClient
-    {
-        virtual neither::Either<std::string, TrackerResponse> sendRequest(const TrackerRequest &tr) = 0;
-        virtual ~ITrackerClient(){}
-    };
 
-    struct TrackerClient :  ITrackerClient {
+    struct TrackerClient {
         public:
             TrackerClient(std::string &&url);
             TrackerClient(const std::string &url);
             std::string getUrl() const;
 
-            neither::Either<std::string, TrackerResponse> sendRequest(const TrackerRequest &tr) override;
+            TrackerResult query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout);
 
             friend std::ostream & operator<<(std::ostream& out, const TrackerClient & s);
 

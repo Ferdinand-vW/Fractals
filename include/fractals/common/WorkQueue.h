@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -13,7 +14,7 @@ namespace fractals::common
     class WorkQueueImpl
     {
         static constexpr uint32_t QUEUE_SIZE = SIZE;
-        Event mEvents[QUEUE_SIZE];
+        std::array<Event, QUEUE_SIZE> mEvents;
         int32_t mHead{0};
         int32_t mTail{0};
 
@@ -27,7 +28,8 @@ namespace fractals::common
             }
 
         public:
-            WorkQueueImpl() = default;
+            WorkQueueImpl();
+
             WorkQueueImpl(const WorkQueueImpl<SIZE, Event>&) = delete;
             WorkQueueImpl(WorkQueueImpl<SIZE, Event>&&) = delete;
 

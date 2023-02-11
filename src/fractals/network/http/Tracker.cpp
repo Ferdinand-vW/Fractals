@@ -1,3 +1,4 @@
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <netinet/in.h>
@@ -51,7 +52,8 @@ namespace fractals::network::http {
 
   
 
-    neither::Either<std::string, TrackerResponse> TrackerClient::sendRequest(const TrackerRequest &tr)
+    neither::Either<std::string, TrackerResponse> 
+        TrackerClient::query(const TrackerRequest &tr, std::chrono::milliseconds timeout)
     {
         CURLcode res;
         curl_global_init(0);
@@ -68,8 +70,8 @@ namespace fractals::network::http {
 
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeTrackerResponseData);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBufferedQueueManager);
-            // curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
             curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout);
         
             /* Perform the request, res will get the return code */ 
             res = curl_easy_perform(curl);
