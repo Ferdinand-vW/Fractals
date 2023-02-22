@@ -18,7 +18,7 @@ set(SOURCES
             fractals/network/http/Request.cpp
             # fractals/network/http/Tracker.cpp
             fractals/network/http/TrackerClient.cpp
-            fractals/network/http/TrackerService.cpp
+            fractals/network/http/AnnounceService.cpp
             # fractals/network/p2p/AnnounceService.cpp
             fractals/network/p2p/BitTorrentEncoder.cpp
             fractals/network/p2p/BitTorrentMsg.cpp

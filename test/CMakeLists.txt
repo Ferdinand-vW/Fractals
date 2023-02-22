@@ -8,6 +8,7 @@ FetchContent_MakeAvailable(googletest)
 
 include_directories(${GTEST_INCLUDE_DIRS})
 include_directories(${GMOCK_INCLUDE_DIRS})
+include_directories(test_data)
 
 add_subdirectory(common)
 add_subdirectory(network/http)

@@ -28,6 +28,13 @@ namespace fractals::torrent {
                        ", path = [" + common::intercalate(",",path) + 
                        "], md5sum = " + common::from_maybe(md5sum_s,"<empty>"s) + "}";
             }
+
+            bool operator==(const FileInfo& file) const
+            {
+                return length == file.length
+                    && md5sum == file.md5sum
+                    && path == file.path;
+            }
     };
 
     struct MultiFile {
@@ -40,6 +47,12 @@ namespace fractals::torrent {
                 auto file_to_string = [len](FileInfo f) { return f.to_string(len); };
                 auto s_files = common::map_vector<FileInfo, std::string>(files,file_to_string);
                 return "MF { directory: " + s_name + "\n" + "[ " + common::intercalate("\n, ",s_files) + "]";
+            }
+
+            bool operator==(const MultiFile& file) const
+            {
+                return name == file.name
+                    && files == file.files;
             }
     };
 
@@ -55,6 +68,13 @@ namespace fractals::torrent {
                           ", length: " + std::to_string(length) + ", md5sum: " + 
                           common::from_maybe(md5sum_s,"<empty>"s));
                 return s;
+            }
+
+            bool operator==(const SingleFile& file) const
+            {
+                return name == file.name
+                    && length == file.length
+                    && md5sum == file.md5sum;
             }
     };
 
@@ -84,6 +104,14 @@ namespace fractals::torrent {
 
             int64_t number_of_pieces() const {
                 return pieces.size() / 20;
+            }
+
+            bool operator==(const InfoDict& info) const
+            {
+                return piece_length == info.piece_length
+                    && pieces == info.pieces
+                    && publish == info.publish
+                    && file_mode == info.file_mode;
             }
     };
 
@@ -122,6 +150,18 @@ namespace fractals::torrent {
                 // shorten string to max size and add new lines then concat
                 auto to_line = [len](auto s) { return common::make_sized_line(s,len); };
                 return common::concat(common::map_vector<std::string, std::string>(v,to_line)) + s_info + s_end;
+            }
+
+            bool operator==(const MetaInfo& metaInfo) const
+            {
+                bool b= announce == metaInfo.announce
+                    && announce_list == metaInfo.announce_list
+                    && creation_date == metaInfo.creation_date
+                    && comment == metaInfo.comment
+                    && created_by == metaInfo.created_by
+                    && encoding == metaInfo.encoding
+                    && info == metaInfo.info;
+                return b;
             }
     };
 

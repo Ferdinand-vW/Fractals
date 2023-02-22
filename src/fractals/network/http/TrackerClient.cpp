@@ -2,63 +2,41 @@
 #include "fractals/network/http/Request.h"
 
 #include <curl/curl.h>
+#include <sstream>
 
 namespace fractals::network::http
 {
-
-namespace 
-{
-    std::size_t writeTrackerResponseData(void *contents, std::size_t size, std::size_t nmemb, void *userp) 
+    void TrackerClient::query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout)
     {
-        std::string *uptr = reinterpret_cast<std::string*>(userp);
-        char * conts      = reinterpret_cast<char*>(contents);
-        uptr->append(conts,size * nmemb);
-        return size * nmemb;
+        auto reqId = poller.add(tr.toHttpGetUrl(), recvTimeout);
+        nameMap.emplace(reqId, tr.url_info_hash);
     }
 
-}
-
-    TrackerResult TrackerClient::query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout)
+    TrackerClient::PollResult TrackerClient::poll()
     {
-        CURLcode res;
-        curl_global_init(0);
-        CURL *curl = curl_easy_init();
-        std::string readBufferedQueueManager;
-        std::string url = tr.toHttpGetUrl();
-
-        if(url.substr(0,3) == "udp") 
+        common::CurlResponse resp = poller.poll();
+        const auto reqId = resp.getRequestId();
+        if(resp && nameMap.contains(reqId))
         {
-            return "udp trackers are not supported"s;
-        }
+            std::stringstream ss(std::string(resp.getData().begin(), resp.getData().end()));
 
-        if(curl) {
-            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeTrackerResponseData);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBufferedQueueManager);
-            curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-            curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, recvTimeout);
-        
-            res = curl_easy_perform(curl);
-            if(res != CURLE_OK) { 
-                std::string curl_err = curl_easy_strerror(res);
-                curl_easy_cleanup(curl); // Clean up CURL pointer
-                return "CURL error: " + curl_err; 
+            auto bencodeRes = bencode::decode<bencode::bdict>(ss);
+
+            if (!bencodeRes.has_value()) 
+            { 
+                return TrackerClient::PollResult(nameMap[reqId], "Received invalid bencoded tracker reponse");
+            }
+
+            auto bencoded = bencodeRes.value();
+
+            const auto decodedResponse = TrackerResponse::decode(bencoded);
+
+            if (decodedResponse.index() == 0)
+            {
+                return TrackerClient::PollResult(nameMap[reqId],std::get<TrackerResponse>(decodedResponse));
             }
         }
 
-        curl_easy_cleanup(curl);
-
-        std::stringstream ss(readBufferedQueueManager);
-        auto mresp = bencode::decode<bencode::bdict>(ss);
-
-        if (!mresp.has_value()) 
-        { 
-            return mresp.error().message();
-        }
-
-        auto resp = mresp.value();
-
-        return TrackerResponse::decode(resp);
+        return PollResult("", resp.getError());
     }
-
 }

@@ -36,21 +36,24 @@ CurlPoll::~CurlPoll()
     curl_multi_cleanup(curl);
 }
 
-void CurlPoll::add(const std::string &request, std::chrono::milliseconds timeout)
+uint64_t CurlPoll::add(const std::string &request, std::chrono::milliseconds timeout)
 {
     CURL *handle = curl_easy_init();
+    uint64_t requestId = requestIdGenerator++;
 
-    buffers.emplace(handle, std::vector<char>());
+    buffers.emplace(handle, std::make_pair(requestId, std::vector<char>()));
 
     curl_easy_setopt(handle, CURLOPT_URL, request.c_str());
     curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, true);
     curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, read);
-    curl_easy_setopt(handle, CURLOPT_WRITEDATA, &buffers[handle]);
+    curl_easy_setopt(handle, CURLOPT_WRITEDATA, &buffers[handle].second);
     curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, timeout);
     curl_easy_setopt(handle, CURLOPT_HEADER, 0L);
     curl_easy_setopt(handle, CURLOPT_VERBOSE, 0L);
 
     curl_multi_add_handle(curl, handle);
+
+    return requestId;
 }
 
 void CurlPoll::cleanupRequest(CURL *handle)
@@ -82,7 +85,8 @@ CurlResponse CurlPoll::poll()
     const auto *msg = curl_multi_info_read(curl, &msgsLeft);
     if (msg)
     {
-        const auto resp = CurlResponse{std::move(buffers[msg->easy_handle]), msg->data.result};
+        auto &&[reqId, buf] = std::move(buffers[msg->easy_handle]);
+        const auto resp = CurlResponse{reqId, std::move(buf), msg->data.result};
         cleanupRequest(msg->easy_handle);
         return resp;
     }

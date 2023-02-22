@@ -134,20 +134,4 @@ struct TrackerResponse
 
     Announce toAnnounce(time_t now) const;
 };
-
-struct TrackerResult
-{
-    TrackerResult(const std::string error) : error(error){};
-    TrackerResult(const TrackerResponse &resp) : response(resp){};
-    TrackerResult(const std::variant<std::string, TrackerResponse> &res)
-        : error(res.index() == 0 ? std::get<0>(res) : ""),
-          response(res.index() == 1 ? std::optional(std::get<1>(res)) : std::nullopt){};
-    std::string error{""};
-    std::optional<TrackerResponse> response;
-
-    operator bool() const
-    {
-        return response.has_value();
-    }
-};
 } // namespace fractals::network::http

@@ -27,7 +27,7 @@ namespace fractals::network::http {
             TrackerClient(const std::string &url);
             std::string getUrl() const;
 
-            TrackerResult query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout);
+            TrackerRequest query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout);
 
             friend std::ostream & operator<<(std::ostream& out, const TrackerClient & s);
 

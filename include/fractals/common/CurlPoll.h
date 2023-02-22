@@ -21,11 +21,12 @@ class CurlResponse
     CurlResponse()
     {
     }
-    CurlResponse(std::vector<char> &&data, CURLcode statusCode) : data(std::move(data)), easyStatusCode(statusCode)
+    CurlResponse(uint64_t requestId, std::vector<char> &&data, CURLcode statusCode)
+        : requestId(requestId), data(std::move(data)), easyStatusCode(statusCode)
     {
     }
 
-    CurlResponse(CURLcode statusCode) : easyStatusCode(statusCode)
+    CurlResponse(uint64_t requestId, CURLcode statusCode) : requestId(requestId), easyStatusCode(statusCode)
     {
     }
     CurlResponse(CURLMcode statusCode) : multiStatusCode(statusCode)
@@ -58,8 +59,29 @@ class CurlResponse
         return std::move(data);
     }
 
+    const uint64_t getRequestId() const
+    {
+        return requestId;
+    }
+
+    std::string getError() const
+    {
+        if (multiStatusCode && multiStatusCode != CURLMcode::CURLM_OK)
+        {
+            return curl_multi_strerror(multiStatusCode.value());
+        }
+
+        if (easyStatusCode && easyStatusCode != CURLcode::CURLE_OK)
+        {
+            return curl_easy_strerror(easyStatusCode.value());
+        }
+
+        return "";
+    }
+
   private:
     std::vector<char> data;
+    uint64_t requestId;
     std::optional<CURLMcode> multiStatusCode;
     std::optional<CURLcode> easyStatusCode;
 };
@@ -70,7 +92,7 @@ class CurlPoll
     CurlPoll();
     ~CurlPoll();
 
-    void add(const std::string &request, std::chrono::milliseconds timeout);
+    uint64_t add(const std::string &request, std::chrono::milliseconds timeout);
 
     CurlResponse poll();
     bool hasRunningTransfers();
@@ -81,7 +103,8 @@ class CurlPoll
     CURLM *curl{nullptr};
 
     int runningHandles{0};
+    uint64_t requestIdGenerator{0};
 
-    std::unordered_map<CURL *, std::vector<char>> buffers;
+    std::unordered_map<CURL *, std::pair<uint64_t, std::vector<char>>> buffers;
 };
 } // namespace fractals::common
