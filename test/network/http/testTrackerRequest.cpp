@@ -40,7 +40,7 @@ torrent::MetaInfo readTorrentFile()
     return mi.rightValue;
 }
 
-TEST(TRACKER, make_tracker_request_empty)
+TEST(TRACKER_REQUEST, make_tracker_request_empty)
 {
     const torrent::SingleFile sf{.name = neither::none, .length = 0, .md5sum = neither::none};
     const torrent::InfoDict info{
@@ -62,7 +62,7 @@ TEST(TRACKER, make_tracker_request_empty)
     ASSERT_EQ(tr, req);
 }
 
-TEST(TRACKER, match_torrent_file)
+TEST(TRACKER_REQUEST, match_torrent_file)
 {
     const auto sourceMetaInfo = readTorrentFile();
     const TrackerRequest sourceRequest(sourceMetaInfo); 
