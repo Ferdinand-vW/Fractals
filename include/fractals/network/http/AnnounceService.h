@@ -10,27 +10,33 @@
 namespace fractals::network::http
 {
 
-class AnnounceService
+template<typename TrackerClientT>
+class AnnounceServiceImpl
 {
   public:
-    AnnounceService();
+    AnnounceServiceImpl(TrackerRequestQueue& queue, TrackerClientT &client);
 
     TrackerRequestQueue &getRequestQueue();
+    TrackerClientT& getClient();
 
-    void stop();
+    void pollForever();
+    bool pollOnce();
+    void disable();
 
     void subscribe(const std::string& infoHash, std::function<void(const Announce&)> callback);
     void unsubscribe(const std::string& infoHash);
 
-  private:
-    void run();
+    bool isSubscribed(const std::string& infoHash) const;
 
+  private:
     bool running{true};
 
-    TrackerRequestQueue requestQueue;
-    TrackerClient client;
+    TrackerRequestQueue& requestQueue;
+    TrackerClientT& client;
 
     std::unordered_map<std::string, std::function<void(const Announce &)>> subscribers;
 };
+
+using AnnounceService = AnnounceServiceImpl<TrackerClient>;
 
 } // namespace fractals::network::http

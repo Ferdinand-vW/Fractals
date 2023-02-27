@@ -28,7 +28,7 @@ namespace fractals::common
             }
 
         public:
-            WorkQueueImpl();
+            WorkQueueImpl(){};
 
             WorkQueueImpl(const WorkQueueImpl<SIZE, Event>&) = delete;
             WorkQueueImpl(WorkQueueImpl<SIZE, Event>&&) = delete;

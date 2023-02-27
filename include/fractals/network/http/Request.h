@@ -20,6 +20,7 @@ namespace fractals::network::http
 struct TrackerRequest
 {
   public:
+    TrackerRequest() = default;
     TrackerRequest(const torrent::MetaInfo &metaInfo);
     TrackerRequest(const std::string &announce, const std::vector<char> &infoHash, const std::string urlInfoHash,
                    const std::vector<char> peerId, const std::string urlPeerId, int port, int uploaded, int downloaded,
