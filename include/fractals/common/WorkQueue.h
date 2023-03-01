@@ -8,68 +8,64 @@
 
 namespace fractals::common
 {
-    
+template <uint32_t SIZE, typename Event> class WorkQueueImpl
+{
+    static constexpr uint32_t QUEUE_SIZE = SIZE;
+    std::array<Event, QUEUE_SIZE> mEvents;
+    int32_t mHead{0};
+    int32_t mTail{0};
 
-    template <uint32_t SIZE, typename Event>
-    class WorkQueueImpl
+  private:
+    void calibrate()
     {
-        static constexpr uint32_t QUEUE_SIZE = SIZE;
-        std::array<Event, QUEUE_SIZE> mEvents;
-        int32_t mHead{0};
-        int32_t mTail{0};
+        const int32_t divisor = mTail / QUEUE_SIZE;
+        const auto queueStart = QUEUE_SIZE * divisor;
+        mHead = mHead - queueStart;
+        mTail = mTail - queueStart;
+    }
 
-        private:
-            void calibrate()
-            {
-                const int32_t divisor = mTail / QUEUE_SIZE;
-                const auto queueStart = QUEUE_SIZE * divisor;
-                mHead = mHead - queueStart;
-                mTail = mTail - queueStart;
-            }
+  public:
+    WorkQueueImpl(){};
 
-        public:
-            WorkQueueImpl(){};
+    WorkQueueImpl(const WorkQueueImpl<SIZE, Event> &) = delete;
+    WorkQueueImpl(WorkQueueImpl<SIZE, Event> &&) = delete;
 
-            WorkQueueImpl(const WorkQueueImpl<SIZE, Event>&) = delete;
-            WorkQueueImpl(WorkQueueImpl<SIZE, Event>&&) = delete;
+    void push(Event &&event)
+    {
+        if (size() == QUEUE_SIZE)
+        {
+            return;
+        }
+        mEvents[mHead % QUEUE_SIZE] = event;
 
-            void push(Event&& event)
-            {
-                if (size() == QUEUE_SIZE)
-                {
-                    return;
-                }
-                mEvents[mHead % QUEUE_SIZE] = event;
+        ++mHead;
+    }
 
-                ++mHead;
-            }
+    bool isEmpty()
+    {
+        return size() == 0;
+    }
 
-            bool isEmpty()
-            {
-                return size() == 0;
-            }
+    Event &&pop()
+    {
+        auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
+        ++mTail;
 
-            Event&& pop()
-            {
-                auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
-                ++mTail;
+        calibrate();
+        return std::move(res);
+    }
 
-                calibrate();
-                return std::move(res);
-            }
+    template <typename F> void forEach(F f)
+    {
+        for (auto ptr = mTail; ptr < mHead; ++ptr)
+        {
+            f(mEvents[ptr]);
+        }
+    }
 
-            template<typename F>
-            void forEach(F f)
-            {
-                for(auto ptr = mTail; ptr < mHead; ++ptr)
-                {
-                    f(mEvents[ptr]);   
-                }
-            }
-
-            size_t size()
-            {
-                return mHead - mTail;
-            }
-    };
-}
+    size_t size()
+    {
+        return mHead - mTail;
+    }
+};
+} // namespace fractals::common
