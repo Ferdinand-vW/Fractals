@@ -22,7 +22,7 @@ class AnnounceServiceImpl
     bool pollOnce();
     void disable();
 
-    void subscribe(const std::string& infoHash, std::function<void(const Announce&)> callback);
+    void subscribe(const std::string& infoHash);
     void unsubscribe(const std::string& infoHash);
 
     bool isSubscribed(const std::string& infoHash) const;
@@ -33,7 +33,7 @@ class AnnounceServiceImpl
     RequestAnnounceQueue::RightEndPoint requestQueue;
     TrackerClientT& client;
 
-    std::unordered_map<std::string, std::function<void(const Announce &)>> subscribers;
+    std::unordered_set<std::string> subscribers;
 };
 
 using AnnounceService = AnnounceServiceImpl<TrackerClient>;

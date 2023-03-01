@@ -2,8 +2,8 @@
 
 #include "fractals/common/CurlPoll.h"
 #include "fractals/network/http/Request.h"
-#include "fractals/network/http/TrackerClient.h"
 #include "fractals/network/http/RequestAnnounceQueue.h"
+#include "fractals/network/http/TrackerClient.h"
 #include <chrono>
 #include <ctime>
 #include <thread>
@@ -11,7 +11,8 @@
 namespace fractals::network::http
 {
 template <typename TrackerClientT>
-AnnounceServiceImpl<TrackerClientT>::AnnounceServiceImpl(RequestAnnounceQueue::RightEndPoint queue, TrackerClientT &client)
+AnnounceServiceImpl<TrackerClientT>::AnnounceServiceImpl(RequestAnnounceQueue::RightEndPoint queue,
+                                                         TrackerClientT &client)
     : requestQueue(queue), client(client)
 {
 }
@@ -26,11 +27,9 @@ template <typename TrackerClientT> void AnnounceServiceImpl<TrackerClientT>::dis
     running = false;
 }
 
-template <typename TrackerClientT>
-void AnnounceServiceImpl<TrackerClientT>::subscribe(const std::string &infoHash,
-                                                    std::function<void(const Announce &)> callback)
+template <typename TrackerClientT> void AnnounceServiceImpl<TrackerClientT>::subscribe(const std::string &infoHash)
 {
-    subscribers.emplace(infoHash, callback);
+    subscribers.emplace(infoHash);
 }
 
 template <typename TrackerClientT> void AnnounceServiceImpl<TrackerClientT>::unsubscribe(const std::string &infoHash)
@@ -53,7 +52,6 @@ template <typename TrackerClientT> void AnnounceServiceImpl<TrackerClientT>::pol
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        
     }
 }
 
@@ -84,7 +82,7 @@ template <typename TrackerClientT> bool AnnounceServiceImpl<TrackerClientT>::pol
 
         return true;
     }
-    
+
     return false;
 }
 
