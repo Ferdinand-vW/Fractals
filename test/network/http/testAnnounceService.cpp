@@ -27,12 +27,12 @@ TEST(MockClient, subscription)
 
     AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
 
-    annService.subscribe("a", [](auto) {});
+    annService.subscribe("a");
 
     ASSERT_TRUE(annService.isSubscribed("a"));
     ASSERT_FALSE(annService.isSubscribed("b"));
 
-    annService.subscribe("b", [](auto) {});
+    annService.subscribe("b");
 
     ASSERT_TRUE(annService.isSubscribed("a"));
     ASSERT_TRUE(annService.isSubscribed("b"));
@@ -75,9 +75,7 @@ TEST(MockClient, response_to_subscriber)
     AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
     auto otherEnd = queue.getLeftEnd();
 
-    annService.subscribe("a", [&](const Announce& ann){
-        // announce = ann;
-    });
+    annService.subscribe("a");
 
     TrackerResponse resp{{"warn"}, 1, 2, {"abcde"}, 5, 4, {Peer{"Peer1",PeerId("ip1", 1)}}};
     EXPECT_CALL(mc, query(_, _)).Times(1);
