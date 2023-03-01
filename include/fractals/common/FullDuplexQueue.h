@@ -4,24 +4,25 @@
 
 namespace fractals::common
 {
-template <uint32_t SIZE, typename Event> class FullDuplexQueue
+template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class FullDuplexQueue
 {
   private:
-    using Queue = WorkQueueImpl<SIZE, Event>;
+    using QueueA = WorkQueueImpl<SIZE, LeftEventIn>;
+    using QueueB = WorkQueueImpl<SIZE, RightEventIn>;
 
   public:
-    struct QueueEndPoint
+    template <typename PushEvent, typename PopEvent> struct QueueEndPoint
     {
-      private:
-        QueueEndPoint(Queue &pushEnd, Queue &popEnd) : pushEnd(pushEnd), popEnd(popEnd){};
-
       public:
-        void push(Event &&event)
+        QueueEndPoint(WorkQueueImpl<SIZE, PushEvent> &pushEnd, WorkQueueImpl<SIZE, PopEvent> &popEnd)
+            : pushEnd(pushEnd), popEnd(popEnd){};
+
+        void push(PushEvent &&event)
         {
-            pushEnd.push(event);
+            pushEnd.push(std::move(event));
         }
 
-        Event &&pop()
+        PopEvent &&pop()
         {
             return popEnd.pop();
         }
@@ -36,25 +37,29 @@ template <uint32_t SIZE, typename Event> class FullDuplexQueue
             return !pushEnd.size() == SIZE;
         }
 
-        Queue &pushEnd;
-        Queue &popEnd;
+      private:
+        WorkQueueImpl<SIZE, PushEvent> &pushEnd;
+        WorkQueueImpl<SIZE, PopEvent> &popEnd;
     };
 
   public:
+    using LeftEndPoint = QueueEndPoint<LeftEventIn, RightEventIn>;
+    using RightEndPoint = QueueEndPoint<RightEventIn, LeftEventIn>;
+
     FullDuplexQueue() = default;
 
-    QueueEndPoint &getEndA()
+    QueueEndPoint<LeftEventIn, RightEventIn> getLeftEnd()
     {
-        return QueueAPI(dirA, dirB);
+        return QueueEndPoint<LeftEventIn, RightEventIn>(dirA, dirB);
     }
 
-    QueueEndPoint &getEndB()
+    QueueEndPoint<RightEventIn, LeftEventIn> getRightEnd()
     {
-        return QueueAPI(dirB, dirA);
+        return QueueEndPoint<RightEventIn, LeftEventIn>(dirB, dirA);
     }
 
   private:
-    Queue dirA;
-    Queue dirB;
+    WorkQueueImpl<SIZE, LeftEventIn> dirA;
+    WorkQueueImpl<SIZE, RightEventIn> dirB;
 };
 } // namespace fractals::common

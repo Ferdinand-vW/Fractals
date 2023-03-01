@@ -1,6 +1,6 @@
 #include "fractals/network/http/AnnounceService.ipp"
 #include "fractals/network/http/Request.h"
-#include "fractals/network/http/TrackerRequestQueue.h"
+#include "fractals/network/http/RequestAnnounceQueue.h"
 
 #include "gmock/gmock.h"
 #include <chrono>
@@ -23,8 +23,9 @@ class MockClient
 TEST(MockClient, subscription)
 {
     MockClient mc;
-    TrackerRequestQueue queue;
-    AnnounceServiceImpl<MockClient> annService{queue, mc};
+    RequestAnnounceQueue queue;
+
+    AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
 
     annService.subscribe("a", [](auto) {});
 
@@ -50,8 +51,10 @@ TEST(MockClient, subscription)
 TEST(MockClient, on_request)
 {
     MockClient mc;
-    TrackerRequestQueue queue;
-    AnnounceServiceImpl<MockClient> annService{queue, mc};
+    RequestAnnounceQueue queue;
+    AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
+
+    auto otherEnd = queue.getLeftEnd();
 
     EXPECT_CALL(mc, query(_, _)).Times(1);
     EXPECT_CALL(mc, poll())
@@ -59,7 +62,7 @@ TEST(MockClient, on_request)
         .WillOnce(Return(TrackerClient::PollResult{"", ""}));
 
     TrackerRequest req("announce", {}, {}, {}, {}, 0, 0, 0, 0, 0);
-    queue.push(std::move(req));
+    otherEnd.push(std::move(req));
 
     ASSERT_TRUE(annService.pollOnce());
     ASSERT_FALSE(annService.pollOnce());
@@ -68,12 +71,12 @@ TEST(MockClient, on_request)
 TEST(MockClient, response_to_subscriber)
 {
     MockClient mc;
-    TrackerRequestQueue queue;
-    AnnounceServiceImpl<MockClient> annService{queue, mc};
+    RequestAnnounceQueue queue;
+    AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
+    auto otherEnd = queue.getLeftEnd();
 
-    Announce announce;
     annService.subscribe("a", [&](const Announce& ann){
-        announce = ann;
+        // announce = ann;
     });
 
     TrackerResponse resp{{"warn"}, 1, 2, {"abcde"}, 5, 4, {Peer{"Peer1",PeerId("ip1", 1)}}};
@@ -82,10 +85,13 @@ TEST(MockClient, response_to_subscriber)
         .WillOnce(Return(TrackerClient::PollResult{"a", resp}));
 
     TrackerRequest req("announce", {}, {}, {}, {}, 0, 0, 0, 0, 0);
-    queue.push(std::move(req));
+    otherEnd.push(std::move(req));
 
 
     ASSERT_TRUE(annService.pollOnce());
+
+    ASSERT_TRUE(otherEnd.canPop());
+    const auto announce = otherEnd.pop();
 
     ASSERT_EQ(resp.toAnnounce(announce.announce_time), announce);
 }

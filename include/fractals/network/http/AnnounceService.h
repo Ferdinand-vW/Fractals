@@ -3,7 +3,7 @@
 #include "fractals/network/http/Announce.h"
 #include "fractals/network/http/Request.h"
 #include "fractals/network/http/TrackerClient.h"
-#include "fractals/network/http/TrackerRequestQueue.h"
+#include "fractals/network/http/RequestAnnounceQueue.h"
 
 #include <unordered_map>
 
@@ -14,9 +14,8 @@ template<typename TrackerClientT>
 class AnnounceServiceImpl
 {
   public:
-    AnnounceServiceImpl(TrackerRequestQueue& queue, TrackerClientT &client);
+    AnnounceServiceImpl(RequestAnnounceQueue::RightEndPoint queue, TrackerClientT &client);
 
-    TrackerRequestQueue &getRequestQueue();
     TrackerClientT& getClient();
 
     void pollForever();
@@ -31,7 +30,7 @@ class AnnounceServiceImpl
   private:
     bool running{true};
 
-    TrackerRequestQueue& requestQueue;
+    RequestAnnounceQueue::RightEndPoint requestQueue;
     TrackerClientT& client;
 
     std::unordered_map<std::string, std::function<void(const Announce &)>> subscribers;
