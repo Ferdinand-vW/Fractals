@@ -2,7 +2,7 @@
 
 #include "fractals/disk/DiskEventQueue.h"
 #include "fractals/network/p2p/PieceStateManager.h"
-#include "fractals/persist/StorageEventQueue.h"
+#include "fractals/persist/PersistEventQueue.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
@@ -17,8 +17,9 @@ namespace fractals::network::p2p
     {
         public:
             Protocol(http::PeerId peer
+                    , const std::string& infoHash
                     , BitTorrentMsgQueue& sendQueue
-                    , persist::StorageEventQueue& storageQueue
+                    , persist::PersistEventQueue::LeftEndPoint persistQueue
                     , disk::DiskEventQueue& diskQueue
                     , PieceStateManager& pieceRepository);
 
@@ -47,9 +48,10 @@ namespace fractals::network::p2p
             bool mPeerInterested{false};
 
             http::PeerId peer;
+            const std::string& infoHash;
             std::unordered_set<uint32_t> availablePieces;
             BitTorrentMsgQueue& sendQueue;
-            persist::StorageEventQueue& storageQueue;
+            persist::PersistEventQueue::LeftEndPoint persistQueue;
             disk::DiskEventQueue& diskQueue;
             PieceStateManager& pieceRepository;
     };

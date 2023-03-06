@@ -39,8 +39,8 @@ set(SOURCES
             # fractals/torrent/Torrent.cpp
             # fractals/torrent/TorrentMeta.cpp
             # fractals/torrent/TorrentIO.cpp
-            fractals/persist/storage.cpp
-            fractals/persist/data.cpp fractals/torrent/File.cpp)
+            fractals/persist/PersistClient.cpp
+            fractals/torrent/File.cpp)
 
 # Add source to this project's executable.
 add_library(Fractals_lib ${SOURCES})

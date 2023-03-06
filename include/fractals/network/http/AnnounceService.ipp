@@ -1,8 +1,8 @@
 #include "AnnounceService.h"
 
 #include "fractals/common/CurlPoll.h"
+#include "fractals/network/http/AnnounceEventQueue.h"
 #include "fractals/network/http/Request.h"
-#include "fractals/network/http/RequestAnnounceQueue.h"
 #include "fractals/network/http/TrackerClient.h"
 #include <chrono>
 #include <ctime>
@@ -11,7 +11,7 @@
 namespace fractals::network::http
 {
 template <typename TrackerClientT>
-AnnounceServiceImpl<TrackerClientT>::AnnounceServiceImpl(RequestAnnounceQueue::RightEndPoint queue,
+AnnounceServiceImpl<TrackerClientT>::AnnounceServiceImpl(AnnounceEventQueue::RightEndPoint queue,
                                                          TrackerClientT &client)
     : requestQueue(queue), client(client)
 {

@@ -8,5 +8,5 @@
 namespace fractals::network::http
 {
     static constexpr uint32_t WORK_QUEUE_SIZE = 256;
-    using RequestAnnounceQueue = common::FullDuplexQueue<WORK_QUEUE_SIZE, TrackerRequest, Announce>;
+    using AnnounceEventQueue = common::FullDuplexQueue<WORK_QUEUE_SIZE, TrackerRequest, Announce>;
 }

@@ -1,6 +1,6 @@
 #include "fractals/network/http/AnnounceService.ipp"
 #include "fractals/network/http/Request.h"
-#include "fractals/network/http/RequestAnnounceQueue.h"
+#include "fractals/network/http/AnnounceEventQueue.h"
 
 #include "gmock/gmock.h"
 #include <chrono>
@@ -23,7 +23,7 @@ class MockClient
 TEST(MockClient, subscription)
 {
     MockClient mc;
-    RequestAnnounceQueue queue;
+    AnnounceEventQueue queue;
 
     AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
 
@@ -51,7 +51,7 @@ TEST(MockClient, subscription)
 TEST(MockClient, on_request)
 {
     MockClient mc;
-    RequestAnnounceQueue queue;
+    AnnounceEventQueue queue;
     AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
 
     auto otherEnd = queue.getLeftEnd();
@@ -71,7 +71,7 @@ TEST(MockClient, on_request)
 TEST(MockClient, response_to_subscriber)
 {
     MockClient mc;
-    RequestAnnounceQueue queue;
+    AnnounceEventQueue queue;
     AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
     auto otherEnd = queue.getLeftEnd();
 

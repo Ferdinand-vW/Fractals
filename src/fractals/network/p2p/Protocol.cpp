@@ -5,20 +5,22 @@
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/PieceStateManager.h"
 #include "fractals/persist/Event.h"
-#include "fractals/persist/StorageEventQueue.h"
+#include "fractals/persist/PersistEventQueue.h"
 #include <cstdint>
 #include <new>
 
 namespace fractals::network::p2p
 {
     Protocol::Protocol(http::PeerId peer
+            , const std::string& infoHash
             , BitTorrentMsgQueue& sendQueue
-            , persist::StorageEventQueue& storageQueue
+            , persist::PersistEventQueue::LeftEndPoint persistQueue
             , disk::DiskEventQueue& diskQueue
             , PieceStateManager& pieceRepository)
             : peer(peer)
+            , infoHash(infoHash)
             , sendQueue(sendQueue)
-            , storageQueue(storageQueue)
+            , persistQueue(persistQueue)
             , diskQueue(diskQueue)
             , pieceRepository(pieceRepository)
             {}
@@ -119,7 +121,7 @@ namespace fractals::network::p2p
                 if (pieceRepository.hashCheck(ps->getPieceIndex(), ps->getBuffer()))
                 {
                     // Update local state
-                    storageQueue.push(persist::AddPieces{p.getPieceIndex()});
+                    persistQueue.push(persist::AddPiece{infoHash, p.getPieceIndex()});
                     diskQueue.push(disk::WriteData{p.getPieceIndex(), std::move(ps->extractData())});
 
                     // Update in-memory state

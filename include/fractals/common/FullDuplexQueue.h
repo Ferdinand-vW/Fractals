@@ -6,10 +6,6 @@ namespace fractals::common
 {
 template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class FullDuplexQueue
 {
-  private:
-    using QueueA = WorkQueueImpl<SIZE, LeftEventIn>;
-    using QueueB = WorkQueueImpl<SIZE, RightEventIn>;
-
   public:
     template <typename PushEvent, typename PopEvent> struct QueueEndPoint
     {
@@ -46,20 +42,20 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
     using LeftEndPoint = QueueEndPoint<LeftEventIn, RightEventIn>;
     using RightEndPoint = QueueEndPoint<RightEventIn, LeftEventIn>;
 
-    FullDuplexQueue() = default;
+    FullDuplexQueue(){};
 
     QueueEndPoint<LeftEventIn, RightEventIn> getLeftEnd()
     {
-        return QueueEndPoint<LeftEventIn, RightEventIn>(dirA, dirB);
+        return QueueEndPoint<LeftEventIn, RightEventIn>(leftQueue, rightQueue);
     }
 
     QueueEndPoint<RightEventIn, LeftEventIn> getRightEnd()
     {
-        return QueueEndPoint<RightEventIn, LeftEventIn>(dirB, dirA);
+        return QueueEndPoint<RightEventIn, LeftEventIn>(rightQueue, leftQueue);
     }
 
   private:
-    WorkQueueImpl<SIZE, LeftEventIn> dirA;
-    WorkQueueImpl<SIZE, RightEventIn> dirB;
+    WorkQueueImpl<SIZE, LeftEventIn> leftQueue;
+    WorkQueueImpl<SIZE, RightEventIn> rightQueue;
 };
 } // namespace fractals::common
