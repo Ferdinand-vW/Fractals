@@ -43,8 +43,6 @@ template <typename TrackerClientT> bool PersistServiceImpl<TrackerClientT>::poll
     {
         const auto req = requestQueue.pop();
 
-        client.query(req, std::chrono::milliseconds(5000));
-
         std::visit(
             common::overloaded{
                 [&](const AddTorrent &req) { client.addTorrent(req); },
@@ -53,22 +51,26 @@ template <typename TrackerClientT> bool PersistServiceImpl<TrackerClientT>::poll
                     const auto torr = client.loadTorrent(req.infoHash);
                     if (torr)
                     {
-                        requestQueue.push(Torrents{torr});
+                        requestQueue.push(Torrent{req.infoHash, {torr.value()}});
                     }
                 },
                 [&](const LoadTorrents &req) {
                     const auto torrs = client.loadTorrents();
-                    requestQueue.push(Torrents{torrs});
+                    requestQueue.push(AllTorrents{torrs});
                 },
                 [&](const AddPiece &req) { client.addPiece(req); },
-                [&](const RemovePieces &req) { client.deletePiece(req.infoHash); },
-                [&](const LoadPieces &req) { requestQueue.push(Pieces{client.loadPieces(req.infoHash)}); },
+                [&](const RemovePieces &req) { client.deletePieces(req.infoHash); },
+                [&](const LoadPieces &req) { requestQueue.push(Pieces{req.infoHash, client.loadPieces(req.infoHash)}); },
                 [&](const AddAnnounce &req) { client.addAnnounce(req); },
                 [&](const RemoveAnnounces &req) { client.deleteAnnounce(req.infoHash); },
-                [&](const LoadAnnounces &req) { requestQueue.push(Announces{client.loadAnnounces(req.infoHash)}); },
+                [&](const LoadAnnounces &req) { requestQueue.push(Announces{req.infoHash, client.loadAnnounces(req.infoHash)}); },
             },
             req);
+
+        return true;
     }
+
+    return false;
 }
 
 } // namespace fractals::persist

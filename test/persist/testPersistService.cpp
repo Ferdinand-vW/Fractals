@@ -48,6 +48,11 @@ TEST(PERSIST_SERVICE, torrent)
     EXPECT_CALL(client, addTorrent(_)).Times(1);
     EXPECT_CALL(client, loadTorrents()).Times(1);
     EXPECT_CALL(client, deleteTorrent(_)).Times(1);
+
+    service.pollOnce();
+    service.pollOnce();
+    service.pollOnce();
+    service.pollOnce();
 }
 
 TEST(PERSIST_SERVICE, piece)
@@ -65,6 +70,10 @@ TEST(PERSIST_SERVICE, piece)
     EXPECT_CALL(client, addPiece(_)).Times(1);
     EXPECT_CALL(client, deletePieces(_)).Times(1);
     EXPECT_CALL(client, loadPieces(_)).Times(1);
+
+    service.pollOnce();
+    service.pollOnce();
+    service.pollOnce();
 }
 
 TEST(PERSIST_SERVICE, announce)
@@ -82,6 +91,10 @@ TEST(PERSIST_SERVICE, announce)
     EXPECT_CALL(client, addAnnounce(_)).Times(1);
     EXPECT_CALL(client, deleteAnnounce(_)).Times(1);
     EXPECT_CALL(client, loadAnnounces(_)).Times(1);
+
+    service.pollOnce();
+    service.pollOnce();
+    service.pollOnce();
 }
 
 }

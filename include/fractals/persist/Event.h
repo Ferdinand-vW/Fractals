@@ -128,9 +128,15 @@ using PersistRequest = std::variant<AddTorrent, RemoveTorrent, LoadTorrent, Load
                                     LoadPieces, AddAnnounce, RemoveAnnounces, LoadAnnounces>;
 
 // Responses
-struct Torrents
+struct Torrent
 {
     std::string infoHash;
+    std::optional<TorrentModel> result;
+};
+
+struct AllTorrents
+{
+    
     std::vector<TorrentModel> result;
 };
 
@@ -146,5 +152,5 @@ struct Announces
     std::vector<AnnounceModel> result;
 };
 
-using PersistResponse = std::variant<Torrents, Pieces, Announces>;
+using PersistResponse = std::variant<Torrent, AllTorrents, Pieces, Announces>;
 } // namespace fractals::persist
