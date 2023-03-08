@@ -51,7 +51,7 @@ template <typename TrackerClientT> bool PersistServiceImpl<TrackerClientT>::poll
                     const auto torr = client.loadTorrent(req.infoHash);
                     if (torr)
                     {
-                        requestQueue.push(Torrent{req.infoHash, {torr.value()}});
+                        requestQueue.push(Torrent{req.infoHash, torr.value()});
                     }
                 },
                 [&](const LoadTorrents &req) {

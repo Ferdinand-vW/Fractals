@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fractals/common/WorkQueue.h"
+#include <cstdint>
 
 namespace fractals::common
 {
@@ -31,6 +32,11 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
         bool canPush()
         {
             return !pushEnd.size() == SIZE;
+        }
+
+        uint32_t numToRead() const
+        {   
+            return popEnd.size();
         }
 
       private:

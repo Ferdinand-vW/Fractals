@@ -131,7 +131,7 @@ using PersistRequest = std::variant<AddTorrent, RemoveTorrent, LoadTorrent, Load
 struct Torrent
 {
     std::string infoHash;
-    std::optional<TorrentModel> result;
+    TorrentModel result;
 };
 
 struct AllTorrents
