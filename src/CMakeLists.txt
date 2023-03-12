@@ -53,20 +53,16 @@ target_link_libraries(Fractals_lib ${CURL_LIBRARIES})
 target_link_libraries(Fractals_lib ${BOOST_LIBRARIES})
 target_link_libraries(Fractals_lib ${EPOLL_WRAPPER_LIBRARIES})
 target_link_libraries(Fractals_lib sqlite3)
-target_link_libraries(Fractals_lib Boost::log boost_log_setup)
-target_link_libraries(Fractals_lib pthread dl)
+target_link_libraries(Fractals_lib pthread dl backtrace)
 target_link_libraries(Fractals_lib m)
+target_link_libraries(Fractals_lib spdlog::spdlog)
 
 add_executable (Fractals main.cpp)
 target_link_libraries(Fractals Fractals_lib)
-
+target_link_options(Fractals PUBLIC -rdynamic)
+target_compile_definitions(Fractals PUBLIC
+ -DBOOST_STACKTRACE_BACKTRACE_INCLUDE_FILE="/usr/lib/gcc/x86_64-linux-gnu/12/include/backtrace.h")
 set_target_properties(Fractals PROPERTIES
             CXX_STANDARD 20
             CXX_EXTENSIONS OFF
-            # CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path}
             )
-
-# set_target_properties(Fractals_lib PROPERTIES
-#             CXX_STANDARD 17
-#             CXX_EXTENSIONS OFF
-#             )

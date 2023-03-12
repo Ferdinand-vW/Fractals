@@ -2,8 +2,8 @@
 #include "fractals/network/p2p/BitTorrentEncoder.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <iterator>
 
 namespace fractals::network::p2p
@@ -13,17 +13,21 @@ TEST(BT_ENCODER, HandShake)
 {
     BitTorrentEncoder encoder;
 
-    std::array<char,20> infoHash = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t'};
-    std::array<char,20> peerId = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t'};
-    HandShake hs{"abcde", {0,1,2,3,4,5,6,7},std::move(infoHash), std::move(peerId)};
-    
+    std::array<char, 20> infoHash = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+                                     'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'};
+    std::array<char, 20> peerId = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+                                   'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'};
+    HandShake hs{"abcde", {0, 1, 2, 3, 4, 5, 6, 7}, std::move(infoHash), std::move(peerId)};
+
+    // clang-format off
     std::vector<char> bytes{
         5,
         'a','b','c','d','e' // peer identifier
         ,0,1,2,3,4,5,6,7, // reserved bytes
         'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t', // info hash
         'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t' // peer id
-        }; 
+        };
+    // clang-format on
 
     auto encoded = encoder.encode(hs);
     ASSERT_EQ(encoded, bytes);
@@ -42,7 +46,7 @@ TEST(BT_ENCODER, KeepAlive)
 
     KeepAlive ka;
 
-    std::vector<char> bytes{0,0,0,0}; 
+    std::vector<char> bytes{0, 0, 0, 0};
 
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
@@ -61,7 +65,7 @@ TEST(BT_ENCODER, Choke)
 
     Choke choke;
 
-    std::vector<char> bytes{0,0,0,1,0}; 
+    std::vector<char> bytes{0, 0, 0, 1, 0};
 
     auto encoded = encoder.encode(choke);
     ASSERT_EQ(encoded, bytes);
@@ -80,7 +84,7 @@ TEST(BT_ENCODER, UnChoke)
 
     UnChoke ka;
 
-    std::vector<char> bytes{0,0,0,1,1}; 
+    std::vector<char> bytes{0, 0, 0, 1, 1};
 
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
@@ -99,7 +103,7 @@ TEST(BT_ENCODER, Interested)
 
     Interested ka;
 
-    std::vector<char> bytes{0,0,0,1,2}; 
+    std::vector<char> bytes{0, 0, 0, 1, 2};
 
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
@@ -118,7 +122,7 @@ TEST(BT_ENCODER, NotInterested)
 
     NotInterested ka;
 
-    std::vector<char> bytes{0,0,0,1,3}; 
+    std::vector<char> bytes{0, 0, 0, 1, 3};
 
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
@@ -135,12 +139,11 @@ TEST(BT_ENCODER, Have)
 {
     BitTorrentEncoder encoder;
 
-
     Have have{1234};
 
     auto pieceAsBytes = common::int_to_bytes(1234);
-    std::vector<char> bytes{0,0,0,5,4};
-    bytes.insert(bytes.end(), pieceAsBytes.begin(), pieceAsBytes.end()); 
+    std::vector<char> bytes{0, 0, 0, 5, 4};
+    bytes.insert(bytes.end(), pieceAsBytes.begin(), pieceAsBytes.end());
 
     auto encoded = encoder.encode(have);
     ASSERT_EQ(encoded, bytes);
@@ -158,11 +161,11 @@ TEST(BT_ENCODER, Bitfield)
     BitTorrentEncoder encoder;
 
     // 10 bits
-    std::vector<bool> bits{0,1,0,1,1,1,0,0,0,1,1,0};
+    std::vector<bool> bits{0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0};
     const auto bitsAsBytes = common::bitfield_to_bytes(bits);
     Bitfield bf{bitsAsBytes};
 
-    std::vector<char> bytes{0,0,0,static_cast<char>(bitsAsBytes.size()+1),5}; 
+    std::vector<char> bytes{0, 0, 0, static_cast<char>(bitsAsBytes.size() + 1), 5};
     // 10 bits results in 2 bytes
     bytes.insert(bytes.end(), bitsAsBytes.begin(), bitsAsBytes.end());
 
@@ -181,16 +184,16 @@ TEST(BT_ENCODER, Request)
 {
     BitTorrentEncoder encoder;
 
-    Request rq(32,1024,200);
+    Request rq(32, 1024, 200);
 
     const auto reqIndex = common::int_to_bytes(32);
     const auto reqBegin = common::int_to_bytes(1024);
     const auto reqLen = common::int_to_bytes(200);
-    
-    std::vector<char> bytes{0,0,0,13,6};
+
+    std::vector<char> bytes{0, 0, 0, 13, 6};
     bytes.insert(bytes.end(), reqIndex.begin(), reqIndex.end());
     bytes.insert(bytes.end(), reqBegin.begin(), reqBegin.end());
-    bytes.insert(bytes.end(), reqLen.begin(), reqLen.end()); 
+    bytes.insert(bytes.end(), reqLen.begin(), reqLen.end());
 
     auto encoded = encoder.encode(rq);
     ASSERT_EQ(encoded, bytes);
@@ -207,12 +210,12 @@ TEST(BT_ENCODER, Piece)
 {
     BitTorrentEncoder encoder;
 
-    const std::vector<char> block{'a','w','c','d','1',68,111,20,-20};
+    const std::vector<char> block{'a', 'w', 'c', 'd', '1', 68, 111, 20, -20};
     Piece pc{32, 1024, block};
 
     const auto pcIndex = common::int_to_bytes(32);
     const auto pcBegin = common::int_to_bytes(1024);
-    std::vector<char> bytes{0,0,0,18,7};
+    std::vector<char> bytes{0, 0, 0, 18, 7};
     bytes.insert(bytes.end(), pcIndex.begin(), pcIndex.end());
     bytes.insert(bytes.end(), pcBegin.begin(), pcBegin.end());
     bytes.insert(bytes.end(), block.begin(), block.end());
@@ -232,13 +235,13 @@ TEST(BT_ENCODER, Cancel)
 {
     BitTorrentEncoder encoder;
 
-    Cancel cnl(32,1024,200);
+    Cancel cnl(32, 1024, 200);
 
     const auto cnlIndex = common::int_to_bytes(32);
     const auto cnlBegin = common::int_to_bytes(1024);
     const auto cnlLen = common::int_to_bytes(200);
-    
-    std::vector<char> bytes{0,0,0,13,8};
+
+    std::vector<char> bytes{0, 0, 0, 13, 8};
     bytes.insert(bytes.end(), cnlIndex.begin(), cnlIndex.end());
     bytes.insert(bytes.end(), cnlBegin.begin(), cnlBegin.end());
     bytes.insert(bytes.end(), cnlLen.begin(), cnlLen.end());
@@ -261,8 +264,8 @@ TEST(BT_ENCODER, Port)
     Port prt(15000);
 
     const auto portNum = common::int_to_bytes<uint16_t>(15000);
-    
-    std::vector<char> bytes{0,0,0,3,9};
+
+    std::vector<char> bytes{0, 0, 0, 3, 9};
     bytes.insert(bytes.end(), portNum.begin(), portNum.end());
 
     auto encoded = encoder.encode(prt);
@@ -276,4 +279,4 @@ TEST(BT_ENCODER, Port)
     ASSERT_EQ(encoder.decodeOpt<Port>(encodedView), prt);
 }
 
-}
+} // namespace fractals::network::p2p

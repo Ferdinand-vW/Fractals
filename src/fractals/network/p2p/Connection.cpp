@@ -19,146 +19,146 @@
 
 namespace fractals::network::p2p {
 
-    Connection::Connection(boost::asio::io_context &io,http::PeerId p)
-                        : m_io(io)
-                        , m_timer(ConcurrentTimer(io))
-                        , m_socket(tcp::socket(io))
-                        , m_peer(p)
-                        , m_lg(common::logger::get()) {};
+    // Connection::Connection(boost::asio::io_context &io,http::PeerId p)
+    //                     : m_io(io)
+    //                     , m_timer(ConcurrentTimer(io))
+    //                     , m_socket(tcp::socket(io))
+    //                     , m_peer(p)
+    //                     , m_lg(common::logger::get()) {};
 
 
-    void Connection::connect(std::function<void(const boost_error&)> callback) {
-        auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
-        // attempt to make a connection with peer
-        m_socket.async_connect(endp,callback);
-    }
+    // void Connection::connect(std::function<void(const boost_error&)> callback) {
+    //     auto endp = tcp::endpoint(boost::asio::ip::address::from_string(m_peer.m_ip),m_peer.m_port);
+    //     // attempt to make a connection with peer
+    //     m_socket.async_connect(endp,callback);
+    // }
 
-    bool Connection::is_open() {
-        return m_socket.is_open();
-    }
+    // bool Connection::is_open() {
+    //     return m_socket.is_open();
+    // }
 
-    void Connection::cancel() {
-        // gracefully cancel outstanding operations before closing socket
-        try { //try is necessary because the socket sometimes throws an exception
-              //it's unclear why it does it..
-            m_timer.cancel();
-            m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-            m_socket.close();
-        }
-        catch(std::exception e) {
-            BOOST_LOG(m_lg) << "[Connection] exception on socket closure: " << e.what();
-        }
-    }
+    // void Connection::cancel() {
+    //     // gracefully cancel outstanding operations before closing socket
+    //     try { //try is necessary because the socket sometimes throws an exception
+    //           //it's unclear why it does it..
+    //         m_timer.cancel();
+    //         m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+    //         m_socket.close();
+    //     }
+    //     catch(std::exception e) {
+    //         BOOST_LOG(m_lg) << "[Connection] exception on socket closure: " << e.what();
+    //     }
+    // }
 
-    void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
-        boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
-    }
+    // void Connection::write_message(std::unique_ptr<IMessage> m,std::function<void(const boost_error&,size_t)> callback) {
+    //     boost::asio::async_write(m_socket,boost::asio::buffer(m->to_bytes_repr()),callback);
+    // }
 
-    void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
-        if (size < remaining && !error) {
-            boost::asio::async_read(m_socket,m_buf
-                                    ,boost::asio::transfer_exactly(remaining - size)
-                                    ,boost::bind(&Connection::read_message_body,shared_from_this()
-                                    ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
-                                    ,length,remaining - size));            
-        } else {
-            if(error) {
-                BOOST_LOG(m_lg) << "[Connection] body handler " << error.message();
-            }
+    // void Connection::read_message_body(const boost_error& error,size_t size,int length,int remaining) {
+    //     if (size < remaining && !error) {
+    //         boost::asio::async_read(m_socket,m_buf
+    //                                 ,boost::asio::transfer_exactly(remaining - size)
+    //                                 ,boost::bind(&Connection::read_message_body,shared_from_this()
+    //                                 ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
+    //                                 ,length,remaining - size));            
+    //     } else {
+    //         if(error) {
+    //             BOOST_LOG(m_lg) << "[Connection] body handler " << error.message();
+    //         }
 
-            std::deque<char> deq_buf;
+    //         std::deque<char> deq_buf;
 
-            std::copy(boost::asio::buffers_begin(m_buf.data())
-                    ,boost::asio::buffers_end(m_buf.data())
-                    ,std::back_inserter(deq_buf));
-            m_buf.consume(length);
+    //         std::copy(boost::asio::buffers_begin(m_buf.data())
+    //                 ,boost::asio::buffers_end(m_buf.data())
+    //                 ,std::back_inserter(deq_buf));
+    //         m_buf.consume(length);
 
-            for(auto cb : listeners) {
-                cb(error,length,std::move(deq_buf));
-            }
+    //         for(auto cb : listeners) {
+    //             cb(error,length,std::move(deq_buf));
+    //         }
 
-            read_messages(); //continue to read messages
-        }
-    }
+    //         read_messages(); //continue to read messages
+    //     }
+    // }
 
-    void Connection::read_messages() {
-        auto read_length_handler = [&](const boost_error &err, size_t size) {
-            // Abort on error
-            if (err) {
-                BOOST_LOG(m_lg) << "[Connection] length handler: " << err.message();
-                return;
-            }
+    // void Connection::read_messages() {
+    //     auto read_length_handler = [&](const boost_error &err, size_t size) {
+    //         // Abort on error
+    //         if (err) {
+    //             BOOST_LOG(m_lg) << "[Connection] length handler: " << err.message();
+    //             return;
+    //         }
     
-            std::deque<char> deq_buf;
-            std::copy(boost::asio::buffers_begin(m_buf.data())
-                    ,boost::asio::buffers_end(m_buf.data())
-                    ,std::back_inserter(deq_buf));
+    //         std::deque<char> deq_buf;
+    //         std::copy(boost::asio::buffers_begin(m_buf.data())
+    //                 ,boost::asio::buffers_end(m_buf.data())
+    //                 ,std::back_inserter(deq_buf));
             
-            int length = common::bytes_to_int(deq_buf);
-            m_buf.consume(4); //TODO: Don't assume we've already read 4 bytes
+    //         int length = common::bytes_to_int(deq_buf);
+    //         m_buf.consume(4); //TODO: Don't assume we've already read 4 bytes
 
-            read_message_body(boost_error(),0,length,length);
-        };
+    //         read_message_body(boost_error(),0,length,length);
+    //     };
 
-        boost::asio::async_read(m_socket,m_buf
-                                ,boost::asio::transfer_exactly(4)
-                                ,boost::bind<void>(read_length_handler
-                                ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));  
-    }
+    //     boost::asio::async_read(m_socket,m_buf
+    //                             ,boost::asio::transfer_exactly(4)
+    //                             ,boost::bind<void>(read_length_handler
+    //                             ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred));  
+    // }
 
-    void Connection::read_handshake_body(const boost_error& error,size_t size,unsigned char pstrlen,int length,int remaining) {
-        if (size < remaining && !error) {
-            boost::asio::async_read(m_socket,m_buf
-                                    ,boost::asio::transfer_exactly(remaining - size)
-                                    ,boost::bind(&Connection::read_handshake_body,shared_from_this()
-                                    ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
-                                    ,pstrlen,length,remaining - size));            
-        } else {
-            std::deque<char> deq_buf;
+    // void Connection::read_handshake_body(const boost_error& error,size_t size,unsigned char pstrlen,int length,int remaining) {
+    //     if (size < remaining && !error) {
+    //         boost::asio::async_read(m_socket,m_buf
+    //                                 ,boost::asio::transfer_exactly(remaining - size)
+    //                                 ,boost::bind(&Connection::read_handshake_body,shared_from_this()
+    //                                 ,boost::asio::placeholders::error,boost::asio::placeholders::bytes_transferred
+    //                                 ,pstrlen,length,remaining - size));            
+    //     } else {
+    //         std::deque<char> deq_buf;
 
-            std::copy(boost::asio::buffers_begin(m_buf.data())
-                    ,boost::asio::buffers_end(m_buf.data())
-                    ,std::back_inserter(deq_buf));
-            m_buf.consume(length);
-            //pass the pstrlen which is necessary to construct a handshake message
-            m_handshake_callback(error,pstrlen,std::move(deq_buf));
-        }
-    }
+    //         std::copy(boost::asio::buffers_begin(m_buf.data())
+    //                 ,boost::asio::buffers_end(m_buf.data())
+    //                 ,std::back_inserter(deq_buf));
+    //         m_buf.consume(length);
+    //         //pass the pstrlen which is necessary to construct a handshake message
+    //         m_handshake_callback(error,pstrlen,std::move(deq_buf));
+    //     }
+    // }
 
-    void Connection::read_handshake() {
-        auto read_length_handler = [&](const boost_error &err, size_t size) {
-            // Abort on error
-            if (err) {
-                BOOST_LOG(m_lg) << "[Connection] " << err.message();
-                return;
-            }
+    // void Connection::read_handshake() {
+    //     auto read_length_handler = [&](const boost_error &err, size_t size) {
+    //         // Abort on error
+    //         if (err) {
+    //             BOOST_LOG(m_lg) << "[Connection] " << err.message();
+    //             return;
+    //         }
 
 
-            std::deque<char> deq_buf;
-            std::copy(boost::asio::buffers_begin(m_buf.data())
-                    ,boost::asio::buffers_end(m_buf.data())
-                    ,std::back_inserter(deq_buf));
+    //         std::deque<char> deq_buf;
+    //         std::copy(boost::asio::buffers_begin(m_buf.data())
+    //                 ,boost::asio::buffers_end(m_buf.data())
+    //                 ,std::back_inserter(deq_buf));
             
-            unsigned char pstrlen = common::bytes_to_int(deq_buf);
-            int length = pstrlen + 48;
-            m_buf.consume(1);
-            //handshake length is exactly 1 + pstrlen + 48,
-            //where pstrlen is determined by the first byte
-            //here we've read the first byte and determined the value of pstrlen
-            read_handshake_body(boost_error(),0,pstrlen,length,length);
-        };
+    //         unsigned char pstrlen = common::bytes_to_int(deq_buf);
+    //         int length = pstrlen + 48;
+    //         m_buf.consume(1);
+    //         //handshake length is exactly 1 + pstrlen + 48,
+    //         //where pstrlen is determined by the first byte
+    //         //here we've read the first byte and determined the value of pstrlen
+    //         read_handshake_body(boost_error(),0,pstrlen,length,length);
+    //     };
 
-        boost::asio::async_read(m_socket,m_buf,boost::asio::transfer_exactly(1),
-                                            boost::bind<void>(read_length_handler
-                                            ,boost::asio::placeholders::error
-                                            ,boost::asio::placeholders::bytes_transferred));
-    }
+    //     boost::asio::async_read(m_socket,m_buf,boost::asio::transfer_exactly(1),
+    //                                         boost::bind<void>(read_length_handler
+    //                                         ,boost::asio::placeholders::error
+    //                                         ,boost::asio::placeholders::bytes_transferred));
+    // }
 
-    void Connection::on_receive(read_callback callback) {
-        listeners.push_back(callback);
-    }
+    // void Connection::on_receive(read_callback callback) {
+    //     listeners.push_back(callback);
+    // }
 
-    void Connection::on_handshake(read_callback callback) {
-        m_handshake_callback = callback;
-    }
+    // void Connection::on_handshake(read_callback callback) {
+    //     m_handshake_callback = callback;
+    // }
 }
