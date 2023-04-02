@@ -32,6 +32,8 @@ struct Piece;
 struct Cancel;
 struct Port;
 struct SerializeError;
+struct Disconnect;
+struct Deactivate;
 
     using BitTorrentMessage =
         std::variant<Choke
@@ -46,7 +48,12 @@ struct SerializeError;
                     ,Port
                     ,KeepAlive
                     ,HandShake
-                    ,SerializeError>;
+                    ,SerializeError
+                    ,Disconnect
+                    ,Deactivate>;
+
+    std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg);
+    bool operator==(const BitTorrentMessage& lhs, const BitTorrentMessage& rhs);
 
     class HandShake
     {
@@ -319,8 +326,35 @@ struct SerializeError;
             std::vector<char> mBufferedQueueManager;
     };
 
-    std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg);
+    class Disconnect 
+    {
+        public:
+            static constexpr int8_t MSG_TYPE = -1;
 
+        public:
+            Disconnect() = default;
+
+            uint32_t getLen() const;
+            std::vector<char> getPrefix() const;
+
+            friend bool operator==(const Disconnect&, const Disconnect&);
+            friend std::ostream& operator<<(std::ostream& os, const Disconnect& msg);  
+    };
+
+    class Deactivate 
+    {
+        public:
+            static constexpr int8_t MSG_TYPE = -1;
+
+        public:
+            Deactivate() = default;
+
+            uint32_t getLen() const;
+            std::vector<char> getPrefix() const;
+
+            friend bool operator==(const Deactivate&, const Deactivate&);
+            friend std::ostream& operator<<(std::ostream& os, const Deactivate& msg);  
+    };
 
     using BitTorrentMsgQueue = common::WorkQueueImpl<256, BitTorrentMessage>;
 }

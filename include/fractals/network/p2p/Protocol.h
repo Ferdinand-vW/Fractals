@@ -23,18 +23,18 @@ namespace fractals::network::p2p
                     , disk::DiskEventQueue& diskQueue
                     , PieceStateManager& pieceRepository);
 
-            ProtocolState onMessage(const HandShake& hs);
-            ProtocolState onMessage(const KeepAlive& hs);
-            ProtocolState onMessage(const Choke& hs);
-            ProtocolState onMessage(const UnChoke& hs);
-            ProtocolState onMessage(const Interested& hs);
-            ProtocolState onMessage(const NotInterested& hs);
-            ProtocolState onMessage(const Have& hs);
-            ProtocolState onMessage(const Bitfield& hs);
-            ProtocolState onMessage(const Request& hs);
+            ProtocolState onMessage(HandShake&& hs);
+            ProtocolState onMessage(KeepAlive&& hs);
+            ProtocolState onMessage(Choke&& hs);
+            ProtocolState onMessage(UnChoke&& hs);
+            ProtocolState onMessage(Interested&& hs);
+            ProtocolState onMessage(NotInterested&& hs);
+            ProtocolState onMessage(Have&& hs);
+            ProtocolState onMessage(Bitfield&& hs);
+            ProtocolState onMessage(Request&& hs);
             ProtocolState onMessage(Piece&& hs);
-            ProtocolState onMessage(const Cancel& hs);
-            ProtocolState onMessage(const Port& hs);
+            ProtocolState onMessage(Cancel&& hs);
+            ProtocolState onMessage(Port&& hs);
 
         private:
             void sendInterested();

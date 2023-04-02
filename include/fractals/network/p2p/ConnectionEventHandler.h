@@ -30,7 +30,7 @@ namespace fractals::network::p2p
             void stop();
 
         private:
-            void readSocket(const Peer &peer);
+            int readSocket(const Peer &peer);
 
             std::optional<uint32_t> mSpecialFd;
             bool mIsActive{false};

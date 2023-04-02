@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fractals/common/WorkQueue.h"
+#include <condition_variable>
 #include <cstdint>
 
 namespace fractals::common
@@ -35,8 +36,18 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
         }
 
         uint32_t numToRead() const
-        {   
+        {
             return popEnd.size();
+        }
+
+        void attachNotifier(std::condition_variable *cv)
+        {
+            pushEnd.attachNotifier(cv);
+        }
+
+        void notify()
+        {
+            pushEnd.notify();
         }
 
       private:

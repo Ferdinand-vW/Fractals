@@ -1,9 +1,32 @@
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/common/utils.h"
+#include <type_traits>
 #include <utility>
 
 namespace fractals::network::p2p
 {
+    std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg)
+    {
+        std::visit(common::overloaded{
+                [&](const auto& m) {
+                    os << m;
+                }
+            }, msg);
+
+        return os;
+    }
+
+    bool operator==(const BitTorrentMessage& lhs, const BitTorrentMessage& rhs)
+    {
+        return lhs.index() == rhs.index() &&
+            std::visit(common::overloaded{
+                [&](const auto& msg) {
+                    using T = std::decay_t<decltype(msg)>;
+                    return msg == std::get<T>(rhs);
+                }
+            }, lhs);
+    }
+
     HandShake::HandShake(const std::string& pstr, std::array<char, 8>&& reserved,
                      std::array<char,20>&& infoHash, std::array<char, 20>&& peerId)
                      : mPstr(pstr), mReserved(std::move(reserved))
@@ -437,4 +460,43 @@ namespace fractals::network::p2p
         return os;
     }
 
+    uint32_t Disconnect::getLen() const
+    {
+        return 0;
+    }
+    
+    std::vector<char> Disconnect::getPrefix() const
+    {
+        return {};
+    }
+
+    bool operator==(const Disconnect& lhs, const Disconnect& rhs)
+    {
+        return true;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Disconnect& msg)
+    {
+        return os << "Disconnect{}";
+    }
+
+    uint32_t Deactivate::getLen() const
+    {
+        return 0;
+    }
+    
+    std::vector<char> Deactivate::getPrefix() const
+    {
+        return {};
+    }
+
+    bool operator==(const Deactivate& lhs, const Deactivate& rhs)
+    {
+        return true;
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Deactivate& msg)
+    {
+        return os << "Deactivate{}";
+    }
 }

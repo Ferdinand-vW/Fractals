@@ -13,22 +13,22 @@ namespace fractals::network::p2p
 {
     struct EpollError
     {
-        epoll_wrapper::ErrorCode mError;
+        epoll_wrapper::ErrorCode errorCode;
     };
 
     std::ostream& operator<<(std::ostream& os, const EpollError &e);
 
     struct ReceiveError
     {
-        epoll_wrapper::ErrorCode mError;
-        http::PeerId mPeerId;
+        http::PeerId peerId;
+        epoll_wrapper::ErrorCode errorCode;
     };
 
     std::ostream& operator<<(std::ostream& os, const ReceiveError &e);
 
     struct ReceiveEvent
     {
-        http::PeerId mPeerId;
+        http::PeerId peerId;
         BitTorrentMessage mMessage;
     };
 
@@ -36,15 +36,15 @@ namespace fractals::network::p2p
 
     struct ConnectionCloseEvent
     {
-        http::Peer mPeerId;
+        http::PeerId peerId;
     };
 
     std::ostream& operator<<(std::ostream& os, const ConnectionCloseEvent &e);
 
     struct ConnectionError
     {
-        http::Peer mPeerId;
-        epoll_wrapper::ErrorCode mError;
+        http::PeerId peerId;
+        epoll_wrapper::ErrorCode errorCode;
     };
     
     std::ostream& operator<<(std::ostream& os, const ConnectionError &e);

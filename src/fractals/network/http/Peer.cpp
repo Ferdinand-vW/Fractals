@@ -14,6 +14,11 @@ namespace fractals::network::http {
             && m_port == p.m_port;
     }
 
+    std::string PeerId::toString() const
+    {
+        return m_ip+":"+std::to_string(m_port);
+    }
+
     bool Peer::operator==(const Peer &p) const
     {
         return peer_id == p.peer_id

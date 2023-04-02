@@ -26,45 +26,45 @@ namespace fractals::network::p2p
             {}
 
 
-    ProtocolState Protocol::onMessage(const HandShake& hs)
+    ProtocolState Protocol::onMessage(HandShake&& hs)
     {
         //TODO
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const KeepAlive& hs)
+    ProtocolState Protocol::onMessage(KeepAlive&& hs)
     {
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const Choke& hs)
+    ProtocolState Protocol::onMessage(Choke&& hs)
     {
         mPeerChoking = true;
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const UnChoke& hs)
+    ProtocolState Protocol::onMessage(UnChoke&& hs)
     {
         mPeerChoking = false;
 
         return requestNextPiece();
     }
 
-    ProtocolState Protocol::onMessage(const Interested& hs)
+    ProtocolState Protocol::onMessage(Interested&& hs)
     {
         mPeerInterested = true;
 
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const NotInterested& hs)
+    ProtocolState Protocol::onMessage(NotInterested&& hs)
     {
         mPeerInterested = false;
 
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const Have& hs)
+    ProtocolState Protocol::onMessage(Have&& hs)
     {
         if (!pieceRepository.isCompleted(hs.getPieceIndex()))
         {
@@ -76,7 +76,7 @@ namespace fractals::network::p2p
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const Bitfield& hs)
+    ProtocolState Protocol::onMessage(Bitfield&& hs)
     {
         // hs.getBitfield()
         const auto vb = common::bytes_to_bitfield(hs.getBitfield().size(), hs.getBitfield());
@@ -96,7 +96,7 @@ namespace fractals::network::p2p
         return ProtocolState::OPEN;
     }
 
-    ProtocolState Protocol::onMessage(const Request& hs)
+    ProtocolState Protocol::onMessage(Request&& hs)
     {
         //TODO
         return ProtocolState::OPEN;
@@ -138,12 +138,12 @@ namespace fractals::network::p2p
         return requestNextPiece();
     }
 
-    ProtocolState Protocol::onMessage(const Cancel& hs)
+    ProtocolState Protocol::onMessage(Cancel&& hs)
     {
         return ProtocolState::CLOSED;
     }
 
-    ProtocolState Protocol::onMessage(const Port& hs)
+    ProtocolState Protocol::onMessage(Port&& hs)
     {
         return ProtocolState::OPEN;
     }

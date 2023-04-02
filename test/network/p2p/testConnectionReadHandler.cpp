@@ -56,7 +56,7 @@ class MockBufferedQueueManager
     public:
         MockBufferedQueueManager(MockQueue &queue) : mQueue(queue) {}
 
-        void addToReadBuffers(const PeerId& p, fractals::common::string_view data)
+        void readPeerData(const PeerId& p, fractals::common::string_view data)
         {
             mQueue.push(MockEvent{std::vector<char>(data.begin(), data.end())});
         }

@@ -154,6 +154,11 @@ namespace fractals::network::p2p
             template <>
             void encodePayload(const Port& t, std::vector<char>& buf);
 
+            template<>
+            void encodePayload(const Disconnect& d, std::vector<char>& buf) {}
+            template<>
+            void encodePayload(const Deactivate& d, std::vector<char>& buf) {}
+
             template <typename T>
             BitTorrentMessage decodePayload(common::string_view& buf, uint32_t len)
             {

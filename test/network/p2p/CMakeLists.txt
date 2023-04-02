@@ -26,6 +26,12 @@ add_executable(
 
 target_link_libraries(testBufferedQueueManager gtest_main gmock_main Fractals_lib)
 
+add_executable(
+    testBitTorrentManager
+    testBitTorrentManager.cpp
+)
+
+target_link_libraries(testBitTorrentManager gtest_main gmock_main Fractals_lib)
 
 add_executable(
     testBitTorrentEncoder

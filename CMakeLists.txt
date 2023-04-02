@@ -2,9 +2,6 @@ cmake_minimum_required (VERSION 3.8)
 project(Fractals)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
-add_definitions( -DBOOST_STACKTRACE_USE_ADDR2LINE )
-set (CMAKE_CXX_FLAGS "-DSQLITE_THREADSAFE=1")
 
 set(SOURCE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 set(BENCODE_INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/libs/bencode/include)
@@ -21,7 +18,11 @@ foreach (H ${NEITHER_HEADERS})
 endforeach()
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
-find_package(Boost 1.76.0 COMPONENTS system thread log REQUIRED)
+find_package(Boost 1.76.0 COMPONENTS system thread log 
+                            stacktrace_basic 
+                            stacktrace_backtrace 
+                            stacktrace_addr2line 
+                            stacktrace_noop REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 find_package(OpenSSL REQUIRED)
@@ -46,6 +47,9 @@ include_directories(${BENCODE_INCLUDE_DIRS})
 
 find_package(epoll_wrapper REQUIRED)
 include_directories(${EPOLL_WRAPPER_INCLUDE_DIRS})
+
+find_package(spdlog REQUIRED)
+include_directories(${SPDLOG_INCLUDE_DIRS})
 
 add_subdirectory(src)
 

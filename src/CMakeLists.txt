@@ -21,6 +21,7 @@ set(SOURCES
             # fractals/network/http/AnnounceService.cpp
             # fractals/network/p2p/AnnounceService.cpp
             fractals/network/p2p/BitTorrentEncoder.cpp
+            fractals/network/p2p/BitTorrentManager.cpp
             fractals/network/p2p/BitTorrentMsg.cpp
             fractals/network/p2p/BufferedQueueManager.cpp
             fractals/network/p2p/PieceStateManager.cpp

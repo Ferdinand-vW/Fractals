@@ -21,7 +21,7 @@ TEST(BUFFER_MANAGER, HandShakeRead)
     PeerEventQueue wq;
     BufferedQueueManager btMan(wq);
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {4});
+    btMan.readPeerData<std::vector<char>>(peer, {4});
 
     auto *msgState = btMan.getReadBuffer(peer);
 
@@ -31,27 +31,27 @@ TEST(BUFFER_MANAGER, HandShakeRead)
     ASSERT_FALSE(msgState->isComplete());
 
     // pstr
-    btMan.addToReadBuffers<std::vector<char>>(peer, {'a','b','c','d'});
+    btMan.readPeerData<std::vector<char>>(peer, {'a','b','c','d'});
 
     ASSERT_FALSE(msgState->isComplete());
     ASSERT_TRUE(wq.isEmpty());
 
     // reserved
-    btMan.addToReadBuffers<std::vector<char>>(peer, {1,2,3,4,5,6,7,8});
+    btMan.readPeerData<std::vector<char>>(peer, {1,2,3,4,5,6,7,8});
 
     ASSERT_FALSE(msgState->isComplete());
     ASSERT_TRUE(wq.isEmpty());
 
     // info hash
-    btMan.addToReadBuffers<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
-    btMan.addToReadBuffers<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
+    btMan.readPeerData<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
+    btMan.readPeerData<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
 
     ASSERT_FALSE(msgState->isComplete());
     ASSERT_TRUE(wq.isEmpty());
 
     // peer id
-    btMan.addToReadBuffers<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
-    btMan.addToReadBuffers<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
+    btMan.readPeerData<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
+    btMan.readPeerData<std::vector<char>>(peer, {1,2,3,4,5,6,7,8,9,10});
 
     ASSERT_FALSE(msgState->isInitialized()); // Resets msg after flush
     ASSERT_FALSE(wq.isEmpty());
@@ -68,7 +68,7 @@ TEST(BUFFER_MANAGER, HandShakeWrite)
     std::array<char,20> infoHash {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
     std::array<char,20> peerId {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};
     HandShake hs(pstr,std::move(reserved), std::move(infoHash), std::move(peerId));
-    btMan.addToWriteBufferedQueueManager(peer, hs);
+    btMan.sendToPeer(peer, hs);
 
     auto *wmsg = btMan.getWriteBuffer(peer);
 
@@ -111,26 +111,26 @@ TEST(BUFFER_MANAGER, KeepAliveRead)
     BufferedQueueManager btMan(wq);
 
     // HandShake
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0});
+    btMan.readPeerData<std::vector<char>>(peer, {0});
 
     auto *msgState = btMan.getReadBuffer(peer);
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, std::vector<char>(48));
+    btMan.readPeerData<std::vector<char>>(peer, std::vector<char>(48));
 
     ASSERT_FALSE(wq.isEmpty());
     wq.pop();
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0});
+    btMan.readPeerData<std::vector<char>>(peer, {0});
 
     ASSERT_FALSE(msgState->isInitialized());
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0});
+    btMan.readPeerData<std::vector<char>>(peer, {0});
 
     ASSERT_FALSE(msgState->isInitialized());
 
     ASSERT_TRUE(wq.isEmpty());
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0,0});
+    btMan.readPeerData<std::vector<char>>(peer, {0,0});
 
     ASSERT_FALSE(msgState->isInitialized());
 
@@ -151,7 +151,7 @@ TEST(BUFFER_MANAGER, KeepAliveWrite)
     BufferedQueueManager btMan(wq);
 
     KeepAlive ka;
-    btMan.addToWriteBufferedQueueManager(peer, ka);
+    btMan.sendToPeer(peer, ka);
 
     auto *wmsg = btMan.getWriteBuffer(peer);
 
@@ -173,38 +173,38 @@ TEST(BUFFER_MANAGER, BitfieldRead)
     BufferedQueueManager btMan(wq);
 
     // HandShake
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0});
+    btMan.readPeerData<std::vector<char>>(peer, {0});
 
     auto *msgState = btMan.getReadBuffer(peer);
 
-    btMan.addToReadBuffers(peer, std::vector<char>(48));
+    btMan.readPeerData(peer, std::vector<char>(48));
 
     ASSERT_FALSE(wq.isEmpty());
     wq.pop();
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0});
+    btMan.readPeerData<std::vector<char>>(peer, {0});
 
     ASSERT_FALSE(msgState->isInitialized());
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0});
+    btMan.readPeerData<std::vector<char>>(peer, {0});
 
     ASSERT_FALSE(msgState->isInitialized());
 
     ASSERT_TRUE(wq.isEmpty());
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {0,50});
+    btMan.readPeerData<std::vector<char>>(peer, {0,50});
 
     ASSERT_TRUE(msgState->isInitialized());
 
-    btMan.addToReadBuffers<std::vector<char>>(peer, {5}); // Bitfield type
+    btMan.readPeerData<std::vector<char>>(peer, {5}); // Bitfield type
 
     ASSERT_TRUE(wq.isEmpty());
 
-    btMan.addToReadBuffers(peer, std::vector<char>(20));
+    btMan.readPeerData(peer, std::vector<char>(20));
 
     ASSERT_TRUE(wq.isEmpty());
 
-    btMan.addToReadBuffers(peer, std::vector<char>(29));
+    btMan.readPeerData(peer, std::vector<char>(29));
 
     ASSERT_FALSE(wq.isEmpty());
 
@@ -225,7 +225,7 @@ TEST(BUFFER_MANAGER, BitfieldWrite)
     http::PeerId p{"",0};
 
     Bitfield bf{"abcde"};
-    btMan.addToWriteBufferedQueueManager(peer, bf);
+    btMan.sendToPeer(peer, bf);
 
     auto *wmsg = btMan.getWriteBuffer(peer);
 

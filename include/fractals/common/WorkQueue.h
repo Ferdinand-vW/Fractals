@@ -2,7 +2,9 @@
 
 #include <array>
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <optional>
 
@@ -14,6 +16,7 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     std::array<Event, QUEUE_SIZE> mEvents;
     int32_t mHead{0};
     int32_t mTail{0};
+    std::condition_variable* cv;
 
   private:
     void calibrate()
@@ -39,6 +42,8 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
         mEvents[mHead % QUEUE_SIZE] = event;
 
         ++mHead;
+
+        notify();
     }
 
     bool isEmpty()
@@ -49,9 +54,10 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     Event &&pop()
     {
         auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
+        
+        calibrate();
         ++mTail;
 
-        calibrate();
         return std::move(res);
     }
 
@@ -66,6 +72,19 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     size_t size()
     {
         return mHead - mTail;
+    }
+
+    void attachNotifier(std::condition_variable* cv)
+    {
+        this->cv = cv;
+    }
+
+    void notify()
+    {
+        if (cv)
+        {
+            cv->notify_all();
+        }
     }
 };
 } // namespace fractals::common

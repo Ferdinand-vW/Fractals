@@ -27,6 +27,11 @@ namespace fractals::network::p2p
         {
             return mId == p.getId();
         }
+
+        static PeerFd invalid()
+        {
+            return PeerFd{http::PeerId{"",0}, Socket{0}};
+        }
     };
 }
 
