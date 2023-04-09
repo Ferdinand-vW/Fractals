@@ -4,8 +4,8 @@
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/ConnectionEventHandler.h"
-#include "fractals/network/p2p/ConnectionEventHandler.ipp"
+#include "fractals/network/p2p/EpollService.h"
+#include "fractals/network/p2p/EpollService.ipp"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
@@ -74,7 +74,7 @@ class MockBufferedQueueManager
     MockQueue &mQueue;
 };
 
-using MockReadHandler = ConnectionEventHandler<ActionType::READ, PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager>;
+using MockReadHandler = EpollServiceImpl<ActionType::READ, PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager>;
 
 
 void writeToFd(int fd, std::string text)
@@ -84,7 +84,7 @@ void writeToFd(int fd, std::string text)
 
 std::pair<int, PeerFd> createPeer()
 {
-    int pipeFds[2];
+    int32_t pipeFds[2];
     int pipeRes = pipe(pipeFds);
 
     // Set file descriptor to non blocking
@@ -93,7 +93,7 @@ std::pair<int, PeerFd> createPeer()
     assert(pipeRes == 0);
 
     PeerId pId("host",0);
-    return {pipeFds[1], PeerFd{pId, Socket(pipeFds[0])}};
+    return {pipeFds[1], PeerFd{pId, pipeFds[0]}};
 }
 
 TEST(CONNECTION_READ, sub_and_unsub)

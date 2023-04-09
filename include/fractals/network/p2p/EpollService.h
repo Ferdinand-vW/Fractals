@@ -12,13 +12,15 @@ namespace fractals::network::p2p
 {
     enum class ActionType {READ , WRITE};
 
-    template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-    class ConnectionEventHandler
+    template <ActionType Action, typename Peer, typename EpollT, typename BufferedQueueManagerT>
+    class EpollServiceImpl
     {
         public:
-            ConnectionEventHandler(Epoll &epoll, BufferedQueueManagerT &rq);
-            ConnectionEventHandler(const ConnectionEventHandler&) = delete;
-            ConnectionEventHandler(ConnectionEventHandler&&) = delete;
+            using Epoll = EpollT;
+
+            EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &rq);
+            EpollServiceImpl(const EpollServiceImpl&) = delete;
+            EpollServiceImpl(EpollServiceImpl&&) = delete;
 
             epoll_wrapper::CtlAction subscribe(const Peer &peer);
             epoll_wrapper::CtlAction unsubscribe(const Peer &peer);
@@ -39,6 +41,6 @@ namespace fractals::network::p2p
             BufferedQueueManagerT &mBufferedQueueManager;
     };
 
-    using ConnectionReadHandler = ConnectionEventHandler<ActionType::READ, PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager>;
-    using ConnectionWriteHandler = ConnectionEventHandler<ActionType::WRITE, PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager>;
+    template <ActionType AT>
+    using EpollService = EpollServiceImpl<AT, PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager>;
 }

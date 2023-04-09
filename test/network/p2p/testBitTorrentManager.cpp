@@ -44,6 +44,8 @@ class BitTorrentManagerMock
     MOCK_METHOD(void, shutdown, (const std::string &));
     MOCK_METHOD(void, dropPeer, (http::PeerId, const std::string &));
     MOCK_METHOD(void, closeConnection, (http::PeerId));
+    MOCK_METHOD(void, onShutdown, (uint8_t));
+    MOCK_METHOD(void, onDeactivate, (uint8_t));
     template <typename T> ProtocolState forwardToPeer(http::PeerId peer, T &&t)
     {
         return forwardToPeer(peer, std::move(t));
@@ -80,6 +82,48 @@ TEST_F(BitTorrentManagerTest, onValidPeerEvent)
     EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
     EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
     EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::OPEN));
+
+    btManMock.eval();
+}
+
+TEST_F(BitTorrentManagerTest, onProtocolHashCheckFailure)
+{
+    Choke ck{};
+    const auto msg = ReceiveEvent{dummyPeer, ck};
+    peerQueue.push(msg);
+
+    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
+    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(1);
+    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::HASH_CHECK_FAIL));
+
+    btManMock.eval();
+}
+
+TEST_F(BitTorrentManagerTest, onProtocolClose)
+{
+    Choke ck{};
+    const auto msg = ReceiveEvent{dummyPeer, ck};
+    peerQueue.push(msg);
+
+    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
+    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
+    EXPECT_CALL(btManMock, closeConnection(_)).Times(1);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::CLOSED));
+
+    btManMock.eval();
+}
+
+TEST_F(BitTorrentManagerTest, onProtocolError)
+{
+    Choke ck{};
+    const auto msg = ReceiveEvent{dummyPeer, ck};
+    peerQueue.push(msg);
+
+    EXPECT_CALL(btManMock, shutdown(_)).Times(1);
+    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
+    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::ERROR));
 
     btManMock.eval();
 }

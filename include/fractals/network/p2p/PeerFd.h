@@ -10,12 +10,11 @@ namespace fractals::network::p2p
     struct PeerFd
     {
         http::PeerId mId;
-
-        Socket mSocket;
+        int32_t mFd;
 
         int32_t getFileDescriptor() const
         {
-            return mSocket.getFileDescriptor();
+            return mFd;
         }
         
         http::PeerId getId() const
@@ -30,7 +29,7 @@ namespace fractals::network::p2p
 
         static PeerFd invalid()
         {
-            return PeerFd{http::PeerId{"",0}, Socket{0}};
+            return PeerFd{http::PeerId{"",0}, 0};
         }
     };
 }

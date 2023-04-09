@@ -459,44 +459,4 @@ namespace fractals::network::p2p
         os << "BufferedQueueManager: " << common::bytes_to_hex(msg.mBufferedQueueManager) << "}";
         return os;
     }
-
-    uint32_t Disconnect::getLen() const
-    {
-        return 0;
-    }
-    
-    std::vector<char> Disconnect::getPrefix() const
-    {
-        return {};
-    }
-
-    bool operator==(const Disconnect& lhs, const Disconnect& rhs)
-    {
-        return true;
-    }
-
-    std::ostream& operator<<(std::ostream& os, const Disconnect& msg)
-    {
-        return os << "Disconnect{}";
-    }
-
-    uint32_t Deactivate::getLen() const
-    {
-        return 0;
-    }
-    
-    std::vector<char> Deactivate::getPrefix() const
-    {
-        return {};
-    }
-
-    bool operator==(const Deactivate& lhs, const Deactivate& rhs)
-    {
-        return true;
-    }
-
-    std::ostream& operator<<(std::ostream& os, const Deactivate& msg)
-    {
-        return os << "Deactivate{}";
-    }
 }

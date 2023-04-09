@@ -14,12 +14,11 @@
 namespace fractals::network::p2p
 {
 
-
-
-BitTorrentManager::BitTorrentManager(PeerEventQueue &peerQueue, BufferedQueueManager &buffMan,
+BitTorrentManager::BitTorrentManager(PeerEventQueue &peerQueue, PeerService &peerService,
                                      persist::PersistEventQueue::LeftEndPoint persistQueue,
                                      disk::DiskEventQueue &diskQueue)
-    : eventHandler{this}, peerQueue(peerQueue), buffMan(buffMan), persistQueue(persistQueue), diskQueue(diskQueue)
+    : eventHandler{this}, peerQueue(peerQueue), peerService(peerService), persistQueue(persistQueue),
+      diskQueue(diskQueue)
 {
     peerQueue.attachNotifier(&cv);
     persistQueue.attachNotifier(&cv);
@@ -66,7 +65,7 @@ void BitTorrentManager::shutdown(const std::string &reason)
 {
     state = State::Deactivating;
 
-    buffMan.sendToPeer(PeerFd::invalid(), Deactivate{});
+    peerService.shutdown();
 }
 
 void BitTorrentManager::closeConnection(http::PeerId)

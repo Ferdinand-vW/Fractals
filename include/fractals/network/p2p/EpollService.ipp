@@ -2,7 +2,7 @@
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/ConnectionEventHandler.h"
+#include "fractals/network/p2p/EpollService.h"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/Socket.h"
 
@@ -18,7 +18,7 @@
 namespace fractals::network::p2p
 {
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::ConnectionEventHandler(
+EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::EpollServiceImpl(
     Epoll &epoll, BufferedQueueManagerT &bufMan)
     : mEpoll(epoll), mBufferedQueueManager(bufMan)
 {
@@ -26,7 +26,7 @@ ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::ConnectionEv
 }
 
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-epoll_wrapper::CtlAction ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::subscribe(const Peer &peer)
+epoll_wrapper::CtlAction EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::subscribe(const Peer &peer)
 {
     if constexpr (Action == ActionType::READ)
     {
@@ -39,20 +39,20 @@ epoll_wrapper::CtlAction ConnectionEventHandler<Action, Peer, Epoll, BufferedQue
 }
 
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-epoll_wrapper::CtlAction ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::unsubscribe(
+epoll_wrapper::CtlAction EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::unsubscribe(
     const Peer &peer)
 {
     return mEpoll.erase(peer);
 }
 
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-bool ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::isSubscribed(const Peer &peer)
+bool EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::isSubscribed(const Peer &peer)
 {
     return mEpoll.hasFd(peer.getFileDescriptor());
 }
 
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-int ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::readSocket(const Peer &peer)
+int EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::readSocket(const Peer &peer)
 {
     std::vector<char> buf(512);
 
@@ -79,7 +79,7 @@ template <typename Peer> void writeSocket(const Peer &peer, WriteMsgState *msgSt
 }
 
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-void ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::run()
+void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::run()
 {
     mIsActive = true;
 
@@ -159,15 +159,15 @@ void ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::run()
 }
 
 template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-void ConnectionEventHandler<Action, Peer, Epoll, BufferedQueueManagerT>::stop()
+void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::stop()
 {
     mIsActive = false;
 
-    int fd = eventfd(0, EFD_NONBLOCK);
+    int32_t fd = eventfd(0, EFD_NONBLOCK);
     mSpecialFd = fd;
     assert(fd > 0);
     http::PeerId pId{"", 0};
-    auto peerfd = PeerFd{pId, Socket{fd}};
+    auto peerfd = PeerFd{pId, fd};
     subscribe(peerfd);
     eventfd_write(fd, 10);
 }

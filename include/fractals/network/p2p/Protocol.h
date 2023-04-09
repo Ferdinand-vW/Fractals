@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "fractals/disk/DiskEventQueue.h"
+#include "fractals/network/p2p/PeerService.h"
 #include "fractals/network/p2p/PieceStateManager.h"
 #include "fractals/persist/PersistEventQueue.h"
 #include "fractals/network/http/Peer.h"
@@ -18,7 +19,7 @@ namespace fractals::network::p2p
         public:
             Protocol(http::PeerId peer
                     , const std::string& infoHash
-                    , BitTorrentMsgQueue& sendQueue
+                    , PeerService& peerService
                     , persist::PersistEventQueue::LeftEndPoint persistQueue
                     , disk::DiskEventQueue& diskQueue
                     , PieceStateManager& pieceRepository);
@@ -50,7 +51,7 @@ namespace fractals::network::p2p
             http::PeerId peer;
             const std::string& infoHash;
             std::unordered_set<uint32_t> availablePieces;
-            BitTorrentMsgQueue& sendQueue;
+            PeerService& peerService;
             persist::PersistEventQueue::LeftEndPoint persistQueue;
             disk::DiskEventQueue& diskQueue;
             PieceStateManager& pieceRepository;

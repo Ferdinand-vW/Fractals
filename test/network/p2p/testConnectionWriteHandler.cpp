@@ -5,8 +5,8 @@
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/ConnectionEventHandler.h"
-#include "fractals/network/p2p/ConnectionEventHandler.ipp"
+#include "fractals/network/p2p/EpollService.h"
+#include "fractals/network/p2p/EpollService.ipp"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/PeerEventQueue.h"
 #include "fractals/torrent/Bencode.h"
@@ -87,7 +87,7 @@ class MockBufferedQueueManager
 
 };
 
-using MockWriteHandler = ConnectionEventHandler<ActionType::WRITE, PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager>;
+using MockWriteHandler = EpollService<ActionType::WRITE, PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager>;
 
 std::vector<char> readFromFd(int fd)
 {

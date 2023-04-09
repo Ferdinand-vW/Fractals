@@ -16,7 +16,7 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     std::array<Event, QUEUE_SIZE> mEvents;
     int32_t mHead{0};
     int32_t mTail{0};
-    std::condition_variable* cv;
+    std::condition_variable* cv{nullptr};
 
   private:
     void calibrate()

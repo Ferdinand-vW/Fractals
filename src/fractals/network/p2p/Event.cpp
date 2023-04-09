@@ -28,6 +28,16 @@ namespace fractals::network::p2p
         return os << "ConnectionError";
     };
 
+    std::ostream& operator<<(std::ostream& os, const Shutdown& msg)
+    {
+        return os << "Shutdown{}";
+    }
+
+    std::ostream& operator<<(std::ostream& os, const Deactivate& msg)
+    {
+        return os << "Deactivate{}";
+    }
+
     std::ostream& operator<<(std::ostream& os, const PeerEvent &pe)
     {
         std::visit(common::overloaded {

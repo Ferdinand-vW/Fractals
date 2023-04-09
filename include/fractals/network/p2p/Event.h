@@ -49,12 +49,28 @@ namespace fractals::network::p2p
     
     std::ostream& operator<<(std::ostream& os, const ConnectionError &e);
 
+    struct Shutdown
+    {
+        uint8_t token;
+    };
+    
+    std::ostream& operator<<(std::ostream& os, const Shutdown &e);
+
+    struct Deactivate
+    {
+        uint8_t token;
+    };
+    
+    std::ostream& operator<<(std::ostream& os, const Deactivate &e);
+
     using PeerEvent = std::variant
         <EpollError
         ,ReceiveError
         ,ReceiveEvent
         ,ConnectionCloseEvent
-        ,ConnectionError>;
+        ,ConnectionError
+        ,Shutdown
+        ,Deactivate>;
 
     std::ostream& operator<<(std::ostream& os, const PeerEvent &pe);
 }

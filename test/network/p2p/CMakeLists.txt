@@ -40,6 +40,13 @@ add_executable(
 
 target_link_libraries(testBitTorrentEncoder gtest_main gmock_main Fractals_lib)
 
+add_executable(
+    testPeerService
+    testPeerService.cpp
+)
+
+target_link_libraries(testPeerService gtest_main gmock_main Fractals_lib)
+
 
 add_executable(
     testPieceStateManager
