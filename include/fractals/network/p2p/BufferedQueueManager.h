@@ -3,12 +3,10 @@
 #include "fractals/common/WorkQueue.h"
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Peer.h"
-#include "fractals/network/p2p/BitTorrentEncoder.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
-#include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/PeerEventQueue.h"
 #include "fractals/network/p2p/PeerFd.h"
 
+#include <cassert>
 #include <span>
 #include <string_view>
 #include <unordered_map>
@@ -25,8 +23,10 @@ class ReadMsgState
 
     template <typename Container> void append(Container &&data)
     {
-        mBufferedQueueManager.insert(mBufferedQueueManager.end(), data.begin(), data.end());
+        buffMan.insert(buffMan.end(), data.begin(), data.end());
     }
+
+    std::vector<char>&& flush();
 
     void reset();
 
@@ -34,7 +34,7 @@ class ReadMsgState
 
   private:
     int32_t mLength{-1};
-    std::vector<char> mBufferedQueueManager;
+    std::vector<char> buffMan;
 };
 
 class WriteMsgState
@@ -50,17 +50,25 @@ class WriteMsgState
 
   private:
     common::string_view mBufferedQueueManagerView;
-    std::vector<char> mBufferedQueueManager;
+    std::vector<char> buffMan;
 };
 
-template <typename MsgQueue> class BufferedQueueManagerImpl
+class BufferedQueueManager
 {
   public:
-    BufferedQueueManagerImpl(MsgQueue &mq) : mMsgQueue(mq)
+    BufferedQueueManager() = default;
+
+    template <typename Container> bool addToReadBuffer(const PeerFd &p, Container &&data)
     {
+        while(!data.empty())
+        {
+            parseMsg(p, data);
+        }
+
+        return false;
     }
 
-    template <typename Container> void readPeerData(const PeerFd &p, Container &&data)
+    template <typename Container> bool parseMessage(const PeerFd& p, Container& data)
     {
         const auto it = mReadBuffers.find(p);
 
@@ -71,20 +79,26 @@ template <typename MsgQueue> class BufferedQueueManagerImpl
             uint8_t len = data[0];
             m.initialize(49 + len - 1); // Size of HandShake message without len
             m.append(data);
-            mReadBuffers[p] = m;
+            mReadBuffers[p].push_back(m);
 
-            publishOnComplete(p, m);
+            return m.isComplete();
         }
         // Already aware of peer, and we've already received enough bytes to determine length
-        else if (it->second.isInitialized())
+        else if (!it->second.empty() && it->second.back().isInitialized())
         {
-            it->second.append(data);
-            publishOnComplete(p, it->second);
+            it->second.back().append(data);
+
+            return it->second.size() > 1 || it->second.back().isComplete();
         }
         // Already aware of peer, but not yet clear how much data we are receiving
         else
         {
-            ReadMsgState &m = it->second;
+            if (it->second.empty())
+            {
+                it->second.push_back(ReadMsgState{});
+            }
+
+            ReadMsgState &m = it->second.back();
 
             m.append(data);
 
@@ -95,20 +109,26 @@ template <typename MsgQueue> class BufferedQueueManagerImpl
                 m.initialize(len);
             }
 
-            publishOnComplete(p, m);
+            return m.isComplete();
         }
+
+    }
+        
+    std::deque<ReadMsgState>& getReadBuffers(const PeerFd& p)
+    {
+        return mReadBuffers[p];
     }
 
-    void sendToPeer(const PeerFd &p, const BitTorrentMessage &m)
+    void addToWriteBuffer(const PeerFd &p, std::vector<char> &&m)
     {
         auto it = mWriteBuffers.find(p);
         if (it == mWriteBuffers.end())
         {
-            mWriteBuffers.emplace(p, WriteMsgState(mEncoder.encode(m)));
+            mWriteBuffers.emplace(p, WriteMsgState(std::move(m)));
         }
         else if (it->second.isComplete())
         {
-            it->second = WriteMsgState(std::move(mEncoder.encode(m)));
+            it->second = WriteMsgState(std::move(std::move(m)));
         }
     }
 
@@ -118,7 +138,7 @@ template <typename MsgQueue> class BufferedQueueManagerImpl
 
         if (it != mReadBuffers.end())
         {
-            return &(it->second);
+            return &(it->second.back());
         }
 
         return nullptr;
@@ -136,37 +156,9 @@ template <typename MsgQueue> class BufferedQueueManagerImpl
         return nullptr;
     }
 
-    void publish(const PeerEvent &pe)
-    {
-        mMsgQueue.push(pe);
-    }
-
   private:
-    void publishOnComplete(const PeerFd &p, ReadMsgState &m)
-    {
-        if (m.isComplete())
-        {
-            mMsgQueue.push(ReceiveEvent{p.getId(), mEncoder.decode(m.getBuffer())});
-            mReadBuffers[p] = ReadMsgState();
-        }
-    }
-
-    void clearWriteBuffer(const PeerFd &p, uint32_t bytes)
-    {
-        auto it = mWriteBuffers.find(p);
-
-        if (it != mWriteBuffers.end())
-        {
-            it->second.flush(bytes);
-        }
-    }
-
-  private:
-    BitTorrentEncoder mEncoder;
-    MsgQueue &mMsgQueue;
-    std::unordered_map<PeerFd, ReadMsgState> mReadBuffers;
+    std::unordered_map<PeerFd, std::deque<ReadMsgState>> mReadBuffers;
     std::unordered_map<PeerFd, WriteMsgState> mWriteBuffers;
 };
 
-using BufferedQueueManager = BufferedQueueManagerImpl<PeerEventQueue>;
 } // namespace fractals::network::p2p

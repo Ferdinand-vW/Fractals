@@ -1,58 +1,107 @@
-#include "Event.h"
 #include "fractals/common/utils.h"
 #include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
 #include "fractals/network/p2p/EpollService.h"
+#include "fractals/network/p2p/EpollServiceEvent.h"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/Socket.h"
 
 #include <bitset>
 #include <cassert>
+#include <chrono>
 #include <epoll_wrapper/Epoll.h>
+#include <epoll_wrapper/EpollImpl.h>
 #include <epoll_wrapper/Error.h>
+#include <epoll_wrapper/Event.h>
+#include <mutex>
 #include <spdlog/spdlog.h>
 #include <sstream>
 #include <stdexcept>
+#include <sys/epoll.h>
 #include <sys/eventfd.h>
 
 namespace fractals::network::p2p
 {
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::EpollServiceImpl(
-    Epoll &epoll, BufferedQueueManagerT &bufMan)
-    : mEpoll(epoll), mBufferedQueueManager(bufMan)
+
+#define TEMPLATE template <typename Peer, typename Epoll, typename BufferedQueueManagerT, typename EpollMsgQueue>
+#define PREFIX EpollServiceImpl<Peer, Epoll, BufferedQueueManagerT, EpollMsgQueue>
+
+TEMPLATE
+PREFIX::EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &bufMan, EpollMsgQueue &queue)
+    : mEpoll(epoll), buffMan(bufMan), mSpecialFd(createNotifyFd()), queue(queue), commQueue(queue.getRightEnd())
 {
-    mBufferedQueueManager.setWriteNotifier([this](const Peer &peer) { subscribe(peer); });
+    // buffMan.setWriteNotifier([this](const Peer &peer) { subscribe(peer); });
 }
 
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-epoll_wrapper::CtlAction EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::subscribe(const Peer &peer)
+TEMPLATE
+void PREFIX::subscribe(const Peer &peer)
 {
-    if constexpr (Action == ActionType::READ)
-    {
-        return mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn);
-    }
-    else
-    {
-        return mEpoll.add(peer, epoll_wrapper::EventCode::EpollOut);
-    }
+    std::unique_lock<std::mutex> _lock(mMutex);
+    spdlog::info("has lock");
+    const auto ctl = mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollOut);
+    spdlog::info("CEH::subscribe peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
+    commQueue.push(CtlResponse{peer, std::to_string(ctl.getError())});
 }
 
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-epoll_wrapper::CtlAction EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::unsubscribe(
-    const Peer &peer)
+TEMPLATE
+void PREFIX::unsubscribe(const Peer &peer)
 {
-    return mEpoll.erase(peer);
+    std::unique_lock<std::mutex> _lock(mMutex);
+    const auto ctl = mEpoll.erase(peer);
+    spdlog::info("CEH::unsubscribe peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
+    commQueue.push(CtlResponse{peer, std::to_string(ctl.getError())});
 }
 
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-bool EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::isSubscribed(const Peer &peer)
+TEMPLATE
+epoll_wrapper::CtlAction PREFIX::disableWrite(const Peer &peer)
+{
+    std::unique_lock<std::mutex> _lock(mMutex);
+    const auto ctl = mEpoll.mod(peer, epoll_wrapper::EventCode::EpollIn);
+
+    spdlog::info("CEH::disableWrite peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
+    return ctl;
+}
+
+TEMPLATE
+epoll_wrapper::CtlAction PREFIX::enableWrite(const Peer &peer)
+{
+    std::unique_lock<std::mutex> _lock(mMutex);
+    const auto ctl = mEpoll.mod(peer, epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollOut);
+    spdlog::info("CEH::enableWrite peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
+    return ctl;
+}
+
+TEMPLATE
+void PREFIX::notify()
+{
+    spdlog::info("CEH::notify");
+    struct epoll_event event;
+    event.events = EPOLLOUT | EPOLLONESHOT;
+    event.data.fd = mSpecialFd.getFileDescriptor();
+    // Call underlying epoll system call directly without updating internal hashmap as this is thread safe
+    mEpoll.getUnderlying().epoll_ctl(EPOLL_CTL_DEL, mSpecialFd.getFileDescriptor(), &event);
+    mEpoll.getUnderlying().epoll_ctl(EPOLL_CTL_ADD, mSpecialFd.getFileDescriptor(), &event);
+}
+
+TEMPLATE
+bool PREFIX::isSubscribed(const Peer &peer)
 {
     return mEpoll.hasFd(peer.getFileDescriptor());
 }
 
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-int EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::readSocket(const Peer &peer)
+TEMPLATE
+PeerFd PREFIX::createNotifyFd()
+{
+    int32_t fd = eventfd(0, EFD_NONBLOCK);
+    assert(fd > 0);
+    spdlog::info("CEH::createNotifyFd fd={}", fd);
+    return PeerFd{http::PeerId{"localhost", 0}, fd};
+}
+
+TEMPLATE
+int PREFIX::readSocket(const Peer &peer)
 {
     std::vector<char> buf(512);
 
@@ -65,42 +114,105 @@ int EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::readSocket(con
         }
 
         rd += n;
-        common::string_view view(buf.begin(), buf.begin() + n);
-        mBufferedQueueManager.readPeerData(peer.getId(), view);
+
+        bool isComplete = buffMan.addToReadBuffer(peer, std::vector<char>(buf.begin(), buf.begin() + n));
+        if (isComplete)
+        {
+            spdlog::info("push read event");
+            auto &msgs = buffMan.getReadBuffers(peer);
+            for (auto it = msgs.begin(); it != msgs.end();)
+            {
+                spdlog::info("t");
+                if (it->isComplete())
+                {
+                    spdlog::info("c");
+                    commQueue.push(ReadEvent{peer, std::move(it->flush())});
+                    it = msgs.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
     }
 
     return rd;
 }
 
-template <typename Peer> void writeSocket(const Peer &peer, WriteMsgState *msgState)
+template <typename Peer> int writeData(const Peer &peer, WriteMsgState *msgState)
 {
+    spdlog::info("writeData: remaining={}", msgState->remaining());
     int n = write(peer.getFileDescriptor(), msgState->getBuffer().data(), msgState->remaining());
+    spdlog::info("write to socket={}", n);
     msgState->flush(n);
+
+    return n;
 }
 
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::run()
+TEMPLATE
+void PREFIX::run()
 {
-    mIsActive = true;
+    spdlog::info("CEH::run");
+    state = State::Active;
 
-    while (mIsActive)
+    while (state == State::Active)
     {
-        const auto wa = mEpoll.wait();
+        while (commQueue.canPop())
+        {
+            spdlog::info("pop");
+            const auto req = commQueue.pop();
+            spdlog::info("did pop");
 
-        if (wa.hasError())
+            std::visit(common::overloaded{[&](Subscribe sub) {
+                                              spdlog::info("sub");
+                                              subscribe(sub.peer);
+                                          },
+                                          [&](UnSubscribe unsub) {
+                                              spdlog::info("unsub");
+                                              unsubscribe(unsub.peer);
+                                          },
+                                          [&](Deactivate stop) {
+                                              spdlog::info("CEH::pop from queue: Deactivate");
+                                              state = State::Inactive;
+                                              commQueue.push(DeactivateResponse{});
+                                          },
+                                          [&](WriteEvent data) {
+                                              spdlog::info("write");
+                                              enableWrite(data.peer);
+                                              buffMan.addToWriteBuffer(data.peer, std::move(data.message));
+                                          }},
+                       req);
+        }
+
+        spdlog::info("here");
+        if (state != State::Active)
+        {
+            spdlog::info("break");
+            break;
+        }
+        spdlog::info("CEH::wait");
+        const auto wa = mEpoll.wait(500);
+        spdlog::info("CEH::exit wait. ErrorCode={} NumEvents={}", std::to_string(wa.getError()),
+                     std::to_string(wa.getEvents().size()));
+
+        const auto hasError =
+            (epoll_wrapper::ErrorCode::None != wa.getError() && epoll_wrapper::ErrorCode::Eintr != wa.getError());
+        if (hasError)
         {
             spdlog::info("CEH::run wait has error {}", std::to_string(wa.getError()));
-            mIsActive = false;
-            mBufferedQueueManager.publishToQueue(EpollError{wa.getError()});
+            state = State::Inactive;
+            commQueue.push(EpollError{wa.getError()});
             return;
         }
 
         for (auto &[peer, event] : wa.getEvents())
         {
-            if (mSpecialFd && mSpecialFd.value() == peer.getFileDescriptor())
+            if (peer == mSpecialFd)
             {
-                mSpecialFd.reset();
-                return;
+                spdlog::info("CEH::specialFd eventCodes={} error={}", std::to_string(event.mEvents),
+                             std::to_string(event.mError));
+                continue;
             }
 
             if (isSubscribed(peer))
@@ -111,7 +223,8 @@ void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::run()
                 if (event.mEvents & epoll_wrapper::EventCode::EpollErr)
                 {
                     spdlog::info("CEH::run peer={} event=EpollErr", peer.getId().toString());
-                    mBufferedQueueManager.publishToQueue(ConnectionError{peer.getId(), event.mError});
+
+                    commQueue.push(ConnectionError{peer.getId(), event.mError});
 
                     unsubscribe(peer);
                 }
@@ -119,34 +232,36 @@ void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::run()
                 if (event.mEvents & epoll_wrapper::EventCode::EpollHUp)
                 {
                     spdlog::info("CEH::run peer={} event=EpollHUp", peer.getId().toString());
-                    mBufferedQueueManager.publishToQueue(ConnectionCloseEvent{peer.getId()});
+                    commQueue.push(ConnectionCloseEvent{peer.getId()});
 
                     unsubscribe(peer);
                 }
-
-                if constexpr (Action == ActionType::READ)
+                if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
                 {
-                    if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
-                    {
-                        int rd = readSocket(peer);
-
-                        spdlog::info("CEH::run peer={} event=EpollIn read={}", peer.getId().toString(), rd);
-                    }
+                    int numBytes = readSocket(peer);
+                    spdlog::info("CEH::run peer={} event=EpollIn read={}", peer.getId().toString(), numBytes);
                 }
-                else
+                if (event.mEvents & epoll_wrapper::EventCode::EpollOut)
                 {
-                    if (event.mEvents & epoll_wrapper::EventCode::EpollOut)
+                    spdlog::info("CEH::run peer={} event=EpollOut", peer.getId().toString());
+                    auto *writeMsg = buffMan.getWriteBuffer(peer);
+                    if (!writeMsg || writeMsg->isComplete())
                     {
-                        spdlog::info("CEH::run peer={} event=EpollOut", peer.getId().toString());
-                        auto *writeMsg = mBufferedQueueManager.getWriteBuffer(peer);
-                        writeSocket(peer, writeMsg);
+                        continue;
+                    }
 
-                        if (writeMsg->isComplete())
-                        {
-                            spdlog::info("CEH::run peer={} complete write. event={}", peer.getId().toString(),
-                             epoll_wrapper::toEpollEvent(event.mEvents));
-                            unsubscribe(peer);
-                        }
+                    if (!writeData(peer, writeMsg))
+                    {
+                        disableWrite(peer);
+                        commQueue.push(WriteEventResponse{peer, "Could not write any data to peer"});
+                    }
+
+                    if (writeMsg->isComplete())
+                    {
+                        spdlog::info("CEH::run peer={} complete write. event={}", peer.getId().toString(),
+                                     epoll_wrapper::toEpollEvent(event.mEvents));
+                        commQueue.push(WriteEventResponse{peer, ""});
+                        disableWrite(peer);
                     }
                 }
             }
@@ -156,20 +271,39 @@ void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::run()
             }
         }
     }
+
+    state = State::Inactive;
 }
 
-template <ActionType Action, typename Peer, typename Epoll, typename BufferedQueueManagerT>
-void EpollServiceImpl<Action, Peer, Epoll, BufferedQueueManagerT>::stop()
+TEMPLATE
+typename PREFIX::State PREFIX::stop()
 {
-    mIsActive = false;
+    spdlog::info("CEH::stop");
+    if (state == State::Active)
+    {
+        const auto newState = State::Deactivating;
+        state = newState;
 
-    int32_t fd = eventfd(0, EFD_NONBLOCK);
-    mSpecialFd = fd;
-    assert(fd > 0);
-    http::PeerId pId{"", 0};
-    auto peerfd = PeerFd{pId, fd};
-    subscribe(peerfd);
-    eventfd_write(fd, 10);
+        notify();
+        return newState;
+    }
+
+    return state;
 }
+
+TEMPLATE
+typename PREFIX::State PREFIX::getState() const
+{
+    return state;
+}
+
+TEMPLATE
+typename EpollMsgQueue::LeftEndPoint PREFIX::getCommQueue()
+{
+    return commQueue.getLeftEnd();
+}
+
+#undef TEMPLATE
+#undef PREFIX
 
 } // namespace fractals::network::p2p

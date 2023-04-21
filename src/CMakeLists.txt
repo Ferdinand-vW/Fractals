@@ -27,7 +27,7 @@ set(SOURCES
             fractals/network/p2p/PieceStateManager.cpp
             fractals/network/p2p/Protocol.cpp
             fractals/network/p2p/Connection.cpp
-            fractals/network/p2p/Event.cpp
+            fractals/network/p2p/EpollServiceEvent.cpp
             fractals/network/p2p/PeerManager.cpp
             # fractals/network/p2p/BitTorrent.cpp
             # fractals/network/p2p/Client.cpp

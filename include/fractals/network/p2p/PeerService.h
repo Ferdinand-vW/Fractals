@@ -3,9 +3,10 @@
 #include "EpollService.h"
 #include "fractals/common/TcpService.h"
 #include "fractals/network/http/Peer.h"
+#include "fractals/network/p2p/BitTorrentEncoder.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/PeerEventQueue.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
 #include "fractals/network/p2p/PeerFd.h"
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
@@ -16,14 +17,13 @@
 namespace fractals::network::p2p
 {
 
-template <template <ActionType> typename EpollService, typename BufferedQueueManager, typename TcpService>
+template <typename EpollService, typename BufferedQueueManager, typename TcpService>
 class PeerServiceImpl
 {
   public:
-    PeerServiceImpl(typename EpollService<ActionType::READ>::Epoll &readEpoll,
-                    typename EpollService<ActionType::WRITE>::Epoll &writeEpoll, BufferedQueueManager &buffMan,
-                    TcpService &tcpService)
-        : buffMan(buffMan), reader(readEpoll, buffMan), writer(writeEpoll, buffMan), tcpService(tcpService)
+    PeerServiceImpl(EpollService& epollService,
+                    BufferedQueueManager &buffMan, TcpService &tcpService)
+        : buffMan(buffMan), epollService(epollService), tcpService(tcpService)
     {
     }
 
@@ -41,26 +41,28 @@ class PeerServiceImpl
 
             peerFd = PeerFd{peer, fd};
             peerFds.emplace(peer, *peerFd);
+
+            epollService.getCommQueue().push(Subscribe{*peerFd});
         }
         else
         {
             peerFd = it->second;
         }
 
-        buffMan.sendToPeer(*peerFd, std::move(msg));
-    }
+        buffMan.addToWriteBuffer(*peerFd, std::move(encoder.encode(msg)));
 
-    PeerEventQueue &getReadEndpoint();
+        epollService.notify();
+    }
 
     void deactivate();
     void shutdown();
 
   private:
-    EpollService<ActionType::READ> reader;
-    EpollService<ActionType::WRITE> writer;
+    EpollService epollService;
 
+    BitTorrentEncoder encoder;
     BufferedQueueManager &buffMan;
-    TcpService& tcpService;
+    TcpService &tcpService;
 
     std::unordered_map<http::PeerId, PeerFd> peerFds;
 };

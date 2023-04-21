@@ -40,9 +40,10 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
             return popEnd.size();
         }
 
-        void attachNotifier(std::condition_variable *cv)
+        void attachNotifier(std::mutex* mutex, std::condition_variable *cv)
         {
-            pushEnd.attachNotifier(cv);
+            pushEnd.attachNotifier(mutex, cv);
+            popEnd.attachNotifier(mutex, cv);
         }
 
         void notify()

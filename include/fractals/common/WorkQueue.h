@@ -7,6 +7,7 @@
 #include <functional>
 #include <iostream>
 #include <optional>
+#include <spdlog/spdlog.h>
 
 namespace fractals::common
 {
@@ -16,7 +17,8 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     std::array<Event, QUEUE_SIZE> mEvents;
     int32_t mHead{0};
     int32_t mTail{0};
-    std::condition_variable* cv{nullptr};
+    std::mutex *mutex{nullptr};
+    std::condition_variable *cv{nullptr};
 
   private:
     void calibrate()
@@ -41,8 +43,18 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
         }
         mEvents[mHead % QUEUE_SIZE] = event;
 
-        ++mHead;
+        if (mutex != nullptr)
+        {
+            std::unique_lock<std::mutex> _lock(*mutex);
+            ++mHead;
+        }
+        else
+        {
+            ++mHead;
+        }
+        
 
+        spdlog::info("notify");
         notify();
     }
 
@@ -54,7 +66,7 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     Event &&pop()
     {
         auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
-        
+
         calibrate();
         ++mTail;
 
@@ -74,16 +86,22 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
         return mHead - mTail;
     }
 
-    void attachNotifier(std::condition_variable* cv)
+    void attachNotifier(std::mutex* mutex, std::condition_variable *cv)
     {
+        this->mutex = mutex;
         this->cv = cv;
     }
 
     void notify()
     {
-        if (cv)
+        if (cv != nullptr)
         {
+            spdlog::info("actually now");
             cv->notify_all();
+        }
+        else
+        {
+            spdlog::info("wtf");
         }
     }
 };

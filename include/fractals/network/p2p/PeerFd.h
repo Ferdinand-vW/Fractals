@@ -7,46 +7,50 @@
 
 namespace fractals::network::p2p
 {
-    struct PeerFd
+struct PeerFd
+{
+    PeerFd() = default;
+    PeerFd(const http::PeerId &id, int32_t fd) : mId(id), mFd(fd)
     {
-        http::PeerId mId;
-        int32_t mFd;
+    }
 
-        int32_t getFileDescriptor() const
-        {
-            return mFd;
-        }
-        
-        http::PeerId getId() const
-        {
-            return mId;
-        }
+    http::PeerId mId;
+    int32_t mFd;
 
-        bool operator==(const PeerFd &p) const
-        {
-            return mId == p.getId();
-        }
+    int32_t getFileDescriptor() const
+    {
+        return mFd;
+    }
 
-        static PeerFd invalid()
-        {
-            return PeerFd{http::PeerId{"",0}, 0};
-        }
-    };
-}
+    http::PeerId getId() const
+    {
+        return mId;
+    }
+
+    bool operator==(const PeerFd &p) const
+    {
+        return mId == p.getId();
+    }
+
+    static PeerFd invalid()
+    {
+        return PeerFd{http::PeerId{"", 0}, 0};
+    }
+};
+} // namespace fractals::network::p2p
 
 namespace std
 {
-    template <>
-    struct std::hash<fractals::network::p2p::PeerFd>
+template <> struct std::hash<fractals::network::p2p::PeerFd>
+{
+    std::size_t operator()(const fractals::network::p2p::PeerFd &p) const
     {
-        std::size_t operator()(const fractals::network::p2p::PeerFd& p) const
-        {
 
         // Compute individual hash values for first,
         // second and third and combine them using XOR
         // and bit shifting:
         std::hash<fractals::network::http::PeerId> h;
         return h(p.getId());
-        }
-    };
-}
+    }
+};
+} // namespace std

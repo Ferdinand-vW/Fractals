@@ -301,14 +301,14 @@ struct SerializeError;
             SerializeError() = default;
             template <typename Container>
             SerializeError(uint32_t msgType, Container && buffer)
-                : msgType(msgType), mBufferedQueueManager(buffer.begin(), buffer.end()) {}
+                : msgType(msgType), buffMan(buffer.begin(), buffer.end()) {}
             
             template <typename Container>
             SerializeError(uint32_t msgType, Container && buffer, std::string&& reason)
-                : msgType(msgType), mBufferedQueueManager(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
+                : msgType(msgType), buffMan(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
             template <typename Container>
             SerializeError(Container && buffer, std::string&& reason)
-                : mBufferedQueueManager(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
+                : buffMan(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
 
             std::vector<char> getPrefix() const;
             const common::string_view getBuffer() const;
@@ -319,7 +319,7 @@ struct SerializeError;
         private:
             int32_t msgType{-1};
             std::string mError{""};
-            std::vector<char> mBufferedQueueManager;
+            std::vector<char> buffMan;
     };
 
     using BitTorrentMsgQueue = common::WorkQueueImpl<256, BitTorrentMessage>;

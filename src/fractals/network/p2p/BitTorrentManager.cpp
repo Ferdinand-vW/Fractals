@@ -4,8 +4,7 @@
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/PeerEventQueue.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
 #include "fractals/persist/PersistEventQueue.h"
 #include <mutex>
 #include <type_traits>
@@ -14,14 +13,15 @@
 namespace fractals::network::p2p
 {
 
-BitTorrentManager::BitTorrentManager(PeerEventQueue &peerQueue, PeerService &peerService,
+BitTorrentManager::BitTorrentManager(EpollMsgQueue::LeftEndPoint peerQueue, PeerService &peerService,
                                      persist::PersistEventQueue::LeftEndPoint persistQueue,
                                      disk::DiskEventQueue &diskQueue)
     : eventHandler{this}, peerQueue(peerQueue), peerService(peerService), persistQueue(persistQueue),
       diskQueue(diskQueue)
 {
-    peerQueue.attachNotifier(&cv);
-    persistQueue.attachNotifier(&cv);
+    std::mutex mutex;
+    peerQueue.attachNotifier(&mutex, &cv);
+    persistQueue.attachNotifier(&mutex, &cv);
 };
 
 void BitTorrentManager::run()
@@ -36,14 +36,14 @@ void BitTorrentManager::run()
         if (!workDone)
         {
             std::unique_lock lck(mutex);
-            cv.wait(lck, [&]() { return !peerQueue.isEmpty() || persistQueue.canPop(); });
+            cv.wait(lck, [&]() { return peerQueue.canPop() || persistQueue.canPop(); });
         }
     }
 }
 
 void BitTorrentManager::eval(bool &&workDone)
 {
-    if (!peerQueue.isEmpty())
+    if (peerQueue.canPop())
     {
         auto &&event = peerQueue.pop();
 

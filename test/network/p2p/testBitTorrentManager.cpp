@@ -18,7 +18,7 @@ using ::testing::Return;
 namespace fractals::network::p2p
 {
 
-bool operator==(const ReceiveEvent &lhs, const ReceiveEvent &rhs)
+bool operator==(const ReadEvent &lhs, const ReadEvent &rhs)
 {
     return lhs.peerId == rhs.peerId && lhs.mMessage == rhs.mMessage;
 }
@@ -45,7 +45,7 @@ class BitTorrentManagerMock
     MOCK_METHOD(void, dropPeer, (http::PeerId, const std::string &));
     MOCK_METHOD(void, closeConnection, (http::PeerId));
     MOCK_METHOD(void, onShutdown, (uint8_t));
-    MOCK_METHOD(void, onDeactivate, (uint8_t));
+    MOCK_METHOD(void, onDeactivate, ());
     template <typename T> ProtocolState forwardToPeer(http::PeerId peer, T &&t)
     {
         return forwardToPeer(peer, std::move(t));
@@ -75,7 +75,7 @@ class BitTorrentManagerTest : public ::testing::Test
 TEST_F(BitTorrentManagerTest, onValidPeerEvent)
 {
     Choke ck{};
-    const auto msg = ReceiveEvent{dummyPeer, ck};
+    const auto msg = ReadEvent{dummyPeer, ck};
     peerQueue.push(msg);
 
     EXPECT_CALL(btManMock, shutdown(_)).Times(0);
@@ -89,7 +89,7 @@ TEST_F(BitTorrentManagerTest, onValidPeerEvent)
 TEST_F(BitTorrentManagerTest, onProtocolHashCheckFailure)
 {
     Choke ck{};
-    const auto msg = ReceiveEvent{dummyPeer, ck};
+    const auto msg = ReadEvent{dummyPeer, ck};
     peerQueue.push(msg);
 
     EXPECT_CALL(btManMock, shutdown(_)).Times(0);
@@ -103,7 +103,7 @@ TEST_F(BitTorrentManagerTest, onProtocolHashCheckFailure)
 TEST_F(BitTorrentManagerTest, onProtocolClose)
 {
     Choke ck{};
-    const auto msg = ReceiveEvent{dummyPeer, ck};
+    const auto msg = ReadEvent{dummyPeer, ck};
     peerQueue.push(msg);
 
     EXPECT_CALL(btManMock, shutdown(_)).Times(0);
@@ -117,7 +117,7 @@ TEST_F(BitTorrentManagerTest, onProtocolClose)
 TEST_F(BitTorrentManagerTest, onProtocolError)
 {
     Choke ck{};
-    const auto msg = ReceiveEvent{dummyPeer, ck};
+    const auto msg = ReadEvent{dummyPeer, ck};
     peerQueue.push(msg);
 
     EXPECT_CALL(btManMock, shutdown(_)).Times(1);
@@ -130,7 +130,7 @@ TEST_F(BitTorrentManagerTest, onProtocolError)
 
 TEST_F(BitTorrentManagerTest, onInvalidPeerEvent)
 {
-    const auto msg = ReceiveError{dummyPeer, epoll_wrapper::ErrorCode::EbadF};
+    const auto msg = ReadEventResponse{dummyPeer, epoll_wrapper::ErrorCode::EbadF};
     peerQueue.push(msg);
 
     EXPECT_CALL(btManMock, shutdown(_)).Times(0);

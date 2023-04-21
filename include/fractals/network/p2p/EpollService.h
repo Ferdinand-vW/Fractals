@@ -1,8 +1,8 @@
 #pragma once
 
 #include "PeerFd.h"
-#include "Event.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
 
 #include <epoll_wrapper/Epoll.h>
 #include <epoll_wrapper/Error.h>
@@ -10,37 +10,53 @@
 
 namespace fractals::network::p2p
 {
-    enum class ActionType {READ , WRITE};
 
-    template <ActionType Action, typename Peer, typename EpollT, typename BufferedQueueManagerT>
-    class EpollServiceImpl
+template <typename Peer, typename EpollT, typename BufferedQueueManagerT, typename EpollMsgQueue>
+class EpollServiceImpl
+{
+  public:
+    enum class State
     {
-        public:
-            using Epoll = EpollT;
-
-            EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &rq);
-            EpollServiceImpl(const EpollServiceImpl&) = delete;
-            EpollServiceImpl(EpollServiceImpl&&) = delete;
-
-            epoll_wrapper::CtlAction subscribe(const Peer &peer);
-            epoll_wrapper::CtlAction unsubscribe(const Peer &peer);
-
-            bool isSubscribed(const Peer &peer);
-
-            void run();
-
-            void stop();
-
-        private:
-            int readSocket(const Peer &peer);
-
-            std::optional<uint32_t> mSpecialFd;
-            bool mIsActive{false};
-
-            Epoll &mEpoll;
-            BufferedQueueManagerT &mBufferedQueueManager;
+        Active,
+        Inactive,
+        Deactivating
     };
+    using Epoll = EpollT;
 
-    template <ActionType AT>
-    using EpollService = EpollServiceImpl<AT, PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager>;
-}
+    EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &rq, EpollMsgQueue& queue);
+    EpollServiceImpl(const EpollServiceImpl &) = delete;
+    EpollServiceImpl(EpollServiceImpl &&) = delete;
+
+    void notify();
+
+    bool isSubscribed(const Peer &peer);
+
+    void run();
+
+    State getState() const;
+
+    typename EpollMsgQueue::LeftEndPoint getCommQueue();
+
+  private:
+    void subscribe(const Peer &peer);
+    void unsubscribe(const Peer &peer);
+    epoll_wrapper::CtlAction disableWrite(const Peer &peer);
+    epoll_wrapper::CtlAction enableWrite(const Peer &peer);
+    State stop();
+
+    PeerFd createNotifyFd();
+    int readSocket(const Peer &peer);
+
+    PeerFd mSpecialFd;
+    State state{State::Inactive};
+
+    std::mutex mMutex;
+    Epoll &mEpoll;
+    BufferedQueueManagerT &buffMan;
+    EpollMsgQueue& queue;
+    typename EpollMsgQueue::RightEndPoint commQueue;
+};
+
+using EpollService = EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager, EpollMsgQueue>;
+
+} // namespace fractals::network::p2p
