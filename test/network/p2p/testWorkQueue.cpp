@@ -1,11 +1,10 @@
-#include "fractals/network/p2p/Event.h"
+// #include "fractals/network/p2p/PeerEvent.h"
 #include "fractals/common/WorkQueue.h"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-using ::testing::StrictMock;
-using namespace fractals::network::p2p;
+// using namespace fractals::network::p2p;
 using namespace fractals::common;
 
 struct Item
@@ -19,7 +18,6 @@ TEST(WORKQUEUE, AddRemoveItems)
 
     queue.push(Item{1});
     queue.push(Item{2});
-
 
     ASSERT_EQ(queue.size(), 2);
     auto i1 = queue.pop();

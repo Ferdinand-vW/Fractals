@@ -26,7 +26,7 @@ std::ostream &operator<<(std::ostream &os, const EpollError &e);
 
 struct ReadEventResponse
 {
-    http::PeerId peerId;
+    PeerFd peerId;
     epoll_wrapper::ErrorCode errorCode;
 
     bool operator==(const ReadEventResponse &obj) const
@@ -40,7 +40,7 @@ std::ostream &operator<<(std::ostream &os, const ReadEventResponse &e);
 struct ReadEvent
 {
     PeerFd peer;
-    std::vector<char> mMessage;
+    std::variant<std::vector<char>, BitTorrentMessage> mMessage;
 
     bool operator==(const ReadEvent &obj) const
     {

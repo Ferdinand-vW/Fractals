@@ -9,7 +9,7 @@ namespace fractals::network::p2p
     bool ReadMsgState::isComplete() const
     {
         // BufferedQueueManager includes length bytes which is not accounted for in mLength
-        return mLength <= buffMan.size();
+        return mLength <= buffer.size();
     }
 
     bool ReadMsgState::isInitialized() const
@@ -20,13 +20,13 @@ namespace fractals::network::p2p
     void ReadMsgState::initialize(uint32_t length)
     {
         mLength = length;
-        buffMan.reserve(mLength);
+        buffer.reserve(mLength);
     }
 
     std::vector<char>&& ReadMsgState::flush()
     {
         reset();
-        return std::move(buffMan);
+        return std::move(buffer);
     }
 
     void ReadMsgState::reset()
@@ -36,13 +36,18 @@ namespace fractals::network::p2p
 
     std::string_view ReadMsgState::getBuffer() const
     {
-        return std::basic_string_view<char>(buffMan.cbegin(),buffMan.cend());
+        return std::basic_string_view<char>(buffer.cbegin(),buffer.cend());
+    }
+
+    int32_t ReadMsgState::getRemaining() const
+    {
+        return mLength - buffer.size();
     }
 
     WriteMsgState::WriteMsgState(std::vector<char>&& data) 
-        : buffMan(std::move(data))
+        : buffer(std::move(data))
     {
-        mBufferedQueueManagerView = common::string_view(buffMan.begin(), buffMan.end());
+        mBufferedQueueManagerView = common::string_view(buffer.begin(), buffer.end());
     }
 
     bool WriteMsgState::isComplete() const

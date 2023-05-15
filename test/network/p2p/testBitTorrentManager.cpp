@@ -1,10 +1,13 @@
+#include "fractals/common/TcpService.h"
 #include "fractals/disk/DiskEventQueue.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentManager.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/PeerEventQueue.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
+#include "fractals/network/p2p/EpollService.h"
+#include "fractals/network/p2p/EpollServiceEvent.h"
+#include "fractals/network/p2p/PeerService.h"
 #include "fractals/persist/PersistEventQueue.h"
 
 #include "gmock/gmock.h"
@@ -18,34 +21,32 @@ using ::testing::Return;
 namespace fractals::network::p2p
 {
 
-bool operator==(const ReadEvent &lhs, const ReadEvent &rhs)
-{
-    return lhs.peerId == rhs.peerId && lhs.mMessage == rhs.mMessage;
-}
-
 const auto dummyPeer = http::PeerId{"host", 0};
+
+class MockPeerService
+{
+  public:
+    MOCK_METHOD(std::optional<PeerEvent>, read, ());
+};
 
 class BitTorrentManagerMock
 {
     using Base = BitTorrentManager;
 
   public:
-    BitTorrentManagerMock(PeerEventQueue &peerQueue, BufferedQueueManager &buffMan,
-                          persist::PersistEventQueue::LeftEndPoint persistQueue, disk::DiskEventQueue &diskQueue)
-        : peerQueue(peerQueue), eventHandler{this}
+    BitTorrentManagerMock(MockPeerService &peerService, persist::PersistEventQueue::LeftEndPoint persistQueue,
+                          disk::DiskEventQueue &diskQueue)
+        : peerService(peerService), eventHandler{this}
     {
     }
 
     void eval()
     {
-        eventHandler.handleEvent(peerQueue.pop());
+        eventHandler.handleEvent(peerService.read().value());
     }
 
-    MOCK_METHOD(void, shutdown, (const std::string &));
-    MOCK_METHOD(void, dropPeer, (http::PeerId, const std::string &));
-    MOCK_METHOD(void, closeConnection, (http::PeerId));
-    MOCK_METHOD(void, onShutdown, (uint8_t));
-    MOCK_METHOD(void, onDeactivate, ());
+    MOCK_METHOD(void, shutdown, ());
+    MOCK_METHOD(void, dropPeer, (http::PeerId));
     template <typename T> ProtocolState forwardToPeer(http::PeerId peer, T &&t)
     {
         return forwardToPeer(peer, std::move(t));
@@ -53,7 +54,7 @@ class BitTorrentManagerMock
 
     MOCK_METHOD(ProtocolState, forwardToPeer, (http::PeerId, Choke &&));
 
-    PeerEventQueue &peerQueue;
+    MockPeerService &peerService;
     BitTorrentEventHandler<BitTorrentManagerMock> eventHandler;
 };
 
@@ -64,117 +65,80 @@ class BitTorrentManagerTest : public ::testing::Test
     {
     }
 
-    PeerEventQueue peerQueue;
-    BufferedQueueManager buffMan{peerQueue};
+    MockPeerService peerService{};
     persist::PersistEventQueue persistQueue;
     disk::DiskEventQueue diskQueue;
 
-    BitTorrentManagerMock btManMock{peerQueue, buffMan, persistQueue.getLeftEnd(), diskQueue};
+    BitTorrentManagerMock btManMock{peerService, persistQueue.getLeftEnd(), diskQueue};
 };
 
 TEST_F(BitTorrentManagerTest, onValidPeerEvent)
 {
-    Choke ck{};
-    const auto msg = ReadEvent{dummyPeer, ck};
-    peerQueue.push(msg);
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
 
-    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
-    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
-    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::OPEN));
+    EXPECT_CALL(btManMock, shutdown()).Times(0);
+    EXPECT_CALL(btManMock, dropPeer(_)).Times(0);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, Choke{})).Times(1).WillOnce(Return(ProtocolState::OPEN));
 
     btManMock.eval();
 }
 
 TEST_F(BitTorrentManagerTest, onProtocolHashCheckFailure)
 {
-    Choke ck{};
-    const auto msg = ReadEvent{dummyPeer, ck};
-    peerQueue.push(msg);
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
 
-    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
-    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(1);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
-    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::HASH_CHECK_FAIL));
+    EXPECT_CALL(btManMock, shutdown()).Times(0);
+    EXPECT_CALL(btManMock, dropPeer(_)).Times(1);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(Choke{})))
+        .Times(1)
+        .WillOnce(Return(ProtocolState::HASH_CHECK_FAIL));
 
     btManMock.eval();
 }
 
 TEST_F(BitTorrentManagerTest, onProtocolClose)
 {
-    Choke ck{};
-    const auto msg = ReadEvent{dummyPeer, ck};
-    peerQueue.push(msg);
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
 
-    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
-    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(1);
-    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::CLOSED));
+    EXPECT_CALL(btManMock, shutdown()).Times(0);
+    EXPECT_CALL(btManMock, dropPeer(dummyPeer)).Times(1);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(Choke{}))).Times(1).WillOnce(Return(ProtocolState::CLOSED));
 
     btManMock.eval();
 }
 
 TEST_F(BitTorrentManagerTest, onProtocolError)
 {
-    Choke ck{};
-    const auto msg = ReadEvent{dummyPeer, ck};
-    peerQueue.push(msg);
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
 
-    EXPECT_CALL(btManMock, shutdown(_)).Times(1);
-    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
-    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(ck))).Times(1).WillOnce(Return(ProtocolState::ERROR));
+    EXPECT_CALL(btManMock, shutdown()).Times(1);
+    EXPECT_CALL(btManMock, dropPeer(_)).Times(0);
+    EXPECT_CALL(btManMock, forwardToPeer(dummyPeer, std::move(Choke{}))).Times(1).WillOnce(Return(ProtocolState::ERROR));
 
     btManMock.eval();
 }
 
-TEST_F(BitTorrentManagerTest, onInvalidPeerEvent)
+TEST_F(BitTorrentManagerTest, onDisconnectEvent)
 {
-    const auto msg = ReadEventResponse{dummyPeer, epoll_wrapper::ErrorCode::EbadF};
-    peerQueue.push(msg);
+    EXPECT_CALL(peerService, read())
+        .Times(1)
+        .WillOnce(Return(Disconnect{dummyPeer}));
 
-    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
-    EXPECT_CALL(btManMock, dropPeer(dummyPeer, std::to_string(msg.errorCode))).Times(1);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
+    EXPECT_CALL(btManMock, shutdown()).Times(0);
+    EXPECT_CALL(btManMock, dropPeer(dummyPeer)).Times(1);
     EXPECT_CALL(btManMock, forwardToPeer(_, std::move(_))).Times(0);
 
     btManMock.eval();
 }
 
-TEST_F(BitTorrentManagerTest, onConnectionCloseEvent)
+TEST_F(BitTorrentManagerTest, onShutdownEvent)
 {
-    const auto msg = ConnectionCloseEvent{dummyPeer};
-    peerQueue.push(msg);
+    EXPECT_CALL(peerService, read())
+        .Times(1)
+        .WillOnce(Return(Shutdown{}));
 
-    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
-    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
-    EXPECT_CALL(btManMock, closeConnection(dummyPeer)).Times(1);
-    EXPECT_CALL(btManMock, forwardToPeer(_, _)).Times(0);
-
-    btManMock.eval();
-}
-
-TEST_F(BitTorrentManagerTest, onConnectionErrorEvent)
-{
-    const auto msg = ConnectionError{dummyPeer, epoll_wrapper::ErrorCode::EbadF};
-    peerQueue.push(msg);
-
-    EXPECT_CALL(btManMock, shutdown(_)).Times(0);
-    EXPECT_CALL(btManMock, dropPeer(dummyPeer, std::to_string(msg.errorCode))).Times(1);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
-    EXPECT_CALL(btManMock, forwardToPeer(_, _)).Times(0);
-
-    btManMock.eval();
-}
-
-TEST_F(BitTorrentManagerTest, onEpollError)
-{
-    const auto msg = EpollError{epoll_wrapper::ErrorCode::EbadF};
-    peerQueue.push(msg);
-
-    EXPECT_CALL(btManMock, shutdown(std::to_string(msg.errorCode))).Times(1);
-    EXPECT_CALL(btManMock, dropPeer(_, _)).Times(0);
-    EXPECT_CALL(btManMock, closeConnection(_)).Times(0);
+    EXPECT_CALL(btManMock, shutdown()).Times(1);
+    EXPECT_CALL(btManMock, dropPeer(_)).Times(0);
     EXPECT_CALL(btManMock, forwardToPeer(_, _)).Times(0);
 
     btManMock.eval();

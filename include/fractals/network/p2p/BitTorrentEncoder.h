@@ -24,6 +24,7 @@ namespace fractals::network::p2p
                 if constexpr (A::MSG_TYPE >= 0)
                 {
                     std::vector<char> buf;
+                    spdlog::info("RESERVE: len={} type={}", t.getLen(), A::MSG_TYPE);
                     buf.reserve(t.getLen());
                     common::append(buf, common::int_to_bytes(t.getLen()));
                     common::append(buf, common::int_to_bytes(A::MSG_TYPE));
@@ -57,9 +58,15 @@ namespace fractals::network::p2p
                 common::string_view view(buf.begin(), buf.end());
 
                 uint32_t pstrLen = view.front();
-                view.remove_prefix(1);
+                if (view.size() == pstrLen + 49)
+                {
+                    view.remove_prefix(1);                
 
-                return decodePayloadImpl<HandShake>(view, pstrLen);
+                    return decodePayloadImpl<HandShake>(view, pstrLen);
+                }
+
+                return std::nullopt;
+                
             }
 
             template <typename A, typename Container>

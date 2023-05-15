@@ -14,12 +14,13 @@
 
 namespace fractals::network::p2p
 {   
+    template <typename PeerServiceT>
     class Protocol
     {
         public:
             Protocol(http::PeerId peer
                     , const std::string& infoHash
-                    , PeerService& peerService
+                    , PeerServiceT& peerService
                     , persist::PersistEventQueue::LeftEndPoint persistQueue
                     , disk::DiskEventQueue& diskQueue
                     , PieceStateManager& pieceRepository);
@@ -49,9 +50,9 @@ namespace fractals::network::p2p
             bool mPeerInterested{false};
 
             http::PeerId peer;
-            const std::string& infoHash;
+            std::string infoHash;
             std::unordered_set<uint32_t> availablePieces;
-            PeerService& peerService;
+            PeerServiceT& peerService;
             persist::PersistEventQueue::LeftEndPoint persistQueue;
             disk::DiskEventQueue& diskQueue;
             PieceStateManager& pieceRepository;

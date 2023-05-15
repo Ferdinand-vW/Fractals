@@ -108,11 +108,6 @@ void BitTorrentEncoder::encodePayload<SerializeError>(const SerializeError& t, s
 template<>
 std::optional<HandShake> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t pstrLen)
 {
-    if (pstrLen + 49 <= HandShake::MSG_MIN_LEN)
-    {
-        return std::nullopt;
-    }
-
     std::string pstr(buf.begin(), buf.begin() + pstrLen);
     
     buf.remove_prefix(pstrLen);

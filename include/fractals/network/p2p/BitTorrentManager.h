@@ -6,6 +6,7 @@
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/EpollMsgQueue.h"
 #include "fractals/network/p2p/EpollServiceEvent.h"
+#include "fractals/network/p2p/PeerEvent.h"
 #include "fractals/network/p2p/PeerService.h"
 #include "fractals/network/p2p/PieceStateManager.h"
 #include "fractals/network/p2p/Protocol.h"
@@ -22,50 +23,45 @@ template <typename Caller> class BitTorrentEventHandler
     {
     }
 
-    void handleEvent(EpollServiceResponse &&event)
+    void handleEvent(PeerEvent &&event)
     {
-        std::visit(common::overloaded{
-                       [&](EpollError &&err) { caller->shutdown(std::to_string(err.errorCode)); },
-                       [&](ReadEvent &&msg) { handleEvent(std::move(msg)); },
-                       [&](ConnectionCloseEvent &&close) { caller->closeConnection(close.peerId); },
-                       [&](ReadEventResponse &&err) { caller->dropPeer(err.peerId, std::to_string(err.errorCode)); },
-                       [&](ConnectionError &&err) { caller->dropPeer(err.peerId, std::to_string(err.errorCode)); },
-                       [&](Deactivate &&deact) { caller->onDeactivate(); },
-                       [&](auto &&msg) {} },
+        std::visit(common::overloaded{[&](Shutdown &&err) { caller->shutdown(); },
+                                      [&](Disconnect &&msg) { caller->dropPeer(msg.peerId); },
+                                      [&](Message &&msg) { handleMessage(std::move(msg)); }},
                    std::move(event));
     }
 
-    void handleEvent(ReadEvent &&event)
+    void handleMessage(Message &&event)
     {
         // clang-format off
-        // std::visit(common::overloaded{
-        //     [&](SerializeError &&error) {},
-        //     [&](auto &&msg) 
-        //     {
-        //         using T = std::decay_t<decltype(msg)>;
-        //         if constexpr (!std::is_same_v<T, SerializeError>)
-        //         {
-        //             const auto state = caller->forwardToPeer(event.peer, std::move(msg));
-        //             switch (state)
-        //             {
-        //             case ProtocolState::ERROR:
-        //                 caller->shutdown("Internal state error of pieces");
-        //                 break;
+        std::visit(common::overloaded{
+            [&](SerializeError &&error) {},
+            [&](auto &&msg) 
+            {
+                using T = std::decay_t<decltype(msg)>;
+                if constexpr (!std::is_same_v<T, SerializeError>)
+                {
+                    const auto state = caller->template forwardToPeer<T>(event.peer, std::move(msg));
+                    switch (state)
+                    {
+                    case ProtocolState::ERROR:
+                        caller->shutdown();
+                        break;
 
-        //             case ProtocolState::HASH_CHECK_FAIL:
-        //                 caller->dropPeer(event.peer.getId(), "HashCheckFailure");
-        //                 break;
+                    case ProtocolState::HASH_CHECK_FAIL:
+                        caller->dropPeer(event.peer);
+                        break;
 
-        //             case ProtocolState::CLOSED:
-        //                 caller->closeConnection(event.peer.getId());
-        //                 break;
+                    case ProtocolState::CLOSED:
+                        caller->dropPeer(event.peer);
+                        break;
 
-        //             case ProtocolState::OPEN:
-        //                 break;
-        //             }
-        //         }
-        //     }},
-        // event.mMessage);
+                    case ProtocolState::OPEN:
+                        break;
+                    }
+                }
+            }},
+        event.message);
         // clang-format on
     }
 
@@ -73,7 +69,7 @@ template <typename Caller> class BitTorrentEventHandler
     Caller *caller;
 };
 
-class BitTorrentManager
+template <typename PeerServiceT> class BitTorrentManagerImpl
 {
   public:
     enum class State
@@ -83,8 +79,8 @@ class BitTorrentManager
         Deactivating
     };
 
-    BitTorrentManager(EpollMsgQueue::LeftEndPoint peerQueue, PeerService &peerService,
-                      persist::PersistEventQueue::LeftEndPoint persistQueue, disk::DiskEventQueue &diskQueue);
+    BitTorrentManagerImpl(PeerServiceT &peerService, persist::PersistEventQueue::LeftEndPoint persistQueue,
+                          disk::DiskEventQueue &diskQueue);
 
     void run();
     void eval(bool &&workDone);
@@ -114,20 +110,20 @@ class BitTorrentManager
 
     std::mutex mutex;
     std::condition_variable cv;
-    BitTorrentEventHandler<BitTorrentManager> eventHandler;
+    BitTorrentEventHandler<BitTorrentManagerImpl<PeerServiceT>> eventHandler;
 
-    // Peer responses available in queue
-    EpollMsgQueue::LeftEndPoint peerQueue;
     // Writing to peer must go through BufferedQueueManager
-    PeerService &peerService;
+    PeerServiceT &peerService;
 
     // Internal state of pieces downloaded and missing
     std::unordered_map<std::string, PieceStateManager> pieceMan;
-    std::unordered_map<http::PeerId, Protocol> connections;
+    std::unordered_map<http::PeerId, Protocol<PeerServiceT>> connections;
 
     // Persist to db and disk
     persist::PersistEventQueue::LeftEndPoint persistQueue;
     disk::DiskEventQueue &diskQueue;
 };
+
+using BitTorrentManager = BitTorrentManagerImpl<PeerService>;
 
 } // namespace fractals::network::p2p

@@ -2,8 +2,8 @@
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/Event.h"
-#include "fractals/network/p2p/PeerEventQueue.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
+#include "fractals/network/p2p/EpollServiceEvent.h"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/PeerService.h"
 
@@ -12,6 +12,7 @@
 #include <epoll_wrapper/Error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <variant>
 
 using ::testing::_;
 using ::testing::Return;
@@ -19,32 +20,17 @@ using ::testing::Return;
 namespace fractals::network::p2p
 {
 
-class MockEvent
-{
-};
-
-using MockEventQueue = common::WorkQueueImpl<32, MockEvent>;
-
-template <typename Queue> class MockBufferedQueueManager
-{
-  public:
-    MockBufferedQueueManager(MockEventQueue &)
-    {
-    }
-
-    MOCK_METHOD(void, addToWriteBuffer, (const PeerFd &, const BitTorrentMessage &));
-};
-
-template <ActionType AT> class MockEpollService
+class MockEpollService
 {
   public:
     using Epoll = int;
 
-    MockEpollService(Epoll &epoll, MockBufferedQueueManager<MockEventQueue> &buffMan){
+    MockEpollService(Epoll& epoll, EpollMsgQueue::RightEndPoint queue) : queue(queue){
     };
 
     MOCK_METHOD(void, notify, ());
-    MOCK_METHOD(epoll_wrapper::CtlAction, subscribe,(const PeerFd&));
+
+    EpollMsgQueue::RightEndPoint queue;
 };
 
 class MockTcpService
@@ -58,48 +44,44 @@ class PeerServiceTest : public ::testing::Test
 {
   public:
     PeerServiceTest()
-        : buffMan(queue), reader(epoll, buffMan), writer(epoll, buffMan),
-          peerService(reader, writer, buffMan, tcpService), choke({})
+        : epollService(epoll, queue.getRightEnd())
+          ,peerService(queue.getLeftEnd(), epollService, tcpService), choke({})
     {
     }
 
-    MockEventQueue queue;
-    MockBufferedQueueManager<MockEventQueue> buffMan;
-    MockTcpService tcpService;
+    MockTcpService tcpService{};
     int epoll = 0;
-    MockEpollService<ActionType::READ> reader;
-    MockEpollService<ActionType::WRITE> writer;
+    EpollMsgQueue queue;
+    MockEpollService epollService;
     http::PeerId peerId{"", 0};
-    PeerServiceImpl<MockEpollService, MockBufferedQueueManager<MockEventQueue>, MockTcpService> peerService;
+    PeerServiceImpl<MockEpollService, MockTcpService> peerService;
     Choke choke;
 };
 
 TEST_F(PeerServiceTest, onWrite)
 {
     EXPECT_CALL(tcpService, connect(_, _)).Times(1).WillOnce(Return(1));
-    EXPECT_CALL(buffMan, addToWriteBuffer(_, _)).Times(1);
-    EXPECT_CALL(writer, notify()).Times(1);
-    EXPECT_CALL(reader, notify()).Times(0);
+    EXPECT_CALL(epollService, notify()).Times(1);
     peerService.write(peerId, choke);
 
-    EXPECT_CALL(buffMan, addToWriteBuffer(_, _)).Times(1);
-    EXPECT_CALL(writer, notify()).Times(1);
-    EXPECT_CALL(reader, notify()).Times(0);
+    ASSERT_TRUE(std::holds_alternative<Subscribe>(queue.getRightEnd().pop()));
+    ASSERT_TRUE(std::holds_alternative<WriteEvent>(queue.getRightEnd().pop()));
+
+    EXPECT_CALL(tcpService, connect(_, _)).Times(0);
+    EXPECT_CALL(epollService, notify()).Times(1);
     peerService.write(peerId, choke);
+
+    ASSERT_TRUE(std::holds_alternative<WriteEvent>(queue.getRightEnd().pop()));
 }
 
 TEST_F(PeerServiceTest, onWriteToInvalidPeer)
 {
     EXPECT_CALL(tcpService, connect(_, _)).Times(1).WillOnce(Return(-1));
-    EXPECT_CALL(buffMan, addToWriteBuffer(_, _)).Times(0);
-    EXPECT_CALL(writer, notify()).Times(0);
-    EXPECT_CALL(reader, notify()).Times(0);
+    EXPECT_CALL(epollService, notify()).Times(0);
     peerService.write(peerId, choke);
 
     EXPECT_CALL(tcpService, connect(_, _)).Times(1).WillOnce(Return(-1));
-    EXPECT_CALL(buffMan, addToWriteBuffer(_, _)).Times(0);
-    EXPECT_CALL(writer, notify()).Times(0);
-    EXPECT_CALL(reader, notify()).Times(0);
+    EXPECT_CALL(epollService, notify()).Times(0);
     peerService.write(peerId, choke);
 }
 

@@ -21,9 +21,9 @@ class ReadMsgState
     bool isInitialized() const;
     void initialize(uint32_t length);
 
-    template <typename Container> void append(Container &&data)
+    template <typename Container> void append(Container &&data, int bytes)
     {
-        buffMan.insert(buffMan.end(), data.begin(), data.end());
+        buffer.insert(buffer.end(), data.begin(), data.begin() + bytes);
     }
 
     std::vector<char>&& flush();
@@ -32,9 +32,11 @@ class ReadMsgState
 
     common::string_view getBuffer() const;
 
+    int32_t getRemaining() const;
+
   private:
     int32_t mLength{-1};
-    std::vector<char> buffMan;
+    std::vector<char> buffer;
 };
 
 class WriteMsgState
@@ -50,7 +52,7 @@ class WriteMsgState
 
   private:
     common::string_view mBufferedQueueManagerView;
-    std::vector<char> buffMan;
+    std::vector<char> buffer;
 };
 
 class BufferedQueueManager
@@ -60,58 +62,70 @@ class BufferedQueueManager
 
     template <typename Container> bool addToReadBuffer(const PeerFd &p, Container &&data)
     {
-        while(!data.empty())
+        common::string_view view(data.begin(), data.end());
+        bool hasCompletedMessage{false};
+        while(!view.empty())
         {
-            parseMsg(p, data);
+            spdlog::info("VIEW: size={} isEmpty={} val='{}'", view.size(), view.empty(), view[0]);
+            hasCompletedMessage = hasCompletedMessage | parseMessage(p, view);
         }
 
-        return false;
+        return hasCompletedMessage;
     }
 
-    template <typename Container> bool parseMessage(const PeerFd& p, Container& data)
+    bool parseMessage(const PeerFd& p, common::string_view& data)
     {
         const auto it = mReadBuffers.find(p);
+
+        int32_t bytes = 0;
+        bool complete = false;
 
         // Not aware of Peer yet, therefore we see handshake first
         if (it == mReadBuffers.end())
         {
             ReadMsgState m;
             uint8_t len = data[0];
-            m.initialize(49 + len - 1); // Size of HandShake message without len
-            m.append(data);
+            m.initialize(49 + len); // Size of HandShake message without len
+            bytes = std::min(m.getRemaining(), static_cast<int32_t>(data.size()));
+            m.append(data, bytes);
             mReadBuffers[p].push_back(m);
 
-            return m.isComplete();
+            complete = m.isComplete();
         }
         // Already aware of peer, and we've already received enough bytes to determine length
-        else if (!it->second.empty() && it->second.back().isInitialized())
+        else if (!it->second.empty() && it->second.back().isInitialized() && !it->second.back().isComplete())
         {
-            it->second.back().append(data);
+            bytes = std::min(it->second.back().getRemaining(), static_cast<int32_t>(data.size()));
+            it->second.back().append(data, bytes);
 
-            return it->second.size() > 1 || it->second.back().isComplete();
+            complete = it->second.size() > 1 || it->second.back().isComplete();
         }
         // Already aware of peer, but not yet clear how much data we are receiving
         else
         {
-            if (it->second.empty())
+            if (it->second.empty() || it->second.back().isComplete())
             {
                 it->second.push_back(ReadMsgState{});
             }
 
             ReadMsgState &m = it->second.back();
 
-            m.append(data);
+            bytes = std::min(4, static_cast<int32_t>(data.size()));
+            m.append(data, bytes);
 
             if (m.getBuffer().size() >= 4)
             {
                 auto bufView = m.getBuffer();
                 const auto len = common::bytes_to_int<uint32_t>(bufView);
-                m.initialize(len);
+                m.initialize(len + 4);
             }
 
-            return m.isComplete();
+            complete = m.isComplete();
         }
 
+        data.remove_prefix(bytes);
+        spdlog::info("VIEW: size={} isEmpty={} bytes={}", data.size(), data.empty(), bytes);
+        return complete;
     }
         
     std::deque<ReadMsgState>& getReadBuffers(const PeerFd& p)
@@ -133,6 +147,11 @@ class BufferedQueueManager
     }
 
     const ReadMsgState *getReadBuffer(const PeerFd &p) const
+    {
+        return getReadBuffer(p);
+    }
+
+    ReadMsgState *getReadBuffer(const PeerFd &p)
     {
         auto it = mReadBuffers.find(p);
 

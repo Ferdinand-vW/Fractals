@@ -129,7 +129,7 @@ namespace fractals::network::http
     //keys are peer id, ip and port
     neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl) {
         auto parse_peer = [](const bdata &bd) -> Either<std::string,Peer> {
-            auto mpeer_dict = common::to_maybe(bd.get_bdict());
+            auto mpeer_dict = common::to_bdict(bd);
             if (!mpeer_dict.hasValue) { return neither::left("Could not coerce bdata to bdict for peer"s); }
             auto peer_dict = mpeer_dict.value;
 

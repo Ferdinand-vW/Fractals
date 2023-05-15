@@ -23,7 +23,7 @@ class EpollServiceImpl
     };
     using Epoll = EpollT;
 
-    EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &rq, EpollMsgQueue& queue);
+    EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &rq, typename EpollMsgQueue::RightEndPoint queue);
     EpollServiceImpl(const EpollServiceImpl &) = delete;
     EpollServiceImpl(EpollServiceImpl &&) = delete;
 
@@ -35,8 +35,6 @@ class EpollServiceImpl
 
     State getState() const;
 
-    typename EpollMsgQueue::LeftEndPoint getCommQueue();
-
   private:
     void subscribe(const Peer &peer);
     void unsubscribe(const Peer &peer);
@@ -45,7 +43,9 @@ class EpollServiceImpl
     State stop();
 
     PeerFd createNotifyFd();
-    int readSocket(const Peer &peer);
+    int readMany(const Peer &peer);
+    std::tuple<std::vector<char>, int> readOnce(const Peer &peer);
+    void writeToBuffer(const Peer& peer, std::vector<char>&& data, int bytes);
 
     PeerFd mSpecialFd;
     State state{State::Inactive};
@@ -53,8 +53,7 @@ class EpollServiceImpl
     std::mutex mMutex;
     Epoll &mEpoll;
     BufferedQueueManagerT &buffMan;
-    EpollMsgQueue& queue;
-    typename EpollMsgQueue::RightEndPoint commQueue;
+    typename EpollMsgQueue::RightEndPoint queue;
 };
 
 using EpollService = EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, BufferedQueueManager, EpollMsgQueue>;

@@ -1,7 +1,10 @@
 #pragma once
 
 #include <bencode/bencode.h>
+#include <bencode/bstring.h>
+#include <neither/maybe.hpp>
 #include <neither/neither.hpp>
+#include <variant>
 
 namespace fractals::common {
 
@@ -18,19 +21,39 @@ namespace fractals::common {
     }
 
     static neither::Maybe<bencode::bstring> to_bstring(const bencode::bdata &bd) {
-        return to_maybe(bd.get_bstring());
+        if (std::holds_alternative<bencode::bstring>(bd.value()))
+        {
+            return std::get<bencode::bstring>(bd.value());
+        }
+
+        return neither::maybe();
     }
 
     static neither::Maybe<bencode::bint> to_bint(const bencode::bdata &bd) {
-        return to_maybe(bd.get_bint());
+        if (std::holds_alternative<bencode::bint>(bd.value()))
+        {
+            return std::get<bencode::bint>(bd.value());
+        }
+
+        return neither::maybe();
     }
 
     static neither::Maybe<bencode::blist> to_blist(const bencode::bdata &bd) {
-        return to_maybe(bd.get_blist());
+        if (std::holds_alternative<bencode::blist>(bd.value()))
+        {
+            return std::get<bencode::blist>(bd.value());
+        }
+
+        return neither::maybe();
     }
 
     static neither::Maybe<bencode::bdict> to_bdict(const bencode::bdata &bd) {
-        return to_maybe(bd.get_bdict());
+       if (std::holds_alternative<bencode::bdict>(bd.value()))
+        {
+            return std::get<bencode::bdict>(bd.value());
+        }
+
+        return neither::maybe();
     }
 
     /**

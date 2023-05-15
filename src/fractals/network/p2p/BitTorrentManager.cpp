@@ -13,18 +13,19 @@
 namespace fractals::network::p2p
 {
 
-BitTorrentManager::BitTorrentManager(EpollMsgQueue::LeftEndPoint peerQueue, PeerService &peerService,
+template <typename PeerServiceT>
+BitTorrentManagerImpl<PeerServiceT>::BitTorrentManagerImpl(PeerServiceT &peerService,
                                      persist::PersistEventQueue::LeftEndPoint persistQueue,
                                      disk::DiskEventQueue &diskQueue)
-    : eventHandler{this}, peerQueue(peerQueue), peerService(peerService), persistQueue(persistQueue),
+    : eventHandler{this}, peerService(peerService), persistQueue(persistQueue),
       diskQueue(diskQueue)
 {
-    std::mutex mutex;
-    peerQueue.attachNotifier(&mutex, &cv);
+    peerService.subscribe(mutex, cv);
     persistQueue.attachNotifier(&mutex, &cv);
 };
 
-void BitTorrentManager::run()
+template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::run()
 {
     state = State::InActive;
 
@@ -36,16 +37,17 @@ void BitTorrentManager::run()
         if (!workDone)
         {
             std::unique_lock lck(mutex);
-            cv.wait(lck, [&]() { return peerQueue.canPop() || persistQueue.canPop(); });
+            cv.wait(lck, [&]() { return peerService.canRead() || persistQueue.canPop(); });
         }
     }
 }
 
-void BitTorrentManager::eval(bool &&workDone)
+template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::eval(bool &&workDone)
 {
-    if (peerQueue.canPop())
+    if (peerService.canRead())
     {
-        auto &&event = peerQueue.pop();
+        auto &&event = peerService.read();
 
         eventHandler.handleEvent(std::move(event));
         // do something
@@ -61,18 +63,21 @@ void BitTorrentManager::eval(bool &&workDone)
     }
 }
 
-void BitTorrentManager::shutdown(const std::string &reason)
+template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::shutdown(const std::string &reason)
 {
     state = State::Deactivating;
 
     peerService.shutdown();
 }
 
-void BitTorrentManager::closeConnection(http::PeerId)
+template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::closeConnection(http::PeerId)
 {
 }
 
-void BitTorrentManager::dropPeer(http::PeerId, const std::string &err)
+template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::dropPeer(http::PeerId, const std::string &err)
 {
 }
 

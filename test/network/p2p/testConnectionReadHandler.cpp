@@ -44,6 +44,8 @@
 using namespace fractals::network::p2p;
 using namespace fractals::network::http;
 
+#define ASSERT_READ(readEvent, v) EXPECT_THAT(std::get<std::vector<char>>(readEvent.mMessage), v)
+
 class MockBufferedQueueManager
 {
   public:
@@ -66,7 +68,7 @@ class MockBufferedQueueManager
             }
             else
             {
-                m.append(std::string{buf[i]});
+                m.append(std::string{buf[i]}, 1);
                 s--;
 
                 if (s == 0)
@@ -129,7 +131,7 @@ TEST(CONNECTION_READ, sub_and_unsub)
     EpollMsgQueue epollQueue;
     auto queue = epollQueue.getLeftEnd();
     MockBufferedQueueManager bqm;
-    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue);
+    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto t = std::thread([&]() { mr.run(); });
 
@@ -171,7 +173,7 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
     epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
     epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
     MockBufferedQueueManager bqm;
-    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue);
+    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto [writeFd, peer] = createPeer();
     queue.push(Subscribe{peer});
@@ -192,7 +194,7 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
         cv.wait(_l, [&]() { return queue.canPop(); });
     }
     ReadEvent re = std::get<ReadEvent>(queue.pop());
-    EXPECT_THAT(re.mMessage, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't'}));
+    ASSERT_READ(re, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't'}));
 
     queue.push(Deactivate{});
     mr.notify();
@@ -213,7 +215,7 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
     epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
     epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
     MockBufferedQueueManager bqm;
-    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue);
+    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto [writeFd, peer] = createPeer();
 
@@ -240,13 +242,13 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
     ReadEvent re4 = std::get<ReadEvent>(queue.pop());
     ASSERT_TRUE(!queue.canPop());
 
-    EXPECT_THAT(re1.mMessage, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't'}));
+    ASSERT_READ(re1, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't'}));
 
-    EXPECT_THAT(re2.mMessage, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't', '1'}));
+    ASSERT_READ(re2, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't', '1'}));
 
-    EXPECT_THAT(re3.mMessage, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't', '2'}));
+    ASSERT_READ(re3, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't', '2'}));
 
-    EXPECT_THAT(re4.mMessage, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't', '3'}));
+    ASSERT_READ(re4, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't', '3'}));
 
     queue.push(Deactivate{});
     mr.notify();
@@ -274,7 +276,7 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
     epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
     MockBufferedQueueManager bqm;
-    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue);
+    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto [writeFd1, peer1] = createPeer();
     auto [writeFd2, peer2] = createPeer();
@@ -307,9 +309,9 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     ReadEvent re2 = std::get<ReadEvent>(queue.pop());
     ReadEvent re3 = std::get<ReadEvent>(queue.pop());
 
-    EXPECT_THAT(re1.mMessage, testing::ContainerEq<std::vector<char>>({'p', 'e', 'e', 'r', '1'}));
-    EXPECT_THAT(re2.mMessage, testing::ContainerEq<std::vector<char>>({'p', 'e', 'e', 'r', '2'}));
-    EXPECT_THAT(re3.mMessage, testing::ContainerEq<std::vector<char>>({'p', 'e', 'e', 'r', '3'}));
+    ASSERT_READ(re1, testing::ContainerEq<std::vector<char>>({'p', 'e', 'e', 'r', '1'}));
+    ASSERT_READ(re2, testing::ContainerEq<std::vector<char>>({'p', 'e', 'e', 'r', '2'}));
+    ASSERT_READ(re3, testing::ContainerEq<std::vector<char>>({'p', 'e', 'e', 'r', '3'}));
 
     queue.push(Deactivate{});
     mr.notify();
@@ -330,7 +332,7 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
     epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
     epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
     MockBufferedQueueManager bqm;
-    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue);
+    MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto t = std::thread([&]() { mr.run(); });
 
@@ -359,7 +361,7 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
         ASSERT_EQ(resp, std::get<CtlResponse>(queue.pop()));
 
         ReadEvent re = std::get<ReadEvent>(queue.pop());
-        EXPECT_THAT(re.mMessage, testing::ContainerEq<std::vector<char>>(
+        ASSERT_READ(re, testing::ContainerEq<std::vector<char>>(
                                    {'m', 's', 'g', ' ', 'r', 'e', 'c', 'e', 'i', 'v', 'e', 'd', static_cast<char>(p + '0')}));
     }
 

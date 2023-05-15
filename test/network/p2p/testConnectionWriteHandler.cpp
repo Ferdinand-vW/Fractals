@@ -131,7 +131,7 @@ TEST(CONNECTION_WRITE, sub_and_unsub)
 
     MockBufferedQueueManager bqm;
     EpollMsgQueue epollQueue;
-    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue);
+    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto t = std::thread([&]() { mw.run(); });
 
@@ -176,7 +176,7 @@ TEST(CONNECTION_WRITE, one_subscriber_write_one)
     MockBufferedQueueManager bqm;
     EpollMsgQueue epollQueue;
     auto queue = epollQueue.getLeftEnd();
-    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue);
+    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto [readFd, peer] = createPeer();
 
@@ -208,7 +208,7 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
     EpollMsgQueue epollQueue;
     auto queue = epollQueue.getLeftEnd();
     MockBufferedQueueManager bqm;
-    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue);
+    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto [readFd, peer] = createPeer();
 
@@ -227,7 +227,6 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
-        spdlog::info("-------------------------------");
     }
     {
 
@@ -243,7 +242,6 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
-        spdlog::info("-------------------------------");
     }
     {
 
@@ -259,7 +257,6 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
-        spdlog::info("-------------------------------");
     }
 
     {
@@ -275,7 +272,6 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
-        spdlog::info("-------------------------------");
     }
 
     queue.push(Deactivate());
@@ -293,7 +289,7 @@ TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
     EpollMsgQueue epollQueue;
     auto queue = epollQueue.getLeftEnd();
     MockBufferedQueueManager bqm;
-    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue);
+    MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
     auto [readFd1, peer1] = createPeer();
     auto [readFd2, peer2] = createPeer();

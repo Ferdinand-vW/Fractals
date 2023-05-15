@@ -24,6 +24,7 @@ set(SOURCES
             fractals/network/p2p/BitTorrentManager.cpp
             fractals/network/p2p/BitTorrentMsg.cpp
             fractals/network/p2p/BufferedQueueManager.cpp
+            fractals/network/p2p/PeerEvent.cpp
             fractals/network/p2p/PieceStateManager.cpp
             fractals/network/p2p/Protocol.cpp
             fractals/network/p2p/Connection.cpp
