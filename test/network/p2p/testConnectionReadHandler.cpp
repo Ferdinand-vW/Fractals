@@ -44,7 +44,7 @@
 using namespace fractals::network::p2p;
 using namespace fractals::network::http;
 
-#define ASSERT_READ(readEvent, v) EXPECT_THAT(std::get<std::vector<char>>(readEvent.mMessage), v)
+#define ASSERT_READ(readEvent, v) EXPECT_THAT(readEvent.mMessage, v)
 
 class MockBufferedQueueManager
 {

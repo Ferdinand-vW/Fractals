@@ -212,16 +212,6 @@ TEST(BUFFER_MANAGER, BitfieldRead)
 
     const auto msg = encoder.decode(deq.back().getBuffer());
     ASSERT_TRUE(std::holds_alternative<Bitfield>(msg));
-
-    // ASSERT_FALSE(wq.isEmpty());
-
-    // auto event = wq.pop();
-
-    // ASSERT_TRUE(std::holds_alternative<ReadEvent>(event));
-
-    // auto re = std::get<ReadEvent>(event);
-
-    // ASSERT_TRUE(std::holds_alternative<Bitfield>(re.mMessage));
 }
 
 TEST(BUFFER_MANAGER, BitfieldWrite)

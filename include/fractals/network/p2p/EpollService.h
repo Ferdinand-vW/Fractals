@@ -34,6 +34,7 @@ class EpollServiceImpl
     void run();
 
     State getState() const;
+    bool isActive() const;
 
   private:
     void subscribe(const Peer &peer);

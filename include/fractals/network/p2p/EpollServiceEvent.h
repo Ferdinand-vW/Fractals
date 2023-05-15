@@ -40,7 +40,7 @@ std::ostream &operator<<(std::ostream &os, const ReadEventResponse &e);
 struct ReadEvent
 {
     PeerFd peer;
-    std::variant<std::vector<char>, BitTorrentMessage> mMessage;
+    std::vector<char> mMessage;
 
     bool operator==(const ReadEvent &obj) const
     {

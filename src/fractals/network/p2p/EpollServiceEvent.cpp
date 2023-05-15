@@ -16,12 +16,7 @@ std::ostream &operator<<(std::ostream &os, const ReadEventResponse &e)
 
 std::ostream &operator<<(std::ostream &os, const ReadEvent &e)
 {
-    std::visit(common::overloaded{
-        [&](const std::vector<char>& v) { os << "ReadEvent: bytes=" << v.size(); },
-        [&](const BitTorrentMessage& msg) { os << "ReadEvent: msg=" << msg; }
-    }, e.mMessage);
-
-    return os;
+    return os << "ReadEvent: bytes=" << e.mMessage.size();
 };
 
 std::ostream &operator<<(std::ostream &os, const WriteEvent &e)

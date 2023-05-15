@@ -25,10 +25,14 @@ class MockEpollService
   public:
     using Epoll = int;
 
-    MockEpollService(Epoll& epoll, EpollMsgQueue::RightEndPoint queue) : queue(queue){
-    };
+    MockEpollService(Epoll &epoll, EpollMsgQueue::RightEndPoint queue) : queue(queue){};
 
     MOCK_METHOD(void, notify, ());
+
+    bool isActive()
+    {
+        return true;
+    }
 
     EpollMsgQueue::RightEndPoint queue;
 };
@@ -44,9 +48,16 @@ class PeerServiceTest : public ::testing::Test
 {
   public:
     PeerServiceTest()
-        : epollService(epoll, queue.getRightEnd())
-          ,peerService(queue.getLeftEnd(), epollService, tcpService), choke({})
+        : epollService(epoll, queue.getRightEnd()), peerService(queue.getLeftEnd(), epollService, tcpService), choke({})
     {
+    }
+
+    void addPeerToDict()
+    {
+        EXPECT_CALL(tcpService, connect(_,_)).WillOnce(Return(0));
+        peerService.write(peerId, KeepAlive{});
+        queue.getRightEnd().pop();
+        queue.getRightEnd().pop();
     }
 
     MockTcpService tcpService{};
@@ -54,6 +65,7 @@ class PeerServiceTest : public ::testing::Test
     EpollMsgQueue queue;
     MockEpollService epollService;
     http::PeerId peerId{"", 0};
+    PeerFd peerFd{peerId, 0};
     PeerServiceImpl<MockEpollService, MockTcpService> peerService;
     Choke choke;
 };
@@ -83,6 +95,112 @@ TEST_F(PeerServiceTest, onWriteToInvalidPeer)
     EXPECT_CALL(tcpService, connect(_, _)).Times(1).WillOnce(Return(-1));
     EXPECT_CALL(epollService, notify()).Times(0);
     peerService.write(peerId, choke);
+}
+
+TEST_F(PeerServiceTest, onReadEpollError)
+{
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(EpollError{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(1);
+    ASSERT_EQ(std::get<Shutdown>(peerService.read().value()), Shutdown{});
+    ASSERT_EQ(std::get<Deactivate>(queue.getRightEnd().pop()), Deactivate{});
+}
+
+TEST_F(PeerServiceTest, onReadEventResponse)
+{
+    addPeerToDict();
+
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(ReadEventResponse{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(1);
+    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
+}
+
+TEST_F(PeerServiceTest, onReadEvent)
+{
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(ReadEvent{PeerFd{peerId, 0}, {}});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(0);
+    Message m{peerId, KeepAlive{}};
+    ASSERT_EQ(std::get<Message>(peerService.read().value()), m);
+}
+
+TEST_F(PeerServiceTest, onWriteEventResponse)
+{
+    addPeerToDict();
+
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(WriteEventResponse{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(1);
+    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
+}
+
+TEST_F(PeerServiceTest, onEmptyCtlResponse)
+{
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(CtlResponse{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(0);
+    ASSERT_FALSE(peerService.read());
+}
+
+TEST_F(PeerServiceTest, onErrorCtlResponse)
+{
+    addPeerToDict();
+
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(CtlResponse{peerFd, "error"});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(1);
+    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
+}
+
+TEST_F(PeerServiceTest, onConnectionCloseEvent)
+{
+    addPeerToDict();
+
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(ConnectionCloseEvent{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(1);
+    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
+}
+
+TEST_F(PeerServiceTest, onConnectionError)
+{
+    addPeerToDict();
+
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(ConnectionError{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(1);
+    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
+}
+
+TEST_F(PeerServiceTest, onDeactivationResponse)
+{
+    ASSERT_FALSE(peerService.canRead());
+    queue.getRightEnd().push(DeactivateResponse{});
+    ASSERT_TRUE(peerService.canRead());
+
+    EXPECT_CALL(epollService, notify()).Times(0);
 }
 
 } // namespace fractals::network::p2p

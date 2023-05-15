@@ -306,6 +306,12 @@ typename PREFIX::State PREFIX::getState() const
     return state;
 }
 
+TEMPLATE
+bool PREFIX::isActive() const
+{
+    return state == PREFIX::State::Active;
+}
+
 #undef TEMPLATE
 #undef PREFIX
 
