@@ -1,257 +1,301 @@
+#include <chrono>
+#include <ctime>
 #include <functional>
+#include <iosfwd>
 #include <memory>
 #include <mutex>
-#include <iosfwd>
 #include <new>
+#include <thread>
 #include <utility>
 #include <vector>
 
-#include <boost/asio/io_context.hpp>
-#include <boost/log/core/record.hpp>
-#include <boost/log/detail/attachable_sstream_buf.hpp>
-#include <boost/log/sources/record_ostream.hpp>
 #include <ftxui/component/captured_mouse.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
+#include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <neither/either.hpp>
 
-#include "fractals/app/TorrentController.h"
+#include "fractals/app/AppEventQueue.h"
+#include "fractals/app/Event.h"
+#include "fractals/app/Feedback.h"
 #include "fractals/app/TerminalInput.h"
+#include "fractals/app/TorrentController.h"
 #include "fractals/app/TorrentDisplay.h"
-#include "fractals/app/TorrentView.h"
+#include "fractals/app/TorrentDisplayEntry.h"
+#include "fractals/common/Tagged.h"
 #include "fractals/common/logger.h"
-#include "fractals/network/p2p/BitTorrent.h"
-#include "fractals/persist/data.h"
-#include "fractals/torrent/Torrent.h"
+#include "fractals/common/utils.h"
+#include "fractals/persist/Event.h"
+#include "fractals/persist/PersistEventQueue.h"
 
-using namespace fractals::torrent;
-using namespace fractals::persist;
-using namespace fractals::network::p2p;
+namespace fractals::app
+{
 
-namespace fractals::app {
+TorrentController::TorrentController(app::AppEventQueue::RightEndPoint btQueue,
+                                     persist::AppPersistQueue::LeftEndPoint persistQueue)
+    : btQueue(btQueue), persistQueue(persistQueue),
+      m_screen(ftxui::ScreenInteractive::Fullscreen()), m_ticker(m_screen)
+{
+}
 
-    TorrentController::TorrentController(boost::asio::io_context &io,Storage &st)
-            : m_io(io),m_storage(st),m_lg(common::logger::get())
-            , m_work(work_guard(m_io.get_executor()))
-            , m_screen(ftxui::ScreenInteractive::Fullscreen())
-            , m_ticker(m_screen) {}
+void TorrentController::run()
+{
+    // initialize view components
+    Component terminal_input = TerminalInput(&m_terminal_input, "");
+    m_terminal = terminal_input;
+    m_display = TorrentDisplay(terminal_input, idTorrentMap);
 
-    void TorrentController::run() {
-        //initialize view components
-        Component terminal_input = TerminalInput(&m_terminal_input, "");
-        m_terminal = terminal_input;
-        m_display = TorrentDisplay(terminal_input);
+    // load known torrents
+    persistQueue.push(persist::LoadTorrents{});
 
-        // spawn the work threads
-        for( unsigned int i = 0; i < m_thread_count; i++ ) {
-            m_threads.create_thread(
-                    // work guard in constructor of TorrentController
-                    // stops m_io.run() to stop early
-                    [&]() { m_io.run(); }
-            );
-        }
+    runUI();
+}
 
-        TorrentIO tio(m_storage,common::logger().get());
-        //load known torrents
-        auto tms = persist::load_torrents(tio,m_storage);
-        //add torrents to display
-        for(auto &tm : tms) {
-            BOOST_LOG(m_lg) << "loading torrent " << tm.getName();
-            Torrent torr(tm,tio,{});
-            add_torrent(to_bit_torrent(std::make_shared<Torrent>(torr)));
-        }
+void TorrentController::exit()
+{
+    btQueue.push(app::Shutdown{});
+}
 
-        runUI();
+void TorrentController::addTorrent(std::string filepath)
+{
+    btQueue.push(app::AddTorrent{filepath});
+}
+
+void TorrentController::processBtEvent(const app::AddedTorrent &event)
+{
+    spdlog::info("TC::processBtEvent AddedTorrent={}", event.infoHash);
+    m_torrent_counter++;
+    auto [it, _] = idTorrentMap.emplace(m_torrent_counter,
+                                        TorrentDisplayEntry(m_torrent_counter, event.torrent));
+    hashToIdMap.emplace(event.infoHash, m_torrent_counter);
+
+    if (!it->second.isDownloadComplete())
+    {
+        it->second.setRunning();
+        btQueue.push(app::StartTorrent{event.infoHash, event.torrent, event.files});
     }
-
-    void TorrentController::exit() {
-        stop_torrents();
-        m_work.reset(); //release m_io.run from threads
-        m_threads.join(); //wait for torrents to be fully stopped
-        m_io.stop();
-
-        //Appears that the terminal output library cleans up after a screen loop exit
-        //we need to make sure that we remove any dependencies to components owned by this class
-        //before the library attempts to clean up the components when we still have an existing pointer to one
-        //removal of this line may cause segfaults
-        m_ticker.stop();
-        m_display->reset();
-        m_terminal->reset();
+    else
+    {
+        it->second.setCompleted();
     }
+}
 
-    Either<std::string,TorrentName> TorrentController::on_add(std::string filepath) {
-        auto eth_torr = TorrentIO::readTorrentFile(filepath);
-        if(eth_torr.isLeft) {
-            //provide error message to view
-            return left<std::string>(eth_torr.leftValue);
-        } else {
-            auto tm = eth_torr.rightValue;
-            //check database if torrent exists
-            if(has_torrent(m_storage, tm)) {
-                return left<std::string>("torrent " + tm.getName() + " already exists!");
-            }
+void TorrentController::processBtEvent(const app::AddTorrentError &err)
+{
+    spdlog::info("TC::processBtEvent AddedTorrentError={}", err.error);
+    TorrentDisplayBase::From(m_display.value())
+        ->setFeedBack(Feedback{FeedbackType::Warning, err.error});
+}
 
-            //write torrent to database
-            save_torrent(m_storage, filepath,tm);
+void TorrentController::processBtEvent(const app::RemovedTorrent &rt)
+{
+    spdlog::info("TC::processBtEvent RemovedTorrent={}", rt.infoHash);
+}
 
-            TorrentIO tio(m_storage, common::logger().get());
-            Torrent torr(std::move(tm),tio,{});
-            //add torrent to program state
-            auto bt = to_bit_torrent(std::make_shared<Torrent>(torr));
-            add_torrent(bt);
+void TorrentController::processBtEvent(const app::StoppedTorrent &resp)
+{
+    spdlog::info("TC::processBtEvent StoppedTorrent={}", resp.infoHash);
+    const auto torrId = hashToIdMap[resp.infoHash];
+    auto &torr = idTorrentMap[torrId];
+    torr.setStopped();
+}
 
-            //provide name of torrent to view
-            return right<TorrentName>(bt->m_torrent->getName());
-        }
+void TorrentController::processBtEvent(const app::CompletedTorrent &resp)
+{
+    spdlog::info("TC::processBtEvent CompletedTorrent={}", resp.infoHash);
+    const auto torrId = hashToIdMap[resp.infoHash];
+    auto &torr = idTorrentMap[torrId];
+    torr.setCompleted();
+}
+
+void TorrentController::processBtEvent(const app::ResumedTorrent &resp)
+{
+    spdlog::info("TC::processBtEvent ResumedTorrent={}", resp.infoHash);
+    const auto torrId = hashToIdMap[resp.infoHash];
+    auto &torr = idTorrentMap[torrId];
+    torr.setRunning();
+}
+
+void TorrentController::processBtEvent(const app::ShutdownConfirmation &)
+{
+    // Appears that the terminal output library cleans up after a screen loop exit
+    // we need to make sure that we remove any dependencies to components owned by this class
+    // before the library attempts to clean up the components when we still have an existing pointer
+    // to one removal of this line may cause segfaults
+    m_ticker.stop();
+    m_display->reset();
+    m_terminal->reset();
+}
+
+void TorrentController::processPersistEvent(const persist::TorrentStats &stats)
+{
+    const auto now = std::chrono::high_resolution_clock::now().time_since_epoch();
+    auto it = idTorrentMap.find(stats.torrId);
+    if (it != idTorrentMap.end())
+    {
+        it->second.update(now, stats);
     }
+}
 
-    void TorrentController::add_torrent(std::shared_ptr<BitTorrent> bt) {
-        int torr_id = list_torrent(bt); //adds torrent to controller state
-        start_torrent(torr_id); //Start running the torrent
+void TorrentController::processPersistEvent(const persist::AllTorrents &loadedTorrs)
+{
+    spdlog::info("TC::processPersistEvent(loadedTorrents) numTorrents={}",
+                 loadedTorrs.result.size());
+    for (const auto &torr : loadedTorrs.result)
+    {
+        const auto &torrModel = torr.first;
+        const auto &filesModel = torr.second;
+        common::InfoHash infoHash{torrModel.infoHash};
 
-        //adds torrent to display
-        auto tdb = TorrentDisplayBase::From(m_display.value());
-        tdb->m_running.insert({torr_id,(TorrentView(torr_id,bt))});
-    }
+        m_torrent_counter++;
+        auto [it, _] = idTorrentMap.emplace(m_torrent_counter,
+                                            TorrentDisplayEntry(m_torrent_counter, torrModel));
+        hashToIdMap.emplace(infoHash, it->first);
 
-    Either<std::string,TorrentName> TorrentController::on_remove(int torr_id) {
-        //starting a non-existing torrent does not do anything
-        if(m_torrents.find(torr_id) == m_torrents.end()) {
-            return left<std::string>("torrent identifier " + std::to_string(torr_id) + " does not match any torrent");
+        if (it->second.isDownloadComplete())
+        {
+            it->second.setCompleted();
         }
-
-        auto bt = m_torrents[torr_id];
-        bt->stop(); //stop all connections
-        auto &torr = *bt->m_torrent.get();
-        delete_torrent(m_storage, torr.getMeta());
-        m_torrents.erase(torr_id);
-
-        auto tdb = TorrentDisplayBase::From(m_display.value());
-        auto remove_in_map = [torr_id](auto &m) {
-            if(m.find(torr_id) != m.end()) {
-                m.erase(torr_id);
-            }
-        };
-        //since there should only be one of each torr_id in a single map
-        //we can simply attempt to delete from all. Only exactly one entry will be removed.
-        remove_in_map(tdb->m_completed);
-        remove_in_map(tdb->m_running);
-        remove_in_map(tdb->m_stopped);
-
-        return right<std::string>(bt->m_torrent->getName());
-    }
-
-    Either<std::string,TorrentName> TorrentController::on_stop(int torr_id) {
-        //starting a non-existing torrent does not do anything
-        if(m_torrents.find(torr_id) == m_torrents.end()) {
-            return left("torrent identifier " + std::to_string(torr_id) + " does not match any torrent");
-        }
-
-        auto bt = m_torrents[torr_id];
-        bt->stop();
-
-        auto tdb = TorrentDisplayBase::From(m_display.value());
-        auto run_entry = tdb->m_running.find(torr_id);
-        if(run_entry == tdb->m_running.end()) {
-            return left("torrent " + std::to_string(torr_id) + " is not currently running");
-        }
-
-        //move torrent from m_stopped to m_running
-        tdb->m_stopped.insert({torr_id,run_entry->second});
-        tdb->m_running.erase(torr_id);
-
-        return right<TorrentName>(bt->m_torrent->getName());
-    }
-
-    Either<std::string,TorrentName> TorrentController::on_resume(int torr_id) {
-        //starting a non-existing torrent does not do anything
-        if(m_torrents.find(torr_id) == m_torrents.end()) {
-            return left("torrent identifier " + std::to_string(torr_id) + " does not match any torrent");
-        }
-
-        auto bt = m_torrents[torr_id];
-        start_torrent(torr_id);
-
-        auto tdb = TorrentDisplayBase::From(m_display.value());
-        auto stop_entry = tdb->m_stopped.find(torr_id);
-        if(stop_entry == tdb->m_stopped.end()) {
-            return left("torrent " + std::to_string(torr_id) + " is not currently running");
-        }
-
-        //move torrent from m_running to m_stopped
-        tdb->m_running.insert({torr_id,stop_entry->second});
-        tdb->m_stopped.erase(torr_id);
-
-        return right<TorrentName>(bt->m_torrent->getName());
-    }
-
-    int TorrentController::list_torrent(std::shared_ptr<BitTorrent> torrent) {
-        int torr_id = -1;
-        {   //make sure each displayed torrent is assigned a unique id during lifetime the program
-            std::unique_lock<std::mutex> lock(m_mutex);
-            torr_id = m_torrent_counter;
-            m_torrent_counter++;
-        }
-
-        // insert torrent in torrent list
-        m_torrents.insert({torr_id,torrent});
-
-        return torr_id;
-    }
-
-    void TorrentController::start_torrent(int torr_id) {
-        //starting a non-existing torrent does not do anything
-        if(m_torrents.find(torr_id) == m_torrents.end()) {
-            return;
-        }
-
-        auto bt = m_torrents[torr_id];
-        m_io.post([bt]() {bt->run();});
-    }
-
-    void TorrentController::stop_torrents() {
-        for(auto &bt : m_torrents) {
-            bt.second->stop();
+        else
+        {
+            it->second.setRunning();
+            btQueue.push(app::StartTorrent{infoHash, torrModel, filesModel});
         }
     }
+}
 
-    void TorrentController::on_exit() {
+void TorrentController::removeTorrent(uint64_t torrentId)
+{
+    const auto it = idTorrentMap.find(torrentId);
+
+    if (it != idTorrentMap.end())
+    {
+        hashToIdMap.erase(it->second.getInfoHash());
+        idTorrentMap.erase(torrentId);
+        btQueue.push(app::RemoveTorrent{it->second.getInfoHash()});
+    }
+}
+
+void TorrentController::readResponses()
+{
+    while (btQueue.canPop())
+    {
+        std::visit(common::overloaded{[this](const auto &resp)
+                                      {
+                                          processBtEvent(resp);
+                                      }},
+                   btQueue.pop());
+    }
+
+    while (persistQueue.canPop())
+    {
+        std::visit(common::overloaded{[this](const auto &resp)
+                                      {
+                                          processPersistEvent(resp);
+                                      }},
+                   persistQueue.pop());
+    }
+}
+
+void TorrentController::refreshStats()
+{
+    std::vector<std::pair<uint64_t, common::InfoHash>> hashes;
+    hashes.reserve(idTorrentMap.size());
+
+    for (const auto &pair : idTorrentMap)
+    {
+        hashes.emplace_back(pair.first, pair.second.getInfoHash());
+    }
+    persistQueue.push(persist::RequestStats{hashes});
+}
+
+void TorrentController::stopTorrent(uint64_t torrentId)
+{
+    const auto it = idTorrentMap.find(torrentId);
+
+    if (it != idTorrentMap.end())
+    {
+        btQueue.push(app::StopTorrent{it->second.getInfoHash()});
+    }
+}
+
+void TorrentController::resumeTorrent(uint64_t torrentId)
+{
+    const auto it = idTorrentMap.find(torrentId);
+
+    if (it != idTorrentMap.end())
+    {
+        btQueue.push(app::ResumeTorrent{it->second.getInfoHash()});
+    }
+}
+
+void TorrentController::runUI()
+{
+    using namespace ftxui;
+
+    auto terminal = m_terminal.value();
+    auto tdb = TorrentDisplayBase::From(m_display.value());
+
+    // Sets up control flow of View -> Controller
+    tdb->m_on_add = std::bind(&TorrentController::addTorrent, this, std::placeholders::_1);
+    tdb->m_on_remove = std::bind(&TorrentController::removeTorrent, this, std::placeholders::_1);
+    tdb->m_on_stop = std::bind(&TorrentController::stopTorrent, this, std::placeholders::_1);
+    tdb->m_on_resume = std::bind(&TorrentController::resumeTorrent, this, std::placeholders::_1);
+
+    auto doExit = m_screen.ExitLoopClosure(); // had to move this outside of the on_enter definition
+    // as it would otherwise not trigger. Not sure why though..
+    TerminalInputBase::From(terminal)->on_escape = [this, &doExit]()
+    {
+        spdlog::info("do exit2");
         exit();
-    }
-
-    void TorrentController::runUI() {
-        using namespace ftxui;
-
-        auto terminal = m_terminal.value();
-        auto tdb = TorrentDisplayBase::From(m_display.value());
-
-        //Sets up control flow of View -> Controller
-        tdb->m_on_add    = std::bind(&TorrentController::on_add,this,std::placeholders::_1);
-        tdb->m_on_remove = std::bind(&TorrentController::on_remove,this,std::placeholders::_1);
-        tdb->m_on_stop   = std::bind(&TorrentController::on_stop,this,std::placeholders::_1);
-        tdb->m_on_resume = std::bind(&TorrentController::on_resume,this,std::placeholders::_1);
-
-        auto doExit = m_screen.ExitLoopClosure(); //had to move this outside of the on_enter definition
-        // as it would otherwise not trigger. Not sure why though..
-        TerminalInputBase::From(terminal)->on_escape = [this,&doExit] () {
+        doExit();
+    };
+    TerminalInputBase::From(terminal)->on_enter = [this, &doExit]()
+    {
+        bool shouldExit =
+            TorrentDisplayBase::From(m_display.value())->parse_command(m_terminal_input);
+        if (shouldExit)
+        {
+            spdlog::info("do exit");
             exit();
             doExit();
-        };
-        TerminalInputBase::From(terminal)->on_enter = [this,&doExit] () {
-            bool shouldExit = TorrentDisplayBase::From(m_display.value())->parse_command(m_terminal_input);
-            if(shouldExit) { exit(); doExit(); }
-            m_terminal_input = L"";
-        };
+        }
+        m_terminal_input = "";
+    };
 
-        auto renderer = Renderer(terminal,[&] { return m_display.value()->Render(); });
-        m_ticker.start();
-        m_screen.Loop(renderer);
+    auto renderer = Renderer(terminal,
+                             [&]
+                             {
+                                 return m_display.value()->Render();
+                             });
+    m_ticker.start();
+    Loop loop(&m_screen, renderer);
+
+    uint64_t loopCounter{0};
+    static constexpr auto tenMs = std::chrono::milliseconds(10);
+    auto now = std::chrono::high_resolution_clock::now() + tenMs;
+    while (!loop.HasQuitted())
+    {
+        m_screen.RequestAnimationFrame();
+        loop.RunOnce();
+
+        if (loopCounter % 10 == 0)
+        {
+            readResponses();
+            refreshStats();
+        }
+        if (loopCounter % 1000)
+        {
+            spdlog::info("test");
+        }
+        std::this_thread::sleep_until(now);
+        now += tenMs;
+        ++loopCounter;
     }
 
-    std::shared_ptr<BitTorrent> TorrentController::to_bit_torrent(std::shared_ptr<Torrent> torr) {
-        return std::shared_ptr<BitTorrent>(new BitTorrent(torr,m_io,m_storage));
-    }
-
+    spdlog::info("loop quit");
 }
+
+} // namespace fractals::app

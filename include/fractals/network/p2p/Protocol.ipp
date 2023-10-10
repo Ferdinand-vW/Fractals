@@ -1,80 +1,123 @@
-#include "fractals/network/p2p/Protocol.h"
+#include "fractals/common/Tagged.h"
 #include "fractals/common/utils.h"
 #include "fractals/disk/DiskEventQueue.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/PeerService.h"
 #include "fractals/network/p2p/PieceStateManager.h"
+#include "fractals/network/p2p/Protocol.h"
 #include "fractals/persist/Event.h"
 #include "fractals/persist/PersistEventQueue.h"
+#include <boost/mp11/algorithm.hpp>
+#include <chrono>
 #include <cstdint>
 #include <new>
 
 namespace fractals::network::p2p
 {
 template <typename PeerServiceT>
-Protocol<PeerServiceT>::Protocol(http::PeerId peer, const std::string &infoHash, PeerServiceT &peerService,
-                                 persist::PersistEventQueue::LeftEndPoint persistQueue, disk::DiskEventQueue &diskQueue,
+Protocol<PeerServiceT>::Protocol(const std::array<char, 20> clientId, http::PeerId peer,
+                                 const common::InfoHash &infoHash, PeerServiceT &peerService,
+                                 persist::PersistEventQueue::LeftEndPoint persistQueue,
+                                 disk::DiskEventQueue::LeftEndPoint diskQueue,
                                  PieceStateManager &pieceRepository)
-    : peer(peer), infoHash(infoHash), peerService(peerService), persistQueue(persistQueue), diskQueue(diskQueue),
-      pieceRepository(pieceRepository)
+    : clientId(clientId), peer(peer), infoHash(infoHash), peerService(peerService),
+      persistQueue(persistQueue), diskQueue(diskQueue), pieceRepository(pieceRepository)
 {
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(HandShake &&hs)
+template <typename PeerServiceT>
+bool Protocol<PeerServiceT>::sendHandShake(std::chrono::nanoseconds now)
 {
-    // TODO
+    spdlog::info("Protocol({}, {}). Write HandShake", peer.toString(), infoHash);
+    static const std::string protocol("BitTorrent protocol");
+    static const std::array<char, 8> reserved{0, 0, 0, 0, 0, 0, 0, 0};
+    return peerService.write(this->peer,
+                             HandShake{protocol, reserved, infoHash.underlying, clientId}, now);
+}
+
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const HandShake &hs, std::chrono::nanoseconds now)
+{
+    spdlog::info("Protocol({}, {}). Received HandShake", peer.toString(), infoHash);
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(KeepAlive &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const KeepAlive &hs, std::chrono::nanoseconds now)
 {
+    spdlog::info("Protocol({}, {}). Received KeepAlive", peer.toString(), infoHash);
+    spdlog::info("Protocol({}, {}). Write KeepAlive", peer.toString(), infoHash);
+    peerService.write(peer, KeepAlive{}, now);
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Choke &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Choke &hs, std::chrono::nanoseconds now)
 {
+    spdlog::info("Protocol({}, {}). Received Choke", peer.toString(), infoHash);
+    spdlog::info("Protocol({}). Received Choke", infoHash);
     mPeerChoking = true;
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(UnChoke &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const UnChoke &hs, std::chrono::nanoseconds now)
 {
-    mPeerChoking = false;
-
-    return requestNextPiece();
-}
-
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Interested &&hs)
-{
-    mPeerInterested = true;
-
-    return ProtocolState::OPEN;
-}
-
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(NotInterested &&hs)
-{
-    mPeerInterested = false;
-
-    return ProtocolState::OPEN;
-}
-
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Have &&hs)
-{
-    if (!pieceRepository.isCompleted(hs.getPieceIndex()))
+    spdlog::info("Protocol({}, {}). Received Unchoke", peer.toString(), infoHash);
+    if (mPeerChoking)
     {
-        availablePieces.emplace(hs.getPieceIndex());
+        mPeerChoking = false;
 
-        sendInterested();
+        return requestNextPiece(now);
     }
 
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Bitfield &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Interested &hs, std::chrono::nanoseconds now)
 {
-    // hs.getBitfield()
+    spdlog::info("Protocol({}, {}). Received Interested", peer.toString(), infoHash);
+    mPeerInterested = true;
+
+    return ProtocolState::OPEN;
+}
+
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const NotInterested &hs,
+                                                std::chrono::nanoseconds now)
+{
+    spdlog::info("Protocol({}, {}). Received NotInterested", peer.toString(), infoHash);
+    mPeerInterested = false;
+
+    return ProtocolState::OPEN;
+}
+
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Have &hs, std::chrono::nanoseconds now)
+{
+    spdlog::info("Protocol({}, {}). Received Have", peer.toString(), infoHash);
+    if (!pieceRepository.isCompleted(hs.getPieceIndex()))
+    {
+        availablePieces.emplace(hs.getPieceIndex());
+        sendInterested(now);
+    }
+
+    return ProtocolState::OPEN;
+}
+
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Bitfield &hs, std::chrono::nanoseconds now)
+{
+    spdlog::info("Protocol({}, {}). Received Bitfield", peer.toString(), infoHash);
     const auto vb = common::bytes_to_bitfield(hs.getBitfield().size(), hs.getBitfield());
+    std::stringstream ss;
+    for (auto i : vb)
+    {
+        ss << std::to_string(i);
+    }
+
     uint32_t pieceIndex = 0;
     for (bool b : vb)
     {
@@ -86,29 +129,42 @@ template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage
         pieceIndex++;
     }
 
-    sendInterested();
+    sendInterested(now);
 
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Request &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Request &hs, std::chrono::nanoseconds now)
 {
+    spdlog::info("Protocol({}, {}). Received Request", peer.toString(), infoHash);
     // TODO
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Piece &&p)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Piece &p, std::chrono::nanoseconds now)
 {
+    spdlog::info("Protocol({}, {}). Received Piece", peer.toString(), infoHash);
     PieceState *ps = pieceRepository.getPieceState(p.getPieceIndex());
-    if (!ps)
+    if (ps == nullptr)
     {
+        if (pieceRepository.isCompleted(p.getPieceIndex()))
+        {
+            spdlog::info("Protocol::onMessage(piece). Piece already completed {}",
+                         p.getPieceIndex());
+            return ProtocolState::OPEN;
+        }
+
+        spdlog::error("Protocol::onMessage(Piece). Unable to find PieceState for {}",
+                      p.getPieceIndex());
         return ProtocolState::ERROR;
     }
 
     // Sanity check that we receive the block of data that we requested
     if (p.getPieceBegin() == ps->getNextBeginIndex())
     {
-        ps->addBlock(p.extractBlock());
+        ps->addBlock(p.getBlock());
 
         if (ps->isComplete())
         {
@@ -116,8 +172,8 @@ template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage
             if (pieceRepository.hashCheck(ps->getPieceIndex(), ps->getBuffer()))
             {
                 // Update local state
-                persistQueue.push(persist::AddPiece{infoHash, p.getPieceIndex()});
-                diskQueue.push(disk::WriteData{p.getPieceIndex(), std::move(ps->extractData())});
+                diskQueue.push(disk::WriteData{infoHash, p.getPieceIndex(),
+                                               std::move(ps->extractData()), ps->getOffset()});
 
                 // Update in-memory state
                 pieceRepository.makeCompleted(p.getPieceIndex());
@@ -125,38 +181,51 @@ template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage
             }
             else
             {
+                spdlog::error("Protocol::onMessage(Piece). HashCheckFail");
                 ps->clear();
                 return ProtocolState::HASH_CHECK_FAIL;
             }
         }
     }
+    else
+    {
+        spdlog::warn("Protocol::onMessage(Piece). Already received payload for {}",
+                     p.getPieceIndex());
+    }
 
-    return requestNextPiece();
+    return requestNextPiece(now);
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Cancel &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Cancel &hs, std::chrono::nanoseconds now)
 {
+    spdlog::info("Protocol({}, {}). Received Cancel", peer.toString(), infoHash);
     return ProtocolState::CLOSED;
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::onMessage(Port &&hs)
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::onMessage(const Port &hs, std::chrono::nanoseconds now)
 {
+    spdlog::info("Protocol({}, {}). Received Port", peer.toString(), infoHash);
     return ProtocolState::OPEN;
 }
 
-template <typename PeerServiceT> void Protocol<PeerServiceT>::sendInterested()
+template <typename PeerServiceT>
+void Protocol<PeerServiceT>::sendInterested(std::chrono::nanoseconds now)
 {
     if (!mAmInterested)
     {
-        peerService.write(this->peer, Interested{});
+        spdlog::info("Protocol({}, {}). Send Interested", peer.toString(), infoHash);
+        peerService.write(this->peer, Interested{}, now);
         mAmInterested = true;
     }
 }
 
-template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::requestNextPiece()
+template <typename PeerServiceT>
+ProtocolState Protocol<PeerServiceT>::requestNextPiece(std::chrono::nanoseconds now)
 {
     const auto nextPiece = getNextAvailablePiece();
-    if (nextPiece)
+    if (nextPiece != nullptr && pieceRepository.isActive())
     {
         uint32_t standardPacketSize = 1 << 14; // 16 KB
         uint32_t remainingOfPiece = nextPiece->getRemainingSize();
@@ -166,24 +235,31 @@ template <typename PeerServiceT> ProtocolState Protocol<PeerServiceT>::requestNe
 
         if (!mPeerChoking)
         {
-            peerService.write(this->peer, request);
+            spdlog::info("Protocol({}, {}). Send Piece={}", peer.toString(), infoHash,
+                         nextPiece->getPieceIndex());
+            peerService.write(this->peer, request, now);
         }
 
         return ProtocolState::OPEN;
     }
 
-    return ProtocolState::CLOSED;
+    if (!pieceRepository.isAllComplete() || !pieceRepository.isActive())
+    {
+        return ProtocolState::CLOSED;
+    }
+    else
+    {
+        return ProtocolState::COMPLETE;
+    }
 }
 
 template <typename PeerServiceT> PieceState *Protocol<PeerServiceT>::getNextAvailablePiece()
 {
-    auto it = availablePieces.begin();
+    return pieceRepository.nextAvailablePiece(availablePieces);
+}
 
-    if (it != availablePieces.end())
-    {
-        return pieceRepository.getPieceState(*it);
-    }
-
-    return nullptr;
+template <typename PeerServiceT> const common::InfoHash &Protocol<PeerServiceT>::getInfoHash() const
+{
+    return infoHash;
 }
 } // namespace fractals::network::p2p

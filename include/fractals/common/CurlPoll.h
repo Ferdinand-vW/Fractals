@@ -8,6 +8,7 @@
 #include <curl/multi.h>
 #include <functional>
 #include <optional>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -81,7 +82,7 @@ class CurlResponse
 
   private:
     std::vector<char> data;
-    uint64_t requestId;
+    uint64_t requestId{0};
     std::optional<CURLMcode> multiStatusCode;
     std::optional<CURLcode> easyStatusCode;
 };
@@ -103,7 +104,7 @@ class CurlPoll
     CURLM *curl{nullptr};
 
     int runningHandles{0};
-    uint64_t requestIdGenerator{0};
+    uint64_t requestIdGenerator{1};
 
     std::unordered_map<CURL *, std::pair<uint64_t, std::vector<char>>> buffers;
 };

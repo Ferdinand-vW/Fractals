@@ -49,6 +49,7 @@ struct SerializeError;
                     ,SerializeError>;
 
     std::ostream& operator<<(std::ostream& os, const BitTorrentMessage& msg);
+    std::string getName(const BitTorrentMessage& msg);
     bool operator==(const BitTorrentMessage& lhs, const BitTorrentMessage& rhs);
 
     class HandShake
@@ -58,8 +59,8 @@ struct SerializeError;
             static constexpr uint32_t MSG_MIN_LEN = 49;
         public:
             HandShake() = default;
-            HandShake(const std::string& pstr, std::array<char, 8>&& reserved,
-                     std::array<char,20>&& infoHash, std::array<char, 20>&& peerId);
+            HandShake(const std::string& pstr, const std::array<char, 8>& reserved,
+                     const std::array<char,20>& infoHash, const std::array<char, 20>& peerId);
             std::vector<char> getPrefix() const;
 
             uint32_t getLen() const;
@@ -236,7 +237,7 @@ struct SerializeError;
             uint32_t getPieceBegin() const;
             const common::string_view getBlock() const;
 
-            std::vector<char>&& extractBlock();
+            const std::vector<char>& extractBlock();
 
             friend bool operator==(const Piece&, const Piece&);
             friend std::ostream& operator<<(std::ostream& os, const Piece& msg);
@@ -313,6 +314,7 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
             const common::string_view getBuffer() const;
             uint32_t getLen() const;
+            const std::string& getError() const;
 
             friend std::ostream& operator<<(std::ostream& os, const SerializeError& msg);
         

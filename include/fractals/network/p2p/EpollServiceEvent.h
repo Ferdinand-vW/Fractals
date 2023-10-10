@@ -64,7 +64,7 @@ struct Subscribe
     }
 };
 
-std::ostream &operator<<(std::ostream& os, const Subscribe &e);
+std::ostream &operator<<(std::ostream &os, const Subscribe &e);
 
 struct UnSubscribe
 {
@@ -80,7 +80,12 @@ struct UnSubscribe
     }
 };
 
-std::ostream &operator<<(std::ostream& os, const UnSubscribe &e);
+std::ostream &operator<<(std::ostream &os, const UnSubscribe &e);
+
+struct ConnectionAccepted
+{
+    PeerFd peer;
+};
 
 struct CtlResponse
 {
@@ -103,12 +108,13 @@ struct CtlResponse
     }
 };
 
-std::ostream &operator<<(std::ostream& os, const CtlResponse &e);
+std::ostream &operator<<(std::ostream &os, const CtlResponse &e);
 
 struct WriteEvent
 {
     WriteEvent() = default;
-    WriteEvent(const PeerFd &peer, std::vector<char> &&message) : peer(peer), message(std::move(message))
+    WriteEvent(const PeerFd &peer, std::vector<char> &&message)
+        : peer(peer), message(std::move(message))
     {
     }
     PeerFd peer;
@@ -120,12 +126,13 @@ struct WriteEvent
     }
 };
 
-std::ostream &operator<<(std::ostream& os, const WriteEvent &e);
+std::ostream &operator<<(std::ostream &os, const WriteEvent &e);
 
 struct WriteEventResponse
 {
     WriteEventResponse() = default;
-    WriteEventResponse(const PeerFd &peer, const std::string &errorMsg) : peer(peer), errorMsg(errorMsg)
+    WriteEventResponse(const PeerFd &peer, const std::string &errorMsg)
+        : peer(peer), errorMsg(errorMsg)
     {
     }
     PeerFd peer;
@@ -142,7 +149,7 @@ struct WriteEventResponse
     }
 };
 
-std::ostream &operator<<(std::ostream& os, const WriteEventResponse &e);
+std::ostream &operator<<(std::ostream &os, const WriteEventResponse &e);
 
 struct ConnectionCloseEvent
 {
@@ -179,19 +186,10 @@ struct Deactivate
 
 std::ostream &operator<<(std::ostream &os, const Deactivate &e);
 
-struct DeactivateResponse
-{
-    bool operator==(const DeactivateResponse &obj) const
-    {
-        return true;
-    }
-};
-
-std::ostream &operator<<(std::ostream &os, const Deactivate &e);
-
 using EpollServiceRequest = std::variant<WriteEvent, Subscribe, UnSubscribe, Deactivate>;
-using EpollServiceResponse = std::variant<EpollError, ReadEventResponse, ReadEvent, WriteEventResponse, CtlResponse,
-                                          ConnectionCloseEvent, ConnectionError, DeactivateResponse>;
+using EpollServiceResponse =
+    std::variant<EpollError, ReadEventResponse, ReadEvent, WriteEventResponse, ConnectionAccepted,
+                 CtlResponse, ConnectionCloseEvent, ConnectionError>;
 
 std::ostream &operator<<(std::ostream &os, const EpollServiceRequest &pe);
 std::ostream &operator<<(std::ostream &os, const EpollServiceResponse &pe);

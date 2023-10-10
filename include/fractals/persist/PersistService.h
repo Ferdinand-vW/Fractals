@@ -1,7 +1,9 @@
 #pragma once
 
+#include "fractals/persist/Event.h"
 #include "fractals/persist/PersistClient.h"
 #include "fractals/persist/PersistEventQueue.h"
+#include "fractals/sync/QueueCoordinator.h"
 
 #include <unordered_map>
 
@@ -12,19 +14,24 @@ template <typename PersistClientT>
 class PersistServiceImpl
 {
   public:
-    PersistServiceImpl(PersistEventQueue::RightEndPoint queue, PersistClientT &client);
+    PersistServiceImpl(sync::QueueCoordinator& coordinator
+    , PersistEventQueue::RightEndPoint btQueue
+    , AppPersistQueue::RightEndPoint appQueue
+    , PersistClientT &client);
 
-    PersistEventQueue &getRequestQueue();
     PersistClientT& getClient();
 
-    void pollForever();
-    bool pollOnce();
+    void run();
+    void processBtEvent();
+    void processAppEvent();
     void disable();
 
   private:
-    bool running{true};
+    bool isActive{false};
 
-    PersistEventQueue::RightEndPoint requestQueue;
+    PersistEventQueue::RightEndPoint btQueue;
+    AppPersistQueue::RightEndPoint appQueue;
+    sync::QueueCoordinator& coordinator;
     PersistClientT& client;
 };
 

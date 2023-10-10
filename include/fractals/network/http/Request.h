@@ -2,6 +2,8 @@
 
 #include "Announce.h"
 #include "Peer.h"
+#include "fractals/common/Tagged.h"
+#include "fractals/persist/Models.h"
 #include "fractals/torrent/MetaInfo.h"
 
 #include <bencode/bencode.h>
@@ -21,17 +23,19 @@ struct TrackerRequest
 {
   public:
     TrackerRequest() = default;
-    TrackerRequest(const torrent::MetaInfo &metaInfo);
-    TrackerRequest(const std::string &announce, const std::vector<char> &infoHash, const std::string urlInfoHash,
-                   const std::vector<char> peerId, const std::string urlPeerId, int port, int uploaded, int downloaded,
-                   int left, int compact);
+    TrackerRequest(const std::string &announce, const torrent::MetaInfo &metaInfo);
+    TrackerRequest(const std::string &announce, const persist::TorrentModel &model);
+    TrackerRequest(const std::string &announce,
+                   const common::InfoHash &infoHash, const std::string urlInfoHash,
+                   const std::array<char, 20> peerId, const std::string urlPeerId, int port,
+                   int uploaded, int downloaded, int left, int compact);
 
     std::string announce;
 
     /**
     20-byte SHA1 hash of info value in MetaInfo file
     */
-    std::vector<char> info_hash;
+    common::InfoHash info_hash;
 
     /**
     URL encoding of @info_hash
@@ -41,7 +45,7 @@ struct TrackerRequest
     /**
     20-byte string used as unique id for client
     */
-    std::vector<char> peer_id;
+    std::array<char, 20> peer_id;
 
     /**
     URL encoding of 20-byte string used as unique id for client
@@ -75,10 +79,8 @@ struct TrackerRequest
 
     // optional keys that we don't currently use
     //
-    // Started on first request, Stopped if client is shutting down, Completed when downloaded completes
-    // Maybe<Event> event;
-    // Maybe<std::string> ip;
-    // Maybe<std::int16_t> numwant;
+    // Started on first request, Stopped if client is shutting down, Completed when downloaded
+    // completes Maybe<Event> event; Maybe<std::string> ip; Maybe<std::int16_t> numwant;
     //
     //
 
@@ -133,6 +135,6 @@ struct TrackerResponse
 
     static std::variant<std::string, TrackerResponse> decode(const bencode::bdict &bd);
 
-    Announce toAnnounce(time_t now) const;
+    Announce toAnnounce(const common::InfoHash &, time_t now) const;
 };
 } // namespace fractals::network::http

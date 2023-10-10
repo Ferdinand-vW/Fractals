@@ -15,7 +15,7 @@ namespace fractals::app {
     */
     struct Feedback {
         FeedbackType m_type;
-        std::wstring m_msg;
+        std::string m_msg;
     };
 
     /**

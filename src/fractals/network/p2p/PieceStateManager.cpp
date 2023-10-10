@@ -1,160 +1,174 @@
 #include "fractals/network/p2p/PieceStateManager.h"
 
+#include "fractals/common/Tagged.h"
 #include "fractals/common/encode.h"
 #include "fractals/common/utils.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <numeric>
+#include <stdexcept>
 #include <unordered_set>
 
 namespace fractals::network::p2p
 {
-    PieceState::PieceState(uint32_t pieceIndex, uint32_t maxSize) 
-                         : mPieceIndex(pieceIndex)
-                         , mMaxSize(maxSize) 
-    {
-    }
+PieceState::PieceState(uint32_t pieceIndex, uint64_t maxSize, uint64_t offset)
+    : mPieceIndex(pieceIndex), mMaxSize(maxSize), offset(offset)
+{
+}
 
-    void PieceState::initialize()
-    {
-        mPieceData.reserve(mMaxSize);
-    }
+void PieceState::initialize()
+{
+    mPieceData.reserve(mMaxSize);
+}
 
-    void PieceState::clear()
-    {
-        mPieceData.clear();
-    }
+void PieceState::clear()
+{
+    mPieceData.clear();
+}
 
-    uint32_t PieceState::getRemainingSize() const
-    {
-        return mMaxSize - mPieceData.size();
-    }
+uint64_t PieceState::getRemainingSize() const
+{
+    return mMaxSize - mPieceData.size();
+}
 
-    uint32_t PieceState::getMaxSize() const
-    {
-        return mMaxSize;
-    }
+uint64_t PieceState::getMaxSize() const
+{
+    return mMaxSize;
+}
 
-    uint32_t PieceState::getNextBeginIndex() const
-    {
-        return mPieceData.size();
-    }
+uint32_t PieceState::getNextBeginIndex() const
+{
+    return mPieceData.size();
+}
 
-    uint32_t PieceState::getPieceIndex() const
-    {
-        return mPieceIndex;
-    }
+uint32_t PieceState::getPieceIndex() const
+{
+    return mPieceIndex;
+}
 
-    bool PieceState::isComplete() const
-    {
-        return getRemainingSize() == 0;
-    }
+uint64_t PieceState::getOffset() const
+{
+    return offset;
+}
 
-    void PieceState::addBlock(const std::vector<char>& block)
-    {
-        common::append(mPieceData, block);
-    }
+bool PieceState::isComplete() const
+{
+    return getRemainingSize() == 0;
+}
 
-    std::vector<char>&& PieceState::extractData()
-    {
-        return std::move(mPieceData);
-    }
+void PieceState::addBlock(const common::string_view block)
+{
+    common::append(mPieceData, block);
+}
 
-    common::string_view PieceState::getBuffer()
-    {
-        return common::string_view{mPieceData.begin(), mPieceData.end()};
-    }
+std::vector<char> &&PieceState::extractData()
+{
+    return std::move(mPieceData);
+}
 
-    PieceStateManager::PieceStateManager(const std::vector<uint32_t>& allPieces
-                                        ,const std::vector<uint32_t>& completedPieces
-                                        ,uint64_t totalSize
-                                        ,const std::unordered_map<uint32_t, std::vector<char>>& hashes)
-                                        :mAvailable(common::setDifference(
-                                            std::unordered_set(allPieces.begin(), allPieces.end())
-                                            , std::unordered_set(completedPieces.begin(), completedPieces.end())))
-                                        ,mCompletedPieces(completedPieces.begin(), completedPieces.end())
-                                        ,mHashes(hashes)
+common::string_view PieceState::getBuffer()
+{
+    return common::string_view{mPieceData.begin(), mPieceData.end()};
+}
+
+void PieceStateManager::populate(const std::vector<persist::PieceModel> &pieceModels)
+{
+    std::vector<uint32_t> completedPieces;
+    completedPieces.reserve(pieceModels.size());
+    for (const auto pm : pieceModels)
     {
-        if (allPieces.size() > 0)
+        if (pm.complete)
         {
-            const uint32_t numPiecesExceptLast = allPieces.size() - 1;
-            const uint32_t pieceSize = 
-                numPiecesExceptLast >= 1 ? totalSize / numPiecesExceptLast : totalSize;
-            const uint32_t lastSize = totalSize - (pieceSize * numPiecesExceptLast);
-
-            uint32_t i = 0;
-            auto it = allPieces.begin();
-            while(i < numPiecesExceptLast)
-            {
-                const auto pieceIndex = *it;
-                mAllPieces.emplace(pieceIndex, PieceState{pieceIndex, pieceSize});
-
-                ++i;
-                ++it;
-            }
-
-            mAllPieces.emplace(*it, PieceState{*it, lastSize});
+            completedPieces.emplace_back(pm.piece);
         }
-    }
-
-    PieceState* PieceStateManager::getPieceState(uint32_t pieceIndex)
-    {
-        auto it = mAllPieces.find(pieceIndex);
-
-        if (it != mAllPieces.end())
+        else
         {
-            return &(it->second);
+            mAvailable.emplace(pm.piece);
         }
 
-        return nullptr;
+        mHashes.emplace(pm.piece, common::PieceHash{pm.hash});
     }
 
-    PieceState* PieceStateManager::nextAvailablePiece(const std::unordered_set<uint32_t>& peerPieces)
+    uint64_t offset{0};
+    for (const auto &pm : pieceModels)
     {
-        std::unordered_set<uint32_t> pieces;
-
-        for(auto piece : peerPieces)
-        {
-            if (mAvailable.count(piece))
-            {
-                auto it = mAllPieces.find(piece);
-
-                if (it != mAllPieces.end())
-                {
-                    mAvailable.erase(piece);
-                    mInProgress.insert(piece);
-
-                    it->second.initialize();
-                    return &it->second;
-                }
-            }
-        }
-
-        return nullptr;
-    }
-
-    bool PieceStateManager::isCompleted(uint32_t pieceIndex)
-    {
-        return mCompletedPieces.count(pieceIndex);
-    }
-
-    void PieceStateManager::makeCompleted(uint32_t pieceIndex)
-    {
-        auto it = mAllPieces.find(pieceIndex);
-        if (it != mAllPieces.end())
-        {
-            mCompletedPieces.emplace(pieceIndex);
-            it->second.clear();
-        }
-    }
-
-    std::unordered_map<uint32_t, PieceState>::iterator PieceStateManager::begin()
-    {
-        return mAllPieces.begin();
-    }
-
-    std::unordered_map<uint32_t, PieceState>::iterator PieceStateManager::end()
-    {
-        return mAllPieces.end();
+        mAllPieces.emplace(pm.piece, PieceState(pm.piece, pm.size, offset));
+        offset += pm.size;
     }
 }
+
+PieceState *PieceStateManager::getPieceState(uint32_t pieceIndex)
+{
+    auto it = mAllPieces.find(pieceIndex);
+
+    if (it != mAllPieces.end())
+    {
+        return &(it->second);
+    }
+
+    return nullptr;
+}
+
+PieceState *PieceStateManager::nextAvailablePiece(const std::unordered_set<uint32_t> &peerPieces)
+{
+    std::unordered_set<uint32_t> pieces;
+
+    for (auto piece : peerPieces)
+    {
+        if (mAvailable.count(piece))
+        {
+            auto it = mAllPieces.find(piece);
+
+            if (it != mAllPieces.end())
+            {
+                it->second.initialize();
+                return &it->second;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+bool PieceStateManager::isCompleted(uint32_t pieceIndex)
+{
+    return mCompletedPieces.count(pieceIndex);
+}
+
+bool PieceStateManager::isAllComplete() const
+{
+    return mAvailable.empty();
+}
+
+bool PieceStateManager::isActive() const
+{
+    return active;
+}
+
+void PieceStateManager::setActive(bool b)
+{
+    active = b;
+}
+
+void PieceStateManager::makeCompleted(uint32_t pieceIndex)
+{
+    auto it = mAllPieces.find(pieceIndex);
+    if (it != mAllPieces.end())
+    {
+        mAvailable.erase(pieceIndex);
+        mCompletedPieces.emplace(pieceIndex);
+        it->second.clear();
+    }
+}
+
+std::unordered_map<uint32_t, PieceState>::iterator PieceStateManager::begin()
+{
+    return mAllPieces.begin();
+}
+
+std::unordered_map<uint32_t, PieceState>::iterator PieceStateManager::end()
+{
+    return mAllPieces.end();
+}
+} // namespace fractals::network::p2p

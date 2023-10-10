@@ -64,11 +64,6 @@ std::ostream &operator<<(std::ostream &os, const Deactivate &msg)
     return os << "Deactivate{}";
 }
 
-std::ostream &operator<<(std::ostream &os, const DeactivateResponse &msg)
-{
-    return os << "Deactivate{}";
-}
-
 std::ostream &operator<<(std::ostream &os, const EpollServiceRequest &pe)
 {
     std::visit(common::overloaded{[&](const auto &v) { os << v; }}, pe);

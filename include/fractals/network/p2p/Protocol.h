@@ -1,60 +1,64 @@
-#pragma once 
+#pragma once
 
+#include "fractals/common/Tagged.h"
 #include "fractals/disk/DiskEventQueue.h"
-#include "fractals/network/p2p/PeerService.h"
-#include "fractals/network/p2p/PieceStateManager.h"
-#include "fractals/persist/PersistEventQueue.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
+#include "fractals/network/p2p/PeerService.h"
+#include "fractals/network/p2p/PieceStateManager.h"
 #include "fractals/network/p2p/ProtocolState.h"
+#include "fractals/persist/PersistEventQueue.h"
 
+#include <chrono>
 #include <cstdint>
 #include <unordered_set>
 
 namespace fractals::network::p2p
-{   
-    template <typename PeerServiceT>
-    class Protocol
-    {
-        public:
-            Protocol(http::PeerId peer
-                    , const std::string& infoHash
-                    , PeerServiceT& peerService
-                    , persist::PersistEventQueue::LeftEndPoint persistQueue
-                    , disk::DiskEventQueue& diskQueue
-                    , PieceStateManager& pieceRepository);
+{
+template <typename PeerServiceT> class Protocol
+{
+  public:
+    Protocol(const std::array<char, 20> clientId, http::PeerId peer,
+             const common::InfoHash &infoHash, PeerServiceT &peerService,
+             persist::PersistEventQueue::LeftEndPoint persistQueue,
+             disk::DiskEventQueue::LeftEndPoint diskQueue, PieceStateManager &pieceRepository);
 
-            ProtocolState onMessage(HandShake&& hs);
-            ProtocolState onMessage(KeepAlive&& hs);
-            ProtocolState onMessage(Choke&& hs);
-            ProtocolState onMessage(UnChoke&& hs);
-            ProtocolState onMessage(Interested&& hs);
-            ProtocolState onMessage(NotInterested&& hs);
-            ProtocolState onMessage(Have&& hs);
-            ProtocolState onMessage(Bitfield&& hs);
-            ProtocolState onMessage(Request&& hs);
-            ProtocolState onMessage(Piece&& hs);
-            ProtocolState onMessage(Cancel&& hs);
-            ProtocolState onMessage(Port&& hs);
+    bool sendHandShake(std::chrono::nanoseconds now);
 
-        private:
-            void sendInterested();
-            ProtocolState requestNextPiece();
-            PieceState* getNextAvailablePiece();
+    ProtocolState onMessage(const HandShake &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const KeepAlive &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Choke &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const UnChoke &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Interested &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const NotInterested &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Have &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Bitfield &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Request &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Piece &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Cancel &hs, std::chrono::nanoseconds now);
+    ProtocolState onMessage(const Port &hs, std::chrono::nanoseconds now);
 
-        private:
-            bool mAmChoking{true};
-            bool mAmInterested{false};
-            bool mPeerChoking{true};
-            bool mPeerInterested{false};
+    const common::InfoHash &getInfoHash() const;
 
-            http::PeerId peer;
-            std::string infoHash;
-            std::unordered_set<uint32_t> availablePieces;
-            PeerServiceT& peerService;
-            persist::PersistEventQueue::LeftEndPoint persistQueue;
-            disk::DiskEventQueue& diskQueue;
-            PieceStateManager& pieceRepository;
-    };
-}
+  private:
+    void sendInterested(std::chrono::nanoseconds now);
+    ProtocolState requestNextPiece(std::chrono::nanoseconds now);
+    PieceState *getNextAvailablePiece();
+
+  private:
+    bool mAmChoking{true};
+    bool mAmInterested{false};
+    bool mPeerChoking{true};
+    bool mPeerInterested{false};
+
+    std::array<char, 20> clientId;
+    http::PeerId peer;
+    common::InfoHash infoHash;
+    std::unordered_set<uint32_t> availablePieces;
+    PeerServiceT &peerService;
+    persist::PersistEventQueue::LeftEndPoint persistQueue;
+    disk::DiskEventQueue::LeftEndPoint diskQueue;
+    PieceStateManager &pieceRepository;
+};
+} // namespace fractals::network::p2p

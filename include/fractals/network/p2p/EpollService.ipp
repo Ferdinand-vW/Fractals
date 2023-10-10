@@ -5,6 +5,7 @@
 #include "fractals/network/p2p/EpollMsgQueue.h"
 #include "fractals/network/p2p/EpollService.h"
 #include "fractals/network/p2p/EpollServiceEvent.h"
+#include "fractals/network/p2p/PeerEvent.h"
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/network/p2p/Socket.h"
 
@@ -25,64 +26,53 @@
 namespace fractals::network::p2p
 {
 
-#define TEMPLATE template <typename Peer, typename Epoll, typename BufferedQueueManagerT, typename EpollMsgQueue>
+#define TEMPLATE                                                                                   \
+    template <typename Peer, typename Epoll, typename BufferedQueueManagerT, typename EpollMsgQueue>
 #define PREFIX EpollServiceImpl<Peer, Epoll, BufferedQueueManagerT, EpollMsgQueue>
 
 TEMPLATE
-PREFIX::EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &bufMan, typename EpollMsgQueue::RightEndPoint queue)
-    : mEpoll(epoll), buffMan(bufMan), mSpecialFd(createNotifyFd()), queue(queue)
+PREFIX::EpollServiceImpl(Epoll &epoll, BufferedQueueManagerT &bufMan,
+                         typename EpollMsgQueue::RightEndPoint queue)
+    : mEpoll(epoll), buffMan(bufMan), notifyPeer(createNotifyFd()), queue(queue)
 {
-    // buffMan.setWriteNotifier([this](const Peer &peer) { subscribe(peer); });
+    mEpoll.add(notifyPeer, epoll_wrapper::EventCode::EpollIn);
 }
 
 TEMPLATE
 void PREFIX::subscribe(const Peer &peer)
 {
-    std::unique_lock<std::mutex> _lock(mMutex);
-    spdlog::info("has lock");
-    const auto ctl = mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollOut);
-    spdlog::info("CEH::subscribe peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
+    const auto ctl =
+        mEpoll.add(peer, epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollOut);
     queue.push(CtlResponse{peer, std::to_string(ctl.getError())});
 }
 
 TEMPLATE
 void PREFIX::unsubscribe(const Peer &peer)
 {
-    std::unique_lock<std::mutex> _lock(mMutex);
+    pending.erase(peer); // may not be known to peer
+    const auto pr = peer;
     const auto ctl = mEpoll.erase(peer);
-    spdlog::info("CEH::unsubscribe peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
-    queue.push(CtlResponse{peer, std::to_string(ctl.getError())});
+    close(peer.getFileDescriptor());
+    queue.push(CtlResponse{pr, std::to_string(ctl.getError())});
 }
 
 TEMPLATE
 epoll_wrapper::CtlAction PREFIX::disableWrite(const Peer &peer)
 {
-    std::unique_lock<std::mutex> _lock(mMutex);
-    const auto ctl = mEpoll.mod(peer, epoll_wrapper::EventCode::EpollIn);
-
-    spdlog::info("CEH::disableWrite peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
-    return ctl;
+    return mEpoll.mod(peer, epoll_wrapper::EventCode::EpollIn);
 }
 
 TEMPLATE
 epoll_wrapper::CtlAction PREFIX::enableWrite(const Peer &peer)
 {
-    std::unique_lock<std::mutex> _lock(mMutex);
-    const auto ctl = mEpoll.mod(peer, epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollOut);
-    spdlog::info("CEH::enableWrite peer={} error={}", peer.getId().toString(), std::to_string(ctl.getError()));
-    return ctl;
+    return mEpoll.mod(peer, epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollOut);
 }
 
 TEMPLATE
 void PREFIX::notify()
 {
-    spdlog::info("CEH::notify");
-    struct epoll_event event;
-    event.events = EPOLLOUT | EPOLLONESHOT;
-    event.data.fd = mSpecialFd.getFileDescriptor();
-    // Call underlying epoll system call directly without updating internal hashmap as this is thread safe
-    mEpoll.getUnderlying().epoll_ctl(EPOLL_CTL_DEL, mSpecialFd.getFileDescriptor(), &event);
-    mEpoll.getUnderlying().epoll_ctl(EPOLL_CTL_ADD, mSpecialFd.getFileDescriptor(), &event);
+    uint8_t buf[1]{0};
+    write(notifyPipe[1], buf, 1);
 }
 
 TEMPLATE
@@ -94,46 +84,38 @@ bool PREFIX::isSubscribed(const Peer &peer)
 TEMPLATE
 PeerFd PREFIX::createNotifyFd()
 {
+    pipe(notifyPipe);
+
     int32_t fd = eventfd(0, EFD_NONBLOCK);
     assert(fd > 0);
-    spdlog::info("CEH::createNotifyFd fd={}", fd);
-    return PeerFd{http::PeerId{"localhost", 0}, fd};
+    return PeerFd{http::PeerId{"", 0}, notifyPipe[0]};
 }
 
 TEMPLATE
 int PREFIX::readMany(const Peer &peer)
 {
-    bool keepReading = true;
-    int total = 0;
-    do
-    {
-        auto [bytes, n] = readOnce(peer);
+    auto [bytes, n] = readOnce(peer);
 
-        if (n > 0)
-        {
-            writeToBuffer(peer, std::move(bytes), n);
-        }
+    writeToBuffer(peer, std::move(bytes), n);
 
-        keepReading = n > 0;
-        total += n;
-    }
-    while(keepReading);
-
-    return total;
+    return n;
 }
 
 TEMPLATE
 std::tuple<std::vector<char>, int> PREFIX::readOnce(const Peer &peer)
 {
-    std::vector<char> buf(512);
-    int n = read(peer.getFileDescriptor(), &buf[0], 512);
-    return std::make_tuple(buf,n);
+    std::vector<char> buf(16 * 1024);
+    int n = read(peer.getFileDescriptor(), &buf[0], 16 * 1024);
+    if (n < 0)
+    {
+        spdlog::error("Error reading less than 0 bytes {}", strerror(errno));
+    }
+    return std::make_tuple(buf, n);
 }
 
 TEMPLATE
-void PREFIX::writeToBuffer(const Peer &peer, std::vector<char>&& data, int bytes)
+void PREFIX::writeToBuffer(const Peer &peer, std::vector<char> &&data, int bytes)
 {
-    spdlog::info("RESERVE: {}", bytes);
     std::vector<char> v(data.begin(), data.begin() + bytes);
     bool isComplete = buffMan.addToReadBuffer(peer, v);
     if (isComplete)
@@ -169,93 +151,105 @@ void PREFIX::run()
 
     while (state == State::Active)
     {
+        const auto wa = mEpoll.wait();
+
         while (queue.canPop())
         {
             const auto req = queue.pop();
 
-            std::visit(common::overloaded{[&](Subscribe sub) {
-                                              spdlog::info("sub");
+            std::visit(common::overloaded{[&](Subscribe sub)
+                                          {
                                               subscribe(sub.peer);
+                                              //   enableWrite(sub.peer);
+                                              pending.emplace(sub.peer);
                                           },
-                                          [&](UnSubscribe unsub) {
-                                              spdlog::info("unsub");
+                                          [&](UnSubscribe unsub)
+                                          {
                                               unsubscribe(unsub.peer);
+                                              queue.push(ConnectionCloseEvent{unsub.peer.getId()});
                                           },
-                                          [&](Deactivate stop) {
-                                              spdlog::info("CEH::pop from queue: Deactivate");
+                                          [&](Deactivate stop)
+                                          {
+                                              spdlog::info("EpollService::run. Deactivate");
                                               state = State::Inactive;
-                                              queue.push(DeactivateResponse{});
                                           },
-                                          [&](WriteEvent data) {
-                                              spdlog::info("write");
+                                          [&](WriteEvent data)
+                                          {
                                               enableWrite(data.peer);
-                                              buffMan.addToWriteBuffer(data.peer, std::move(data.message));
+                                              buffMan.addToWriteBuffer(data.peer,
+                                                                       std::move(data.message));
                                           }},
                        req);
         }
 
-        spdlog::info("here");
         if (state != State::Active)
         {
-            spdlog::info("break");
+            spdlog::warn("EpollSerivce::run. Not active. Exiting.");
             break;
         }
-        spdlog::info("CEH::wait");
-        const auto wa = mEpoll.wait(500);
-        spdlog::info("CEH::exit wait. ErrorCode={} NumEvents={}", std::to_string(wa.getError()),
-                     std::to_string(wa.getEvents().size()));
 
-        const auto hasError =
-            (epoll_wrapper::ErrorCode::None != wa.getError() && epoll_wrapper::ErrorCode::Eintr != wa.getError());
+        const auto hasError = (epoll_wrapper::ErrorCode::None != wa.getError() &&
+                               epoll_wrapper::ErrorCode::Eintr != wa.getError());
         if (hasError)
         {
-            spdlog::info("CEH::run wait has error {}", std::to_string(wa.getError()));
             state = State::Inactive;
+            spdlog::error("EpollService::run error={}", std::to_string(wa.getError()));
             queue.push(EpollError{wa.getError()});
             return;
         }
 
         for (auto &[peer, event] : wa.getEvents())
         {
-            if (peer == mSpecialFd)
+            if (peer == notifyPeer)
             {
-                spdlog::info("CEH::specialFd eventCodes={} error={}", std::to_string(event.mEvents),
-                             std::to_string(event.mError));
+                uint8_t buf[1];
+                read(notifyPeer.getFileDescriptor(), buf, 1);
                 continue;
             }
 
             if (isSubscribed(peer))
             {
-                spdlog::info("CEH::run peer={} is subscribed. events={}", peer.getId().toString(),
-                             epoll_wrapper::toEpollEvent(event.mEvents));
-
                 if (event.mEvents & epoll_wrapper::EventCode::EpollErr)
                 {
-                    spdlog::info("CEH::run peer={} event=EpollErr", peer.getId().toString());
-
                     queue.push(ConnectionError{peer.getId(), event.mError});
 
                     unsubscribe(peer);
+                    continue;
                 }
 
                 if (event.mEvents & epoll_wrapper::EventCode::EpollHUp)
                 {
-                    spdlog::info("CEH::run peer={} event=EpollHUp", peer.getId().toString());
                     queue.push(ConnectionCloseEvent{peer.getId()});
 
                     unsubscribe(peer);
+                    continue;
                 }
-                if (event.mEvents & epoll_wrapper::EventCode::EpollIn)
+
+                if (event.mEvents &
+                    (epoll_wrapper::EventCode::EpollIn | epoll_wrapper::EventCode::EpollPri))
                 {
-                    int numBytes = readMany(peer);
-                    spdlog::info("CEH::run peer={} event=EpollIn read={}", peer.getId().toString(), numBytes);
+                    if (!readMany(peer))
+                    {
+                        queue.push(ConnectionCloseEvent{peer.getId()});
+                        unsubscribe(peer);
+                        continue;
+                    }
                 }
                 if (event.mEvents & epoll_wrapper::EventCode::EpollOut)
                 {
-                    spdlog::info("CEH::run peer={} event=EpollOut", peer.getId().toString());
-                    auto *writeMsg = buffMan.getWriteBuffer(peer);
-                    if (!writeMsg || writeMsg->isComplete())
+                    if (pending.count(peer))
                     {
+                        queue.push(ConnectionAccepted{peer});
+                        pending.erase(peer);
+                        disableWrite(peer);
+                        continue;
+                    }
+
+                    auto *writeMsg = buffMan.getWriteBuffer(peer);
+                    if (!writeMsg)
+                    {
+                        spdlog::error("EpollService::run. could not find write buffer for peer={}",
+                                      peer.getId().toString());
                         continue;
                     }
 
@@ -267,27 +261,27 @@ void PREFIX::run()
 
                     if (writeMsg->isComplete())
                     {
-                        spdlog::info("CEH::run peer={} complete write. event={}", peer.getId().toString(),
-                                     epoll_wrapper::toEpollEvent(event.mEvents));
                         queue.push(WriteEventResponse{peer, ""});
                         disableWrite(peer);
+                        buffMan.removeFromWriteBuffer(peer);
                     }
                 }
             }
             else
             {
-                spdlog::error("CEH::run peer={} not subscribed", peer.getId().toString());
+                spdlog::error("EpollService::run. Received epoll event for not subscribed peer={}",
+                              peer.getId().toString());
             }
         }
     }
 
-    state = State::Inactive;
+    spdlog::info("EpollService::run. Shutdown");
 }
 
 TEMPLATE
 typename PREFIX::State PREFIX::stop()
 {
-    spdlog::info("CEH::stop");
+    spdlog::info("EpollService::stop");
     if (state == State::Active)
     {
         const auto newState = State::Deactivating;

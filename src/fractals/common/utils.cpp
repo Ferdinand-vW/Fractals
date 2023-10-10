@@ -90,14 +90,19 @@ namespace fractals::common {
         return s;
     }
 
-    std::string bytes_to_hex(const std::vector<char> &bytes) {
-        std::stringstream ss;
+    std::string bytes_to_hex(common::string_view view)
+    {
+       std::stringstream ss;
         ss << std::hex << std::setfill('0');
-        for(auto &b : bytes) {
+        for(auto &b : view) {
             ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(b)); 
         };
 
-        return ss.str();
+        return ss.str(); 
+    }
+
+    std::string bytes_to_hex(const std::vector<char> &bytes) {
+        return bytes_to_hex(common::string_view(bytes.begin(), bytes.end()));
     }
 
     std::string bytes_to_hex(const std::deque<char> &bytes) {
@@ -210,8 +215,8 @@ namespace fractals::common {
         return v;
     }
 
-    std::wstring pp_bytes(int64_t bytes) {
-        std::list<std::wstring> units = { L"B",L"KB",L"MB",L"GB",L"TB",L"PB"};
+    std::string pp_bytes(int64_t bytes) {
+        std::list<std::string> units = { "B","KB","MB","GB","TB","PB"};
         long double d = bytes;
         auto u = units.front();
         units.pop_front();
@@ -225,26 +230,26 @@ namespace fractals::common {
         auto dec = d - std::floor(d); // xx.yyzz - xx -> 0.yyzz
         auto dec_rounded = std::floor(dec*100); // 0.yyzz -> yy
 
-        return std::to_wstring((int64_t)nat) + L"." + std::to_wstring((int64_t)dec_rounded) + L" " + u;
+        return std::to_string((int64_t)nat) + "." + std::to_string((int64_t)dec_rounded) + " " + u;
     }
 
-    std::wstring pp_bytes_per_second(int64_t bytes) {
-        return pp_bytes(bytes) + L"/s";
+    std::string pp_bytes_per_second(int64_t bytes) {
+        return pp_bytes(bytes) + "/s";
     }
 
-    std::wstring pp_time(int64_t seconds) {
+    std::string pp_time(int64_t seconds) {
         // >= 3 years
         if(seconds >= 279936000) {
-            return L"inf";
+            return "inf";
         }
 
         //not entirely correct, but we don't need it to be
-        std::list<std::pair<std::wstring,int>> units = 
-            { {L"m",60}, {L"h",60}, {L"d",24}, {L"m",30}, {L"y",12} };
+        std::list<std::pair<std::string,int>> units = 
+            { {"m",60}, {"h",60}, {"d",24}, {"m",30}, {"y",12} };
 
-        std::list<std::pair<std::wstring,int>> measurements;
+        std::list<std::pair<std::string,int>> measurements;
 
-        std::pair<std::wstring,int64_t> prev(L"s",seconds);
+        std::pair<std::string,int64_t> prev("s",seconds);
         for(auto &u : units) {
             auto nat = prev.second / u.second; //number of minutes/hours/days/..
             auto prev_units = prev.second - nat*u.second;
@@ -257,20 +262,12 @@ namespace fractals::common {
         }
         measurements.push_front(prev);
 
-        std::wstring ws;
+        std::string ws;
         for(auto &m : measurements) {
-            ws = ws + std::to_wstring(m.second) + m.first;
+            ws = ws + std::to_string(m.second) + m.first;
         }
 
         return ws;
-    }
-
-    std::wstring make_wide(const std::string &s) {
-        return std::wstring(s.begin(),s.end());
-    }
-
-    std::string unwide(const std::wstring &ws) {
-        return std::string(ws.begin(),ws.end());
     }
 
     void print_err(std::string &&s) {

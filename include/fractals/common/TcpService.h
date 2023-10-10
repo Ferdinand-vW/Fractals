@@ -1,8 +1,11 @@
 #pragma once
 
 #include <arpa/inet.h>
+#include <asm-generic/errno.h>
+#include <cstring>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <sys/socket.h>
 
@@ -19,6 +22,7 @@ class TcpService
 
         if (fd < 0)
         {
+            spdlog::error("TCPService::connect. Failed to create socket");
             return fd;
         }
 
@@ -28,14 +32,20 @@ class TcpService
 
         if (inet_pton(AF_INET, host.c_str(), &addr.sin_addr) < 0)
         {
+            spdlog::error("TCPService::connect. inet python fail");
             return -1;
         }
 
         int flags = fcntl(fd, F_GETFL, 0);
-        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-
-        if (::connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0 || errno != EINPROGRESS)
+        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
         {
+            spdlog::error("TCPService::connect. Could not set socket to NON_BLOCKING");
+            return -1;
+        }
+
+        if (::connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0 && errno != EINPROGRESS)
+        {
+            spdlog::error("TCPService::connect. connect fail {}", strerror(errno));
             return -1;
         }
 

@@ -41,7 +41,7 @@ namespace std
 {
 template <> struct std::hash<fractals::network::http::PeerId>
 {
-    std::size_t operator()(const fractals::network::http::PeerId &p) const
+    std::size_t operator()(fractals::network::http::PeerId p) const
     {
 
         // Compute individual hash values for first,

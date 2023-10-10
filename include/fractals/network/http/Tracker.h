@@ -27,7 +27,7 @@ namespace fractals::network::http {
             TrackerClient(const std::string &url);
             std::string getUrl() const;
 
-            TrackerRequest query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout);
+            neither::Either<std::string, TrackerResponse> query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout);
 
             friend std::ostream & operator<<(std::ostream& out, const TrackerClient & s);
 
@@ -35,13 +35,4 @@ namespace fractals::network::http {
             std::string mUrl;
 
     };
-
-    /**
-    How to perform an announce:
-    1) The MetaInfo file is to be converted to a TrackerRequest using @makeTrackerRequest.
-    2) Send the tracker request to the tracker and receive the tracker response using @sendTrackerRequest.
-    3) Convert to tracker response to an announce object using @toAnnounce
-    */
-    TrackerRequest makeTrackerRequest(const torrent::MetaInfo & mi);
-
 }

@@ -6,6 +6,7 @@
 #include <curl/multi.h>
 #include <iostream>
 #include <iterator>
+#include <spdlog/spdlog.h>
 
 namespace fractals::common
 {
@@ -19,7 +20,6 @@ size_t read(void *received, size_t size, size_t nmemb, void *clientp)
     std::vector<char> temp(data, data + size * nmemb);
 
     buf.insert(buf.end(), temp.begin(), temp.end());
-    std::cout << "SIZE " << size * nmemb << std::endl;
     return size * nmemb;
 }
 } // namespace
@@ -72,11 +72,9 @@ CurlResponse CurlPoll::poll()
         int numReady{0};
         CURLMcode mc = curl_multi_poll(curl, NULL, 0, 100, &numReady);
 
-        std::cout << numReady << std::endl;
-
         if (mc != CURLM_OK)
         {
-            printf("curl_multi_poll() failed, code %d\n", mc);
+            spdlog::error("curl_multi_poll() failed, code %d\n", mc);
             return CurlResponse(mc);
         }
     }

@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "fractals/common/Tagged.h"
 #include "fractals/torrent/MetaInfo.h"
 
 namespace fractals::torrent {
@@ -14,6 +15,12 @@ namespace fractals::torrent {
     struct TorrentMeta {
         public:
             TorrentMeta(const MetaInfo &mi,std::string fileName);
+
+            TorrentMeta() = default;
+            TorrentMeta(const TorrentMeta&) = default;
+            TorrentMeta(TorrentMeta&&) = default;
+            TorrentMeta& operator=(const TorrentMeta&) = default;
+            TorrentMeta& operator=(TorrentMeta&&) = default;
 
             /**
              * Returns name of torrent as described by the MetaInfo
@@ -43,19 +50,19 @@ namespace fractals::torrent {
              * A SHA1 hash of Info dict in MetaInfo
              * @return SHA1 hash bytes represented as a vector of chars
              */
-            std::vector<char> getInfoHash() const;
+            const common::InfoHash& getInfoHash() const;
 
             /**
              * Compute size of torrent data
              */
-             int64_t getSize() const;
+             uint64_t getSize() const;
 
         private:
             std::string m_name;
             std::string m_dir;
             std::vector<FileInfo> m_files;
             MetaInfo m_mi;
-            std::vector<char> m_info_hash;
+            common::InfoHash m_info_hash;
     };
 
 }

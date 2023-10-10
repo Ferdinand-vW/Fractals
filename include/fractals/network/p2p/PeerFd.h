@@ -7,15 +7,13 @@
 
 namespace fractals::network::p2p
 {
-struct PeerFd
+class PeerFd
 {
+  public:
     PeerFd() = default;
     PeerFd(const http::PeerId &id, int32_t fd) : mId(id), mFd(fd)
     {
     }
-
-    http::PeerId mId;
-    int32_t mFd;
 
     int32_t getFileDescriptor() const
     {
@@ -36,6 +34,10 @@ struct PeerFd
     {
         return PeerFd{http::PeerId{"", 0}, 0};
     }
+
+  private:
+    http::PeerId mId;
+    int32_t mFd;
 };
 } // namespace fractals::network::p2p
 

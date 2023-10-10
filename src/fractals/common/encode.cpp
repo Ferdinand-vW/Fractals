@@ -2,6 +2,7 @@
 
 #include <curl/curl.h>
 #include <openssl/sha.h>
+#include <iostream>
 
 #include "fractals/common/encode.h"
 

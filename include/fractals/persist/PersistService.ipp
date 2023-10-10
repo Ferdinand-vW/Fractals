@@ -1,76 +1,138 @@
 #include "fractals/common/utils.h"
 #include "fractals/persist/Event.h"
+#include "fractals/persist/PersistEventQueue.h"
 #include "fractals/persist/PersistService.h"
 
 #include "fractals/common/CurlPoll.h"
+#include "fractals/sync/QueueCoordinator.h"
 #include <chrono>
 #include <ctime>
 #include <thread>
 
 namespace fractals::persist
 {
-template <typename TrackerClientT>
-PersistServiceImpl<TrackerClientT>::PersistServiceImpl(PersistEventQueue::RightEndPoint queue, TrackerClientT &client)
-    : requestQueue(queue), client(client)
+template <typename PersistClientT>
+PersistServiceImpl<PersistClientT>::PersistServiceImpl(sync::QueueCoordinator &coordinator,
+                                                       PersistEventQueue::RightEndPoint btQueue,
+                                                       AppPersistQueue::RightEndPoint appQueue,
+                                                       PersistClientT &client)
+    : coordinator(coordinator), btQueue(btQueue), appQueue(appQueue), client(client)
 {
+    coordinator.addAsPublisherForPersistService<PersistEventQueue>(btQueue);
+    coordinator.addAsPublisherForPersistService<AppPersistQueue>(appQueue);
+    client.openConnection("torrents.db");
 }
 
-template <typename TrackerClientT> TrackerClientT &PersistServiceImpl<TrackerClientT>::getClient()
+template <typename PersistClientT> PersistClientT &PersistServiceImpl<PersistClientT>::getClient()
 {
     return client;
 }
 
-template <typename TrackerClientT> void PersistServiceImpl<TrackerClientT>::disable()
+template <typename PersistClientT> void PersistServiceImpl<PersistClientT>::disable()
 {
-    running = false;
+    isActive = false;
 }
 
-template <typename TrackerClientT> void PersistServiceImpl<TrackerClientT>::pollForever()
+template <typename PersistClientT> void PersistServiceImpl<PersistClientT>::run()
 {
-    running = true;
-    while (running)
+    isActive = true;
+    while (isActive)
     {
-        if (!pollOnce())
+        coordinator.waitOnPersistServiceUpdate();
+
+        while (btQueue.canPop())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            processBtEvent();
+        }
+
+        while (appQueue.canPop())
+        {
+            processAppEvent();
         }
     }
+
+    spdlog::info("PersistService::run. Shutdown");
 }
 
-template <typename TrackerClientT> bool PersistServiceImpl<TrackerClientT>::pollOnce()
+template <typename PersistClientT> void PersistServiceImpl<PersistClientT>::processBtEvent()
 {
-    if (requestQueue.canPop())
-    {
-        const auto req = requestQueue.pop();
+    auto &&req = std::move(btQueue.pop());
 
-        std::visit(
-            common::overloaded{
-                [&](const AddTorrent &req) { client.addTorrent(req); },
-                [&](const RemoveTorrent &req) { client.deleteTorrent(req.infoHash); },
-                [&](const LoadTorrent &req) {
-                    const auto torr = client.loadTorrent(req.infoHash);
-                    if (torr)
-                    {
-                        requestQueue.push(Torrent{req.infoHash, torr.value()});
-                    }
-                },
-                [&](const LoadTorrents &req) {
-                    const auto torrs = client.loadTorrents();
-                    requestQueue.push(AllTorrents{torrs});
-                },
-                [&](const AddPiece &req) { client.addPiece(req); },
-                [&](const RemovePieces &req) { client.deletePieces(req.infoHash); },
-                [&](const LoadPieces &req) { requestQueue.push(Pieces{req.infoHash, client.loadPieces(req.infoHash)}); },
-                [&](const AddAnnounce &req) { client.addAnnounce(req); },
-                [&](const RemoveAnnounces &req) { client.deleteAnnounce(req.infoHash); },
-                [&](const LoadAnnounces &req) { requestQueue.push(Announces{req.infoHash, client.loadAnnounces(req.infoHash)}); },
+    std::visit(
+        common::overloaded{
+            [&](const AddTorrent &req)
+            {
+                std::visit(common::overloaded{[&](const auto &resp)
+                                              {
+                                                  btQueue.push(resp);
+                                              }},
+                           client.addTorrent(req));
             },
-            req);
+            [&](const RemoveTorrent &req)
+            {
+                client.deleteTorrent(req.infoHash);
+            },
+            [&](const AddTrackers& req)
+            {
+                client.addTrackers(req);
+            },
+            [&](const LoadTrackers& req)
+            {
+                btQueue.push(Trackers{req.infoHash, client.loadTrackers(req.infoHash)});
+            },
+            [&](const PieceComplete &req)
+            {
+                client.addPiece(req);
+            },
+            [&](const RemovePieces &req)
+            {
+                client.deletePieces(req.infoHash);
+            },
+            [&](const LoadPieces &req)
+            {
+                btQueue.push(Pieces{req.infoHash, client.loadPieces(req.infoHash)});
+            },
+            [&](const AddAnnounce &req)
+            {
+                client.addAnnounce(req);
+            },
+            [&](const RemoveAnnounces &req)
+            {
+                client.deleteAnnounce(req.infoHash);
+            },
+            [&](const LoadAnnounces &req)
+            {
+                btQueue.push(Announces{req.infoHash, client.loadAnnounces(req.infoHash)});
+            },
+            [&](const Shutdown &)
+            {
+                isActive = false;
+            }},
+        req);
+}
 
-        return true;
-    }
+template <typename PersistClientT> void PersistServiceImpl<PersistClientT>::processAppEvent()
+{
+    auto &&req = std::move(appQueue.pop());
+    std::visit(
+        common::overloaded{
+            [&](const RequestStats &req)
+            {
+                for (const auto &[torrId, ih] : req.requested)
+                {
+                    auto torrStats = client.loadTorrentStats(ih);
+                    torrStats.torrId = torrId;
+                    appQueue.push(torrStats);
+                }
+            },
 
-    return false;
+            [&](const LoadTorrents &req)
+            {
+                const auto torrs = client.loadTorrents();
+                appQueue.push(AllTorrents{torrs});
+            },
+        },
+        req);
 }
 
 } // namespace fractals::persist

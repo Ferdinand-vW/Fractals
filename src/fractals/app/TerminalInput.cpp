@@ -36,7 +36,7 @@ namespace fractals::app {
         if (!is_focused)
             return text(*content_) | main_decorator | reflect(input_box_);
         
-        std::wstring part_before_cursor = content_->substr(0, cursor_position);
+        std::string part_before_cursor = content_->substr(0, cursor_position);
 
         return
             hbox(
@@ -54,7 +54,7 @@ namespace fractals::app {
         if (event.is_mouse())
             return OnMouseEvent(event);
     
-        std::wstring c;
+        std::string c;
     
         // Backspace.
         if (event == Event::Backspace) {
@@ -114,7 +114,7 @@ namespace fractals::app {
     
         // Content
         if (event.is_character()) {
-            content_->insert(cursor_position, 1, event.character());
+            content_->insert(cursor_position, event.character()); // (cursor_position, 1, event.character())
             cursor_position++;
             on_change();
             return true;

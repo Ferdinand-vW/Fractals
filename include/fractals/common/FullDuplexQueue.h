@@ -22,15 +22,15 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
 
         PopEvent &&pop()
         {
-            return popEnd.pop();
+            return std::move(popEnd.pop());
         }
 
-        bool canPop()
+        bool canPop() const
         {
             return !popEnd.isEmpty();
         }
 
-        bool canPush()
+        bool canPush() const
         {
             return !pushEnd.size() == SIZE;
         }
@@ -40,9 +40,8 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
             return popEnd.size();
         }
 
-        void attachNotifier(std::mutex* mutex, std::condition_variable *cv)
+        void attachNotifier(std::mutex& mutex, std::condition_variable &cv)
         {
-            pushEnd.attachNotifier(mutex, cv);
             popEnd.attachNotifier(mutex, cv);
         }
 
@@ -74,6 +73,10 @@ template <uint32_t SIZE, typename LeftEventIn, typename RightEventIn> class Full
 
   private:
     WorkQueueImpl<SIZE, LeftEventIn> leftQueue;
+    std::mutex leftMutex;
+    std::condition_variable leftCv;
     WorkQueueImpl<SIZE, RightEventIn> rightQueue;
+    std::mutex rightMutex;
+    std::condition_variable rightCv;
 };
 } // namespace fractals::common

@@ -48,8 +48,11 @@ class EpollServiceImpl
     std::tuple<std::vector<char>, int> readOnce(const Peer &peer);
     void writeToBuffer(const Peer& peer, std::vector<char>&& data, int bytes);
 
-    PeerFd mSpecialFd;
+    int notifyPipe[2];
+    PeerFd notifyPeer;
+
     State state{State::Inactive};
+    std::unordered_set<PeerFd> pending;
 
     std::mutex mMutex;
     Epoll &mEpoll;

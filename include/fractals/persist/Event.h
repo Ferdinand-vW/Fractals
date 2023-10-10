@@ -6,7 +6,9 @@
 #include <variant>
 #include <vector>
 
+#include "fractals/common/Tagged.h"
 #include "fractals/persist/Models.h"
+#include "fractals/torrent/TorrentMeta.h"
 
 namespace fractals::persist
 {
@@ -16,14 +18,13 @@ struct AddTorrent
 {
     AddTorrent() = default;
 
-    AddTorrent(const std::string &infoHash, const std::string &name, const std::string &torrentFilePath,
+    AddTorrent(const torrent::TorrentMeta &tm, const std::string &torrentFilePath,
                const std::string &writePath)
-        : infoHash(infoHash), name(name), torrentFilePath(torrentFilePath), writePath(writePath)
+        : tm(tm), torrentFilePath(torrentFilePath), writePath(writePath)
     {
     }
 
-    std::string infoHash;
-    std::string name;
+    torrent::TorrentMeta tm;
     std::string torrentFilePath;
     std::string writePath;
 };
@@ -32,33 +33,36 @@ struct RemoveTorrent
 {
     RemoveTorrent() = default;
 
-    RemoveTorrent(const std::string &infoHash) : infoHash(infoHash){};
+    RemoveTorrent(const common::InfoHash &infoHash) : infoHash(infoHash){};
 
-    std::string infoHash;
-};
-
-struct LoadTorrent
-{
-    LoadTorrent() = default;
-
-    LoadTorrent(const std::string &infoHash) : infoHash(infoHash){};
-
-    std::string infoHash;
+    common::InfoHash infoHash;
 };
 
 struct LoadTorrents
 {
 };
 
-struct AddPiece
+struct AddTrackers
 {
-    AddPiece() = default;
+    common::InfoHash infoHash;
+    std::vector<std::string> trackers;
+};
 
-    AddPiece(const std::string &infoHash, uint32_t piece) : infoHash(infoHash), piece(piece)
+struct LoadTrackers
+{
+    common::InfoHash infoHash;
+};
+
+struct PieceComplete
+{
+    PieceComplete() = default;
+
+    PieceComplete(const common::InfoHash &infoHash, uint32_t piece)
+        : infoHash(infoHash), piece(piece)
     {
     }
 
-    std::string infoHash;
+    common::InfoHash infoHash;
     uint32_t piece;
 };
 
@@ -66,35 +70,35 @@ struct RemovePieces
 {
     RemovePieces() = default;
 
-    RemovePieces(const std::string &infoHash) : infoHash(infoHash)
+    RemovePieces(const common::InfoHash &infoHash) : infoHash(infoHash)
     {
     }
 
-    std::string infoHash;
+    common::InfoHash infoHash;
 };
 
 struct LoadPieces
 {
     LoadPieces() = default;
 
-    LoadPieces(const std::string &infoHash) : infoHash(infoHash)
+    LoadPieces(const common::InfoHash &infoHash) : infoHash(infoHash)
     {
     }
 
-    std::string infoHash;
+    common::InfoHash infoHash;
 };
 
 struct AddAnnounce
 {
     AddAnnounce() = default;
 
-    AddAnnounce(const std::string &infoHash, const std::string &peerIp, uint16_t peerPort, time_t announceTime,
-                int interval, std::optional<int> minInterval)
+    AddAnnounce(const common::InfoHash &infoHash, const std::string &peerIp, uint16_t peerPort,
+                time_t announceTime, int interval, std::optional<int> minInterval)
         : infoHash(infoHash)
     {
     }
 
-    std::string infoHash;
+    common::InfoHash infoHash;
     std::string peerIp;
     uint16_t peerPort;
     time_t announceTime;
@@ -106,51 +110,87 @@ struct RemoveAnnounces
 {
     RemoveAnnounces() = default;
 
-    RemoveAnnounces(const std::string &infoHash) : infoHash(infoHash)
+    RemoveAnnounces(const common::InfoHash &infoHash) : infoHash(infoHash)
     {
     }
 
-    std::string infoHash;
+    common::InfoHash infoHash;
 };
 
 struct LoadAnnounces
 {
     LoadAnnounces() = default;
 
-    LoadAnnounces(const std::string &infoHash) : infoHash(infoHash)
+    LoadAnnounces(const common::InfoHash &infoHash) : infoHash(infoHash)
     {
     }
 
-    std::string infoHash;
+    common::InfoHash infoHash;
 };
 
-using PersistRequest = std::variant<AddTorrent, RemoveTorrent, LoadTorrent, LoadTorrents, AddPiece, RemovePieces,
-                                    LoadPieces, AddAnnounce, RemoveAnnounces, LoadAnnounces>;
+struct RequestStats
+{
+    std::vector<std::pair<uint64_t, common::InfoHash>> requested;
+};
+
+struct Shutdown
+{
+};
+
+using PersistRequest =
+    std::variant<AddTorrent, RemoveTorrent, AddTrackers, LoadTrackers, PieceComplete, RemovePieces,
+                 LoadPieces, AddAnnounce, RemoveAnnounces, LoadAnnounces, Shutdown>;
+
+using AppPersistRequest = std::variant<LoadTorrents, RequestStats>;
 
 // Responses
-struct Torrent
+struct AddedTorrent
 {
-    std::string infoHash;
-    TorrentModel result;
+    persist::TorrentModel torrent;
+    std::vector<FileModel> files;
+};
+
+struct TorrentExists
+{
+    common::InfoHash infoHash;
 };
 
 struct AllTorrents
 {
-    
-    std::vector<TorrentModel> result;
+    std::vector<std::pair<TorrentModel, std::vector<FileModel>>> result;
+};
+
+struct Trackers
+{
+    common::InfoHash infoHash;
+    std::vector<TrackerModel> trackers;
 };
 
 struct Pieces
 {
-    std::string infoHash;
+    common::InfoHash infoHash;
     std::vector<PieceModel> result;
 };
 
 struct Announces
 {
-    std::string infoHash;
+    common::InfoHash infoHash;
     std::vector<AnnounceModel> result;
 };
 
-using PersistResponse = std::variant<Torrent, AllTorrents, Pieces, Announces>;
+struct TorrentStats
+{
+    uint64_t torrId{0};
+    common::InfoHash infoHash;
+    uint64_t downloaded{0};
+    uint64_t uploaded{0};
+    uint64_t connectedSeeders{0};
+    uint64_t totalSeeders{0};
+    uint64_t connectedLeechers{0};
+    uint64_t totalLeechers{0};
+};
+
+using PersistResponse = std::variant<AddedTorrent, TorrentExists, Trackers, Pieces, Announces>;
+
+using AppPersistResponse = std::variant<AllTorrents, TorrentStats>;
 } // namespace fractals::persist

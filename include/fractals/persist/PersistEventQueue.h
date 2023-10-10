@@ -9,4 +9,6 @@ namespace fractals::persist
 {
     static constexpr uint32_t WORK_QUEUE_SIZE = 256;
     using PersistEventQueue = common::FullDuplexQueue<WORK_QUEUE_SIZE, PersistRequest, PersistResponse>;
+
+    using AppPersistQueue = common::FullDuplexQueue<WORK_QUEUE_SIZE, AppPersistRequest, AppPersistResponse>;
 }

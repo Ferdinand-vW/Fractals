@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fractals/common/CurlPoll.h"
+#include "fractals/common/Tagged.h"
 #include "fractals/network/http/Request.h"
 #include <chrono>
 #include <ratio>
@@ -12,10 +13,15 @@ class TrackerClient
   public:
     struct PollResult
     {
-        PollResult(const std::string &infoHash, const std::string error) : infoHash(infoHash), error(error){};
-        PollResult(const std::string &infoHash, const TrackerResponse &resp) : infoHash(infoHash), response(resp){};
+        PollResult(const common::InfoHash &infoHash, const std::string &announce,
+                   const std::string error)
+            : infoHash(infoHash), announce(announce), error(error){};
+        PollResult(const common::InfoHash &infoHash, const std::string &announce,
+                   const TrackerResponse &resp)
+            : infoHash(infoHash), announce(announce), response(resp){};
 
-        std::string infoHash;
+        common::InfoHash infoHash{};
+        std::string announce{""};
         std::string error{""};
         std::optional<TrackerResponse> response;
 
@@ -29,8 +35,8 @@ class TrackerClient
 
     PollResult poll();
 
-    private:
-        common::CurlPoll poller;
-        std::unordered_map<uint64_t, std::string> nameMap;
+  private:
+    common::CurlPoll poller;
+    std::unordered_map<uint64_t, std::pair<common::InfoHash, std::string>> nameMap;
 };
 } // namespace fractals::network::http

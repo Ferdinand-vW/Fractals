@@ -26,7 +26,7 @@ class ReadMsgState
         buffer.insert(buffer.end(), data.begin(), data.begin() + bytes);
     }
 
-    std::vector<char>&& flush();
+    std::vector<char> &&flush();
 
     void reset();
 
@@ -64,16 +64,15 @@ class BufferedQueueManager
     {
         common::string_view view(data.begin(), data.end());
         bool hasCompletedMessage{false};
-        while(!view.empty())
+        while (!view.empty())
         {
-            spdlog::info("VIEW: size={} isEmpty={} val='{}'", view.size(), view.empty(), view[0]);
             hasCompletedMessage = hasCompletedMessage | parseMessage(p, view);
         }
 
         return hasCompletedMessage;
     }
 
-    bool parseMessage(const PeerFd& p, common::string_view& data)
+    bool parseMessage(const PeerFd &p, common::string_view &data)
     {
         const auto it = mReadBuffers.find(p);
 
@@ -93,7 +92,8 @@ class BufferedQueueManager
             complete = m.isComplete();
         }
         // Already aware of peer, and we've already received enough bytes to determine length
-        else if (!it->second.empty() && it->second.back().isInitialized() && !it->second.back().isComplete())
+        else if (!it->second.empty() && it->second.back().isInitialized() &&
+                 !it->second.back().isComplete())
         {
             bytes = std::min(it->second.back().getRemaining(), static_cast<int32_t>(data.size()));
             it->second.back().append(data, bytes);
@@ -124,11 +124,10 @@ class BufferedQueueManager
         }
 
         data.remove_prefix(bytes);
-        spdlog::info("VIEW: size={} isEmpty={} bytes={}", data.size(), data.empty(), bytes);
         return complete;
     }
-        
-    std::deque<ReadMsgState>& getReadBuffers(const PeerFd& p)
+
+    std::deque<ReadMsgState> &getReadBuffers(const PeerFd &p)
     {
         return mReadBuffers[p];
     }
@@ -142,8 +141,13 @@ class BufferedQueueManager
         }
         else if (it->second.isComplete())
         {
-            it->second = WriteMsgState(std::move(std::move(m)));
+            it->second = WriteMsgState(std::move(m));
         }
+    }
+
+    void removeFromWriteBuffer(const PeerFd &p)
+    {
+        mWriteBuffers.erase(p);
     }
 
     const ReadMsgState *getReadBuffer(const PeerFd &p) const

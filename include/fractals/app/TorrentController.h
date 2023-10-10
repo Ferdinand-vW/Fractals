@@ -1,94 +1,84 @@
 #pragma once
 
+#include "fractals/app/Event.h"
+#include "fractals/app/TorrentDisplayEntry.h"
+#include "fractals/common/Tagged.h"
+#include "fractals/persist/Event.h"
+#include "fractals/torrent/TorrentMeta.h"
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 
-#include <boost/asio/executor_work_guard.hpp>
-#include <boost/asio/detail/thread_group.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/log/sources/logger.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <neither/either.hpp>
 
-#include "fractals/app/ScreenTicker.h"
+#include <fractals/app/ScreenTicker.h>
+#include <fractals/app/AppEventQueue.h>
+#include <fractals/persist/PersistEventQueue.h>
 
-// forward declarations
-namespace fractals::network::p2p { class BitTorrent; }
-namespace fractals::persist { class Storage; }
-namespace fractals::torrent { class Torrent; }
+namespace fractals::app
+{
 
-namespace fractals::app {
+typedef std::string TorrentName;
 
-    typedef std::string TorrentName;
+/**
+Main controller class for app.
+Responsibilities include:
+ - Keep track of active p2p connections
+ - Manage work threads
+ - Handle app user interactions
+ - Run the UI thread
+*/
+class TorrentController
+{
+  public:
+    TorrentController(app::AppEventQueue::RightEndPoint, persist::AppPersistQueue::LeftEndPoint);
+    void run();
+    void exit();
 
+  private:
+    void runUI();
+
+    void addTorrent(std::string filepath);
+    void removeTorrent(uint64_t torrentId);
+    void stopTorrent(uint64_t torrentId);
+    void resumeTorrent(uint64_t torrentId);
+
+    void readResponses();
+    void refreshStats();
+
+    void processBtEvent(const app::AddedTorrent&);
+    void processBtEvent(const app::AddTorrentError&);
+    void processBtEvent(const app::RemovedTorrent&);
+    void processBtEvent(const app::StoppedTorrent&);
+    void processBtEvent(const app::CompletedTorrent&);
+    void processBtEvent(const app::ResumedTorrent&);
+    void processBtEvent(const app::ShutdownConfirmation&);
+
+    void processPersistEvent(const persist::TorrentStats&);
+    void processPersistEvent(const persist::AllTorrents&);
+
+  private:
+    app::AppEventQueue::RightEndPoint btQueue;
+    persist::AppPersistQueue::LeftEndPoint persistQueue;
 
     /**
-    Main controller class for app.
-    Responsibilities include:
-     - Keep track of active p2p connections
-     - Manage work threads
-     - Handle app user interactions
-     - Run the UI thread
+    Counter used to assign unique id to each torrent.
+    The id of a torrent is visible in the '#' column.
     */
-    class TorrentController {
-        public:
-            TorrentController(boost::asio::io_context &m_io,persist::Storage &st);
-            void run();
-            void exit();
+    int m_torrent_counter = 0;
 
-        private:
-            boost::asio::io_context &m_io;
-            persist::Storage &m_storage;
-            
-            std::mutex m_mutex;
-            boost::log::sources::logger_mt &m_lg;
+    std::optional<ftxui::Component> m_display;
+    std::optional<ftxui::Component> m_terminal;
+    std::string m_terminal_input;
 
-            /**
-            Counter used to assign unique id to each torrent.
-            The id of a torrent is visible in the '#' column.
-            */
-            int m_torrent_counter = 0;
-            /**
-            Number of threads allowed to be used for work
-            */
-            int m_thread_count = 4;
-            boost::asio::detail::thread_group m_threads;
-            using work_guard = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
-            std::optional<work_guard> m_work;
+    ftxui::ScreenInteractive m_screen;
+    ScreenTicker m_ticker;
 
-            /**
-            Map of active p2p torrent connection paired with unique id.
-            */
-            std::map<int,std::shared_ptr<network::p2p::BitTorrent>> m_torrents;
-            
-            std::optional<ftxui::Component> m_display;
-            std::optional<ftxui::Component> m_terminal;
-            std::wstring m_terminal_input;
+    std::unordered_map<common::InfoHash, uint64_t> hashToIdMap;
+    std::unordered_map<uint64_t, TorrentDisplayEntry> idTorrentMap;
+};
 
-            ftxui::ScreenInteractive m_screen;
-            ScreenTicker m_ticker;
-
-
-            /**
-            Functions to be called back by display class when certain user interactions happen
-            */
-            neither::Either<std::string, TorrentName> on_add(std::string filepath);
-            neither::Either<std::string, TorrentName> on_remove(int torr_id);
-            neither::Either<std::string, TorrentName> on_stop(int torr_id);
-            neither::Either<std::string, TorrentName> on_resume(int torr_id);
-            
-            void add_torrent(std::shared_ptr<network::p2p::BitTorrent> bt);
-            int list_torrent(std::shared_ptr<network::p2p::BitTorrent> torrent);
-            void start_torrent(int torr_id);
-            void stop_torrents();
-            void on_exit();
-
-            void runUI();
-
-            std::shared_ptr<network::p2p::BitTorrent> to_bit_torrent(std::shared_ptr<torrent::Torrent> torr);
-    };
-
-}
+} // namespace fractals::app

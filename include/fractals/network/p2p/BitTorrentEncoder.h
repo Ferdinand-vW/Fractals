@@ -24,7 +24,6 @@ namespace fractals::network::p2p
                 if constexpr (A::MSG_TYPE >= 0)
                 {
                     std::vector<char> buf;
-                    spdlog::info("RESERVE: len={} type={}", t.getLen(), A::MSG_TYPE);
                     buf.reserve(t.getLen());
                     common::append(buf, common::int_to_bytes(t.getLen()));
                     common::append(buf, common::int_to_bytes(A::MSG_TYPE));
@@ -48,11 +47,11 @@ namespace fractals::network::p2p
             }
 
             template <typename Container>
-            std::optional<HandShake> decodeHandShake(const Container& buf)
+            BitTorrentMessage decodeHandShake(const Container& buf)
             {
                 if (buf.size() <= 0)
                 {
-                    return std::nullopt;
+                    return SerializeError{buf, "Empty buffer"};
                 }
 
                 common::string_view view(buf.begin(), buf.end());
@@ -62,11 +61,10 @@ namespace fractals::network::p2p
                 {
                     view.remove_prefix(1);                
 
-                    return decodePayloadImpl<HandShake>(view, pstrLen);
+                    return decodePayload<HandShake>(view, pstrLen);
                 }
 
-                return std::nullopt;
-                
+                return SerializeError{buf, "Cannot parse message as HandShake"};;
             }
 
             template <typename A, typename Container>

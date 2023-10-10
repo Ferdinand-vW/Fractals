@@ -7,7 +7,7 @@ namespace fractals::network::p2p
         return os << "Message[peer=" << m.peer.toString() << ", content=" << m.message << "]";
     }
 
-    std::ostream &operator<<(std::ostream &os, const Disconnect &d)
+    std::ostream &operator<<(std::ostream &os, const ConnectionDisconnected &d)
     {
         return os << "Disconnect[peer=" << d.peerId.toString() << "]";
     }

@@ -13,6 +13,11 @@
 namespace fractals::network::p2p
 {
 
+struct ConnectionEstablished
+{
+    http::PeerId peer;
+};
+
 struct Message
 {
     http::PeerId peer;
@@ -26,18 +31,17 @@ struct Message
 
 std::ostream &operator<<(std::ostream &os, const Message &e);
 
-
-struct Disconnect
+struct ConnectionDisconnected
 {
     http::PeerId peerId;
 
-    bool operator==(const Disconnect &obj) const
+    bool operator==(const ConnectionDisconnected &obj) const
     {
         return peerId == obj.peerId;
     }
 };
 
-std::ostream &operator<<(std::ostream &os, const Disconnect &e);
+std::ostream &operator<<(std::ostream &os, const ConnectionDisconnected &e);
 
 struct Shutdown
 {
@@ -50,7 +54,7 @@ struct Shutdown
 std::ostream &operator<<(std::ostream &os, const Shutdown &e);
 
 
-using PeerEvent = std::variant<Message, Disconnect, Shutdown>;
+using PeerEvent = std::variant<ConnectionEstablished, Message, ConnectionDisconnected, Shutdown>;
 
 std::ostream &operator<<(std::ostream &os, const PeerEvent &pe);
 } // namespace fractals::network::p2p

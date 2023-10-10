@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <spdlog/spdlog.h>
 
@@ -25,8 +26,18 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     {
         const int32_t divisor = mTail / QUEUE_SIZE;
         const auto queueStart = QUEUE_SIZE * divisor;
-        mHead = mHead - queueStart;
+        if (mutex != nullptr)
+        {
+            std::unique_lock<std::mutex> _lock(*mutex);
+            mHead = mHead - queueStart;
+        }
+        else
+        {
+            mHead = mHead - queueStart;
+        }
+
         mTail = mTail - queueStart;
+        
     }
 
   public:
@@ -39,6 +50,7 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     {
         if (size() == QUEUE_SIZE)
         {
+            assert(false);
             return;
         }
         mEvents[mHead % QUEUE_SIZE] = event;
@@ -53,8 +65,6 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
             ++mHead;
         }
         
-
-        spdlog::info("notify");
         notify();
     }
 
@@ -66,7 +76,6 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     Event &&pop()
     {
         auto &&res = std::move(mEvents[mTail % QUEUE_SIZE]);
-
         calibrate();
         ++mTail;
 
@@ -86,22 +95,17 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
         return mHead - mTail;
     }
 
-    void attachNotifier(std::mutex* mutex, std::condition_variable *cv)
+    void attachNotifier(std::mutex& mutex, std::condition_variable &cv)
     {
-        this->mutex = mutex;
-        this->cv = cv;
+        this->mutex = &mutex;
+        this->cv = &cv;
     }
 
     void notify()
     {
         if (cv != nullptr)
         {
-            spdlog::info("actually now");
             cv->notify_all();
-        }
-        else
-        {
-            spdlog::info("wtf");
         }
     }
 };
