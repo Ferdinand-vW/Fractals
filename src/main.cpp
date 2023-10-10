@@ -1,11 +1,31 @@
 
 
+#include "fractals/app/AppEventQueue.h"
+#include "fractals/app/TorrentController.h"
+#include "fractals/common/TcpService.h"
 #include "fractals/common/logger.h"
 #include "fractals/common/stacktrace.h"
+#include "fractals/disk/DiskEventQueue.h"
+#include "fractals/disk/DiskIOService.h"
+#include "fractals/network/http/AnnounceEventQueue.h"
+#include "fractals/network/http/AnnounceService.h"
+#include "fractals/network/http/TrackerClient.h"
+#include "fractals/network/p2p/BitTorrentManager.h"
+#include "fractals/network/p2p/BufferedQueueManager.h"
+#include "fractals/network/p2p/EpollMsgQueue.h"
+#include "fractals/network/p2p/EpollService.h"
+#include "fractals/network/p2p/PeerFd.h"
+#include "fractals/network/p2p/PeerService.h"
+#include "fractals/persist/PersistClient.h"
+#include "fractals/persist/PersistEventQueue.h"
+#include "fractals/persist/PersistService.h"
+#include "fractals/sync/QueueCoordinator.h"
 
 #include <csignal>
+#include <epoll_wrapper/Epoll.h>
 #include <exception>
 #include <iostream>
+#include <thread>
 
 using namespace fractals;
 
@@ -13,94 +33,86 @@ int main()
 {
     // set up exceptions handlers
     std::set_terminate(&common::exceptionHandler);
-    signal(SIGSEGV,common::segfaultHandler);
+    signal(SIGSEGV, common::segfaultHandler);
 
     common::setupLogging();
 
-    std::vector<int> v;
+    sync::QueueCoordinator coordinator;
 
-    std::cout << v[2] << std::endl;
+    network::p2p::EpollMsgQueue epollQueue;
+    auto epoll = epoll_wrapper::Epoll<network::p2p::PeerFd>::epollCreate();
+    if (!epoll)
+    {
+        throw "Could not create epoll instance";
+    }
+    network::p2p::BufferedQueueManager bufMan;
+    network::p2p::EpollService epollSrvc{epoll.getEpoll(), bufMan, epollQueue.getRightEnd()};
+    TcpService tcpSrvc;
+    network::p2p::PeerService peerSrvc{epollQueue.getLeftEnd(), epollSrvc, tcpSrvc};
+
+    persist::PersistEventQueue btPersistQueue;
+    persist::AppPersistQueue appPersistQueue;
+    persist::PersistClient persistClient;
+    persist::PersistService persistSrvc{coordinator, btPersistQueue.getRightEnd(),
+                                        appPersistQueue.getRightEnd(), persistClient};
+
+    disk::DiskEventQueue diskQueue;
+    disk::DiskIOService diskSrvc{coordinator, diskQueue.getRightEnd()};
+
+    network::http::AnnounceEventQueue annQueue;
+    network::http::TrackerClient trackerClient;
+    network::http::AnnounceService annSrvc{coordinator, annQueue.getRightEnd(), trackerClient};
+
+    app::AppEventQueue appQueue;
+
+    network::p2p::BitTorrentManager btMan{coordinator,
+                                          peerSrvc,
+                                          btPersistQueue.getLeftEnd(),
+                                          diskQueue.getLeftEnd(),
+                                          annQueue.getLeftEnd(),
+                                          appQueue.getLeftEnd()};
+
+    spdlog::info("Starting threads..");
+
+    auto rQueue = appQueue.getRightEnd();
+
+    app::TorrentController controller(rQueue, appPersistQueue.getLeftEnd());
+
+    std::thread thrdBtMan(
+        [&btMan]()
+        {
+            btMan.run();
+        });
+    std::thread thrdAnnSrvc(
+        [&annSrvc]()
+        {
+            annSrvc.run();
+        });
+    std::thread thrdDiskSrvc(
+        [&diskSrvc]()
+        {
+            diskSrvc.run();
+        });
+    std::thread thrdPersistSrvc(
+        [&persistSrvc]()
+        {
+            persistSrvc.run();
+        });
+    std::thread thrdEpollSrvc(
+        [&epollSrvc]()
+        {
+            epollSrvc.run();
+        });
+
+    controller.run();
+
+    // rQueue.push(app::AddTorrent{"torrents/1659464.torrent"});
+
+    thrdAnnSrvc.join();
+    thrdDiskSrvc.join();
+    thrdPersistSrvc.join();
+    thrdEpollSrvc.join();
+    thrdBtMan.join();
 
     return 0;
 }
-
-
-// #include <cstdlib>       // std::abort
-// #include <exception>     // std::set_terminate
-// #include <filesystem>
-// #include <fstream>
-// #include <csignal>
-
-// #include <boost/filesystem.hpp>
-// #include <boost/log/utility/setup/file.hpp>
-// #include <boost/log/utility/setup/common_attributes.hpp>
-// #include <boost/stacktrace.hpp>
-
-// #include "fractals/app/TorrentController.h"
-// #include "fractals/persist/storage.h"
-
-// // useful for debugging
-// void my_terminate_handler() {
-//     try {
-//         std::ofstream ofs("err.txt");
-//         ofs << boost::stacktrace::stacktrace();
-//         ofs.close();
-//     } catch (...) {}
-//     std::abort();
-// }
-
-// void my_segfault_handler(int /* sig */) {
-//     try {
-//         std::ofstream ofs("err.txt");
-//         std::cout << "test" << std::endl;
-//         ofs << boost::stacktrace::stacktrace();
-//         ofs.close();
-//     } catch (...) {}
-//     std::abort();
-// }
-
-// int main(int /* argc */, const char* /* argv */[]) {
-//     boost::filesystem::path::imbue(std::locale("C"));
-
-//     // set up exceptions handlers
-//     std::set_terminate(&my_terminate_handler);
-//     signal(SIGSEGV,my_segfault_handler);
-
-//     //init and connect to local db
-//     fractals::persist::Storage storage;
-//     storage.open_storage("torrents.db");
-//     storage.sync_schema();
-
-//     //directory to which meta info torrent files will be copied
-//     if(!std::filesystem::exists("./metainfo")) {
-//         std::filesystem::create_directory("./metainfo");
-//     }
-
-//     //get current time and set as seed for rand
-//     srand(static_cast<unsigned int>(time(nullptr)));
-
-//     //set log file as logging destination
-//     boost::log::add_file_log(
-//         boost::log::keywords::file_name = "log.txt",
-//         //this second parameter is necessary to force the log file
-//         //to be named 'log.txt'. It is a known bug in boost1.74
-//         // https://github.com/boostorg/log/issues/104
-//         boost::log::keywords::target_file_name = "log.txt",
-//         boost::log::keywords::auto_flush = true,
-//         boost::log::keywords::format = "[%ThreadID%][%TimeStamp%] %Message%",
-//         boost::log::keywords::enable_final_rotation = false
-//     );
-
-//     //enables ThreadID and TimeStamp to appear in log
-//     boost::log::add_common_attributes();
-
-//     //start app
-//     boost::asio::io_context io;
-//     fractals::app::TorrentController tc(io,storage);
-//     tc.run();
-
-//     // ensure no resources for logging remain active at program exit
-//     boost::log::core::get()->remove_all_sinks();
-
-//     return 0;
-// }
