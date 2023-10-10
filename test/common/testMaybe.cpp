@@ -168,12 +168,12 @@ TEST(MAYBE, either_to_val)
     auto identity = [](std::string s) -> std::string { return s; };
     auto toString = [](int x) -> std::string { return std::to_string(x); };
     {
-        neither::Either<std::string,int> e(neither::right(1));
+        std::variant<std::string,int> e{1};
         auto res = fractals::common::either_to_val<std::string,int,std::string>(e, identity, toString);
         ASSERT_EQ(res, "1");
     }
     {
-        neither::Either<std::string,int> e(neither::left("fail"s));
+        std::variant<std::string,int> e{"fail"s};
         auto res = fractals::common::either_to_val<std::string,int,std::string>(e, identity, toString);
         ASSERT_EQ(res, "fail");
     }

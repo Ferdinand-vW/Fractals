@@ -42,19 +42,22 @@ torrent::MetaInfo readTorrentFile()
 
 TEST(TRACKER_REQUEST, make_tracker_request_empty)
 {
-    const torrent::SingleFile sf{.name = neither::none, .length = 0, .md5sum = neither::none};
+    const torrent::SingleFile sf{.name = "", .length = 0, .md5sum = {}};
     const torrent::InfoDict info{
-        .piece_length = 0, .pieces = std::vector<char>(), .publish = neither::none, .file_mode = neither::left(sf)};
+        .piece_length = 0, .pieces = std::vector<char>(), .publish = std::nullopt, .file_mode = sf};
     const torrent::MetaInfo mi{.announce = "",
-                               .announce_list = neither::none,
-                               .creation_date = neither::none,
-                               .comment = neither::none,
-                               .encoding = neither::none,
+                               .announce_list = {},
+                               .creation_date = std::nullopt,
+                               .comment = std::nullopt,
+                               .encoding = std::nullopt,
                                .info = info};
 
     const TrackerRequest req(mi);
+    // "d6:lengthi0e6:md5sum0:4:name0:12:piecelengthi0e6:pieces0:e"
 
-    auto info_hash_hex = "a3e4ef2e3999f595f55c215ae0854c760960693b";
+    std::string bencoded("d6:lengthi0e6:md5sum0:4:name0:12:piece lengthi0e6:pieces0:e");
+    std::cout << common::bytes_to_hex(common::sha1_encode(bencoded)) << std::endl;
+    auto info_hash_hex = "c2fac0dddc699dd42cdbd29d9fdc0a667e0c8402";
     auto info_hash_bytes = common::hex_to_bytes(info_hash_hex);
     const TrackerRequest tr("", info_hash_bytes, common::url_encode(info_hash_bytes), req.peer_id,
                             common::url_encode(req.peer_id), 6882, 0, 0, 0, 0);
@@ -67,14 +70,14 @@ TEST(TRACKER_REQUEST, match_torrent_file)
     const auto sourceMetaInfo = readTorrentFile();
     const TrackerRequest sourceRequest(sourceMetaInfo); 
 
-    const torrent::FileInfo f1{.length = 60, .md5sum = neither::none, .path = {"dir1", "dir2", "test2 3.txt"}};
-    const torrent::FileInfo f2{.length = 35, .md5sum = neither::none, .path = {"dir1", "dir2", "test2.txt"}};
-    const torrent::FileInfo f3{.length = 12, .md5sum = neither::none, .path = {"dir1", "test2.txt"}};
-    const torrent::FileInfo f4{.length = 4, .md5sum = neither::none, .path = {"test1.txt"}};
+    const torrent::FileInfo f1{.length = 60, .md5sum = {}, .path = {"dir1", "dir2", "test2 3.txt"}};
+    const torrent::FileInfo f2{.length = 35, .md5sum = {}, .path = {"dir1", "dir2", "test2.txt"}};
+    const torrent::FileInfo f3{.length = 12, .md5sum = {}, .path = {"dir1", "test2.txt"}};
+    const torrent::FileInfo f4{.length = 4, .md5sum = {}, .path = {"test1.txt"}};
     
     const torrent::MultiFile mf{.name = "DummyTorrent"s, .files = {f1, f2, f3, f4}};
     const torrent::InfoDict info{
-        .piece_length = 32768, .pieces = sourceMetaInfo.info.pieces, .publish = 0, .file_mode = neither::right(mf)};
+        .piece_length = 32768, .pieces = sourceMetaInfo.info.pieces, .publish = 0, .file_mode = mf};
     const std::vector<std::string> announceList{"https://nyaa.si/","https://opentrackr.org/"};
     const torrent::MetaInfo mi{.announce = "https://nyaa.si/",
                                .announce_list = {{announceList}},

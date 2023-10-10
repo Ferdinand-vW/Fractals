@@ -2,6 +2,7 @@
 #include "fractals/persist/Models.h"
 #include "fractals/persist/PersistEventQueue.h"
 #include "fractals/persist/PersistService.ipp"
+#include "fractals/sync/QueueCoordinator.h"
 
 #include "gmock/gmock.h"
 #include <gmock/gmock.h>
@@ -38,7 +39,7 @@ class MockPersistClient
     MOCK_METHOD(std::vector<TorrentModel>, loadTorrents, ());
     MOCK_METHOD(void, deleteTorrent, (const std::string &));
 
-    MOCK_METHOD(void, addPiece, (const AddPiece &));
+    MOCK_METHOD(void, addPiece, (const PieceComplete &));
     MOCK_METHOD(std::vector<PieceModel>, loadPieces, (const std::string &));
     MOCK_METHOD(void, deletePieces, (const std::string &));
 
@@ -47,12 +48,17 @@ class MockPersistClient
     MOCK_METHOD(std::vector<AnnounceModel>, loadAnnounces, (const std::string &));
 };
 
-TEST(PERSIST_SERVICE, torrent)
+class PersistServiceTest : public ::testing::Test
 {
-    MockPersistClient client;
+  public:
+    ::testing::StrictMock<MockPersistClient> client;
     PersistEventQueue queue;
-    PersistServiceImpl<MockPersistClient> service(queue.getRightEnd(), client);
+    sync::QueueCoordinator coordinator;
+    PersistServiceImpl<MockPersistClient> service{coordinator, queue.getRightEnd(), client};
+};
 
+TEST_F(PersistServiceTest, torrent)
+{
     auto inQueue = queue.getLeftEnd();
 
     inQueue.push(LoadTorrent{"a"});
@@ -67,10 +73,10 @@ TEST(PERSIST_SERVICE, torrent)
     EXPECT_CALL(client, loadTorrents()).Times(1).WillOnce(Return(tms));
     EXPECT_CALL(client, deleteTorrent(_)).Times(1);
 
-    service.pollOnce();
-    service.pollOnce();
-    service.pollOnce();
-    service.pollOnce();
+    service.process();
+    service.process();
+    service.process();
+    service.process();
 
     ASSERT_EQ(inQueue.numToRead(), 2);
 
@@ -81,15 +87,11 @@ TEST(PERSIST_SERVICE, torrent)
     ASSERT_EQ(tms.front(), std::get<AllTorrents>(res2).result.front());
 }
 
-TEST(PERSIST_SERVICE, piece)
+TEST_F(PersistServiceTest, piece)
 {
-    MockPersistClient client;
-    PersistEventQueue queue;
-    PersistServiceImpl<MockPersistClient> service(queue.getRightEnd(), client);
-
     auto inQueue = queue.getLeftEnd();
 
-    inQueue.push(AddPiece{"a", 0});
+    inQueue.push(PieceComplete{"a", 0});
     inQueue.push(RemovePieces{"ih"});
     inQueue.push(LoadPieces{"a"});
 
@@ -98,9 +100,9 @@ TEST(PERSIST_SERVICE, piece)
     EXPECT_CALL(client, deletePieces(_)).Times(1);
     EXPECT_CALL(client, loadPieces(_)).Times(1).WillOnce(Return(pieces));
 
-    service.pollOnce();
-    service.pollOnce();
-    service.pollOnce();
+    service.process();
+    service.process();
+    service.process();
 
     ASSERT_EQ(inQueue.numToRead(), 1);
 
@@ -108,12 +110,8 @@ TEST(PERSIST_SERVICE, piece)
     EXPECT_THAT(pieces, ContainerEq(std::get<Pieces>(res1).result));
 }
 
-TEST(PERSIST_SERVICE, announce)
+TEST_F(PersistServiceTest, announce)
 {
-    MockPersistClient client;
-    PersistEventQueue queue;
-    PersistServiceImpl<MockPersistClient> service(queue.getRightEnd(), client);
-
     auto inQueue = queue.getLeftEnd();
 
     const auto announces = {AnnounceModel{0, 0, "ip1", 1000, 50, 10, 10}, AnnounceModel{1, 1, "ip3", 99, 30, 20, 20},
@@ -126,9 +124,9 @@ TEST(PERSIST_SERVICE, announce)
     EXPECT_CALL(client, deleteAnnounce(_)).Times(1);
     EXPECT_CALL(client, loadAnnounces(_)).Times(1).WillOnce(Return(announces));
 
-    service.pollOnce();
-    service.pollOnce();
-    service.pollOnce();
+    service.process();
+    service.process();
+    service.process();
 
     ASSERT_EQ(inQueue.numToRead(), 1);
 

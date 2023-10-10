@@ -170,8 +170,8 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
     auto queue = epollQueue.getLeftEnd();
     std::mutex mutex;
     std::condition_variable cv;
-    epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
-    epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
+    epollQueue.getRightEnd().attachNotifier(mutex, cv);
+    epollQueue.getLeftEnd().attachNotifier(mutex, cv);
     MockBufferedQueueManager bqm;
     MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
@@ -212,8 +212,8 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
     auto queue = epollQueue.getLeftEnd();
     std::mutex mutex;
     std::condition_variable cv;
-    epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
-    epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
+    epollQueue.getLeftEnd().attachNotifier(mutex, cv);
+    epollQueue.getRightEnd().attachNotifier(mutex, cv);
     MockBufferedQueueManager bqm;
     MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
@@ -273,8 +273,8 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     auto queue = epollQueue.getLeftEnd();
     std::mutex mutex;
     std::condition_variable cv;
-    epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
-    epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
+    epollQueue.getRightEnd().attachNotifier(mutex, cv);
+    epollQueue.getLeftEnd().attachNotifier(mutex, cv);
     MockBufferedQueueManager bqm;
     MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
@@ -329,8 +329,8 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
     auto queue = epollQueue.getLeftEnd();
     std::mutex mutex;
     std::condition_variable cv;
-    epollQueue.getRightEnd().attachNotifier(&mutex, &cv);
-    epollQueue.getLeftEnd().attachNotifier(&mutex, &cv);
+    epollQueue.getRightEnd().attachNotifier(mutex, cv);
+    epollQueue.getLeftEnd().attachNotifier(mutex, cv);
     MockBufferedQueueManager bqm;
     MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 

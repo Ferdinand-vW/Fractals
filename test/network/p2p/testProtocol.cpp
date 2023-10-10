@@ -1,4 +1,5 @@
 #include "fractals/common/utils.h"
+#include "fractals/disk/DiskEventQueue.h"
 #include "fractals/network/http/Peer.h"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/PeerService.h"
@@ -48,7 +49,8 @@ class ProtocolTest : public ::testing::Test
     persist::PersistEventQueue persistQueue;
     persist::PersistEventQueue::RightEndPoint persistRightE{persistQueue.getRightEnd()};
     disk::DiskEventQueue diskQueue;
-    Protocol<MockPeerService> prot{Protocol(peer, "test", peerService, persistQueue.getLeftEnd(), diskQueue, pieceRepo)};
+    disk::DiskEventQueue::RightEndPoint diskQueueE{diskQueue.getRightEnd()};
+    Protocol<MockPeerService> prot{Protocol(peer, "test", peerService, persistQueue.getLeftEnd(), diskQueue.getLeftEnd(), pieceRepo)};
 };
 
 TEST_F(ProtocolTest, standardEval)
@@ -57,7 +59,7 @@ TEST_F(ProtocolTest, standardEval)
         prot.onMessage(Choke{});
 
         ASSERT_TRUE(persistRightE.numToRead() == 0);
-        ASSERT_TRUE(diskQueue.isEmpty());
+        ASSERT_TRUE(diskQueueE.numToRead() == 0);
     }
 
     {
@@ -65,7 +67,7 @@ TEST_F(ProtocolTest, standardEval)
         prot.onMessage(Bitfield(common::bitfield_to_bytes({1, 1, 1, 1, 1, 0, 0, 0})));
 
         ASSERT_TRUE(persistRightE.numToRead() == 0);
-        ASSERT_TRUE(diskQueue.isEmpty());
+        ASSERT_TRUE(diskQueueE.numToRead() == 0);
     }
 
     uint32_t pieceIndex = 4;
@@ -73,7 +75,7 @@ TEST_F(ProtocolTest, standardEval)
     prot.onMessage(UnChoke{});
 
     ASSERT_TRUE(persistRightE.numToRead() == 0);
-    ASSERT_TRUE(diskQueue.isEmpty());
+    ASSERT_TRUE(diskQueueE.numToRead() == 0);
 
     auto receiveAndRespond = [&]() {
         const auto data = testDataMap[pieceIndex];
@@ -85,13 +87,13 @@ TEST_F(ProtocolTest, standardEval)
             ASSERT_EQ(persistRightE.numToRead(), 1);
             const auto storageEvent1 = persistRightE.pop();
 
-            ASSERT_TRUE(std::holds_alternative<persist::AddPiece>(storageEvent1));
-            ASSERT_EQ(std::get<persist::AddPiece>(storageEvent1).piece, pieceIndex);
+            ASSERT_TRUE(std::holds_alternative<persist::PieceComplete>(storageEvent1));
+            ASSERT_EQ(std::get<persist::PieceComplete>(storageEvent1).piece, pieceIndex);
         }
 
         {
-            ASSERT_EQ(diskQueue.size(), 1);
-            const auto diskEvent1 = diskQueue.pop();
+            ASSERT_EQ(diskQueueE.numToRead(), 1);
+            const auto diskEvent1 = diskQueueE.pop();
 
             ASSERT_TRUE(std::holds_alternative<disk::WriteData>(diskEvent1));
             const auto diskEvent = std::get<disk::WriteData>(diskEvent1);
@@ -117,11 +119,11 @@ TEST_F(ProtocolTest, standardEval)
 
     ASSERT_EQ(persistRightE.numToRead(), 1);
     const auto storageEvent1 = persistRightE.pop();
-    ASSERT_TRUE(std::holds_alternative<persist::AddPiece>(storageEvent1));
-    ASSERT_EQ(std::get<persist::AddPiece>(storageEvent1).piece, 0);
+    ASSERT_TRUE(std::holds_alternative<persist::PieceComplete>(storageEvent1));
+    ASSERT_EQ(std::get<persist::PieceComplete>(storageEvent1).piece, 0);
 
-    ASSERT_EQ(diskQueue.size(), 1);
-    const auto diskEvent1 = diskQueue.pop();
+    ASSERT_EQ(diskQueueE.numToRead(), 1);
+    const auto diskEvent1 = diskQueueE.pop();
     ASSERT_TRUE(std::holds_alternative<disk::WriteData>(diskEvent1));
     EXPECT_THAT(std::get<disk::WriteData>(diskEvent1).mData, testDataMap[0]);
     ASSERT_EQ(std::get<disk::WriteData>(diskEvent1).mPieceIndex, 0);
@@ -142,7 +144,7 @@ TEST_F(ProtocolTest, partial_pieces)
 
         // Not enough data has been downloaded
         ASSERT_EQ(persistRightE.numToRead(), 0);
-        ASSERT_EQ(diskQueue.size(), 0);
+        ASSERT_EQ(diskQueueE.numToRead(), 0);
     }
 
     {
@@ -150,7 +152,7 @@ TEST_F(ProtocolTest, partial_pieces)
         prot.onMessage(Piece(0, 1, std::vector<char>{'b'}));
 
         ASSERT_EQ(persistRightE.numToRead(), 1);
-        ASSERT_EQ(diskQueue.size(), 1);
+        ASSERT_EQ(diskQueueE.numToRead(), 1);
     }
 }
 

@@ -55,7 +55,7 @@ class BitTorrentManagerMock
     MOCK_METHOD(ProtocolState, forwardToPeer, (http::PeerId, Choke &&));
 
     MockPeerService &peerService;
-    BitTorrentEventHandler<BitTorrentManagerMock> eventHandler;
+    PeerEventHandler<BitTorrentManagerMock> eventHandler;
 };
 
 class BitTorrentManagerTest : public ::testing::Test
@@ -122,7 +122,7 @@ TEST_F(BitTorrentManagerTest, onDisconnectEvent)
 {
     EXPECT_CALL(peerService, read())
         .Times(1)
-        .WillOnce(Return(Disconnect{dummyPeer}));
+        .WillOnce(Return(ConnectionDisconnected{dummyPeer}));
 
     EXPECT_CALL(btManMock, shutdown()).Times(0);
     EXPECT_CALL(btManMock, dropPeer(dummyPeer)).Times(1);

@@ -1,6 +1,7 @@
 #include "fractals/network/http/AnnounceService.ipp"
 #include "fractals/network/http/Request.h"
 #include "fractals/network/http/AnnounceEventQueue.h"
+#include "fractals/sync/QueueCoordinator.h"
 
 #include "gmock/gmock.h"
 #include <chrono>
@@ -20,13 +21,18 @@ class MockClient
     MOCK_METHOD(TrackerClient::PollResult, poll, ());
 };
 
-TEST(MockClient, subscription)
+class AnnounceServiceTest : public ::testing::Test
 {
-    MockClient mc;
+    public:
+    ::testing::StrictMock<MockClient> mc;
     AnnounceEventQueue queue;
+    sync::QueueCoordinator coordinator;
 
-    AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
+    AnnounceServiceImpl<MockClient> annService{coordinator, queue.getRightEnd(), mc};
+};
 
+TEST_F(AnnounceServiceTest, subscription)
+{
     annService.subscribe("a");
 
     ASSERT_TRUE(annService.isSubscribed("a"));
@@ -48,12 +54,8 @@ TEST(MockClient, subscription)
     ASSERT_FALSE(annService.isSubscribed("b"));
 }
 
-TEST(MockClient, on_request)
+TEST_F(AnnounceServiceTest, on_request)
 {
-    MockClient mc;
-    AnnounceEventQueue queue;
-    AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
-
     auto otherEnd = queue.getLeftEnd();
 
     EXPECT_CALL(mc, query(_, _)).Times(1);
@@ -64,15 +66,15 @@ TEST(MockClient, on_request)
     TrackerRequest req("announce", {}, {}, {}, {}, 0, 0, 0, 0, 0);
     otherEnd.push(std::move(req));
 
-    ASSERT_TRUE(annService.pollOnce());
-    ASSERT_FALSE(annService.pollOnce());
+    annService.pollOnce();
+    annService.pollOnce();
+
+    // No subscribers
+    ASSERT_EQ(otherEnd.numToRead(), 0);
 }
 
-TEST(MockClient, response_to_subscriber)
+TEST_F(AnnounceServiceTest, response_to_subscriber)
 {
-    MockClient mc;
-    AnnounceEventQueue queue;
-    AnnounceServiceImpl<MockClient> annService{queue.getRightEnd(), mc};
     auto otherEnd = queue.getLeftEnd();
 
     annService.subscribe("a");
@@ -86,7 +88,9 @@ TEST(MockClient, response_to_subscriber)
     otherEnd.push(std::move(req));
 
 
-    ASSERT_TRUE(annService.pollOnce());
+    annService.pollOnce();
+
+    ASSERT_EQ(otherEnd.numToRead(), 1);
 
     ASSERT_TRUE(otherEnd.canPop());
     const auto announce = otherEnd.pop();

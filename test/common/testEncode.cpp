@@ -6,21 +6,21 @@
 
 TEST(ENCODE, sha1_encode)
 {
-    std::string inp("teststring");
+    std::string inp("!teststringº");
 
-    auto enc = fractals::common::sha1_encode(inp);
+    auto enc = fractals::common::sha1_encode<20>(inp);
 
-    std::string outp("b8473b86d4c2072ca9b08bd28e373e8253e865c4");
+    std::string outp("1b74878ef7e38624fda0b55d9f33be10861bd7c4");
 
-    ASSERT_EQ(outp, fractals::common::bytes_to_hex(enc));
+    ASSERT_EQ(outp, fractals::common::bytes_to_hex<20>(enc));
 }
 
 TEST(ENCODE, url_encode)
 {
     std::string inp("teststring");
 
-    auto enc = fractals::common::sha1_encode(inp);
-    auto urlenc = fractals::common::url_encode(enc);
+    auto enc = fractals::common::sha1_encode<20>(inp);
+    auto urlenc = fractals::common::url_encode<20>(enc);
 
     std::string outp("%B8G%3B%86%D4%C2%07%2C%A9%B0%8B%D2%8E7%3E%82S%E8e%C4");
 

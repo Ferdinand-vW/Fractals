@@ -117,7 +117,7 @@ TEST_F(PeerServiceTest, onReadEventResponse)
     ASSERT_TRUE(peerService.canRead());
 
     EXPECT_CALL(epollService, notify()).Times(1);
-    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<ConnectionDisconnected>(peerService.read().value()));
     ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
 }
 
@@ -141,7 +141,7 @@ TEST_F(PeerServiceTest, onWriteEventResponse)
     ASSERT_TRUE(peerService.canRead());
 
     EXPECT_CALL(epollService, notify()).Times(1);
-    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<ConnectionDisconnected>(peerService.read().value()));
     ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
 }
 
@@ -164,7 +164,7 @@ TEST_F(PeerServiceTest, onErrorCtlResponse)
     ASSERT_TRUE(peerService.canRead());
 
     EXPECT_CALL(epollService, notify()).Times(1);
-    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<ConnectionDisconnected>(peerService.read().value()));
     ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
 }
 
@@ -177,7 +177,7 @@ TEST_F(PeerServiceTest, onConnectionCloseEvent)
     ASSERT_TRUE(peerService.canRead());
 
     EXPECT_CALL(epollService, notify()).Times(1);
-    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<ConnectionDisconnected>(peerService.read().value()));
     ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
 }
 
@@ -190,7 +190,7 @@ TEST_F(PeerServiceTest, onConnectionError)
     ASSERT_TRUE(peerService.canRead());
 
     EXPECT_CALL(epollService, notify()).Times(1);
-    ASSERT_TRUE(std::holds_alternative<Disconnect>(peerService.read().value()));
+    ASSERT_TRUE(std::holds_alternative<ConnectionDisconnected>(peerService.read().value()));
     ASSERT_TRUE(std::holds_alternative<UnSubscribe>(queue.getRightEnd().pop()));
 }
 
