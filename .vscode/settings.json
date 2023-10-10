@@ -1,5 +1,6 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.intelliSenseEngine": "disabled",
     "files.associations": {
         "optional": "cpp",
         "iosfwd": "cpp",
