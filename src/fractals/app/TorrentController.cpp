@@ -281,15 +281,12 @@ void TorrentController::runUI()
         m_screen.RequestAnimationFrame();
         loop.RunOnce();
 
-        if (loopCounter % 10 == 0)
+        if (loopCounter % (tenMs.count() * 10) == 0)
         {
             readResponses();
             refreshStats();
         }
-        if (loopCounter % 1000)
-        {
-            spdlog::info("test");
-        }
+
         std::this_thread::sleep_until(now);
         now += tenMs;
         ++loopCounter;
