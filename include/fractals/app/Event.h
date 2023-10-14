@@ -75,8 +75,20 @@ struct ShutdownConfirmation
 {
 };
 
+struct RequestStats
+{
+    std::vector<std::pair<uint64_t, common::InfoHash>> requested;
+};
+
+struct PeerStats
+{
+    uint64_t torrId;
+    uint16_t knownPeerCount;
+    uint16_t connectedPeersCount;
+};
+
 using RequestFromApp =
-    std::variant<AddTorrent, RemoveTorrent, StopTorrent, StartTorrent, ResumeTorrent, Shutdown>;
+    std::variant<AddTorrent, RemoveTorrent, StopTorrent, StartTorrent, ResumeTorrent, Shutdown, RequestStats>;
 using ResponseToApp = std::variant<AddedTorrent, AddTorrentError, ResumedTorrent, CompletedTorrent,
-                                   RemovedTorrent, StoppedTorrent, ShutdownConfirmation>;
+                                   RemovedTorrent, StoppedTorrent, ShutdownConfirmation, PeerStats>;
 } // namespace fractals::app

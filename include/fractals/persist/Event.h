@@ -184,10 +184,6 @@ struct TorrentStats
     common::InfoHash infoHash;
     uint64_t downloaded{0};
     uint64_t uploaded{0};
-    uint64_t connectedSeeders{0};
-    uint64_t totalSeeders{0};
-    uint64_t connectedLeechers{0};
-    uint64_t totalLeechers{0};
 };
 
 using PersistResponse = std::variant<AddedTorrent, TorrentExists, Trackers, Pieces, Announces>;

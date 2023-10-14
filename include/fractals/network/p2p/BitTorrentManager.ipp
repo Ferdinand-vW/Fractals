@@ -164,6 +164,17 @@ void BitTorrentManagerImpl<PeerServiceT>::process(const app::Shutdown &req)
 }
 
 template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::process(const app::RequestStats &req)
+{
+    spdlog::info("BtMan::process(RequestStats)");
+    for (const auto &[torrId, infoHash] : req.requested)
+    {
+        appQueue.push(app::PeerStats{torrId, peerTracker.getKnownPeerCount(infoHash),
+                                     peerTracker.getConnectedPeerCount(infoHash)});
+    }
+}
+
+template <typename PeerServiceT>
 void BitTorrentManagerImpl<PeerServiceT>::process(const persist::AddedTorrent &resp)
 {
     appQueue.push(

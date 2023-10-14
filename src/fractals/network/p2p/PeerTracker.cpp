@@ -2,13 +2,61 @@
 #include "fractals/network/http/Peer.h"
 #include <fractals/network/p2p/PeerTracker.h>
 #include <spdlog/spdlog.h>
+#include <unordered_set>
 
 namespace fractals::network::p2p
 {
 
+uint16_t PeersInfo::getKnownPeerCount() const
+{
+    return inactivePeers.size() + activePeers.size();
+}
+
+uint16_t PeersInfo::getActivePeerCount() const
+{
+    return activePeers.size();
+}
+
+uint16_t PeersInfo::getConnectedPeerCount() const
+{
+    return connected;
+}
+
+const std::unordered_set<http::PeerId> &PeersInfo::getActivePeers() const
+{
+    return activePeers;
+}
+
+void PeersInfo::addActivePeer(http::PeerId peer)
+{
+    activePeers.emplace(peer);
+}
+
+void PeersInfo::incrConnected()
+{
+    ++connected;
+}
+
+void PeersInfo::makeInactive(http::PeerId peer)
+{
+    inactivePeers.emplace(peer);
+    activePeers.erase(peer);
+}
+
+void PeersInfo::makeAllInactive()
+{
+    for (http::PeerId peer : activePeers)
+    {
+        inactivePeers.emplace(peer);
+    }
+
+    activePeers.clear();
+}
+
 void PeerTracker::activateTorrent(const common::InfoHash &ih)
 {
     activeTorrents.emplace(ih);
+    peersInfoMap.emplace(ih, PeersInfo{});
 }
 
 std::vector<PeerCommand> PeerTracker::deactivateTorrent(const common::InfoHash &ih)
@@ -16,7 +64,7 @@ std::vector<PeerCommand> PeerTracker::deactivateTorrent(const common::InfoHash &
     activeTorrents.erase(ih);
 
     std::vector<PeerCommand> cmds;
-    for (const auto peer : peerCountMap[ih])
+    for (const auto peer : peersInfoMap[ih].getActivePeers())
     {
         cmds.emplace_back(PeerCommand{PeerCommandFlag::DISCONNECT, peer, ih});
     }
@@ -33,13 +81,14 @@ std::vector<PeerCommand> PeerTracker::onPeerDisconnect(const http::PeerId &peer)
         return {};
     }
 
-    peerCountMap[it->second.torrent].erase(peer);
+    peersInfoMap[it->second.torrent].makeInactive(peer);
     peerMap.erase(peer);
     currConnectedPeers--;
 
     spdlog::info(
         "PeerTracker::onPeerDisconnect. currConnectedPeers={} torrent={} connectedToTorr={}",
-        currConnectedPeers, it->second.torrent, peerCountMap[it->second.torrent].size());
+        currConnectedPeers, it->second.torrent,
+        peersInfoMap[it->second.torrent].getConnectedPeerCount());
 
     if (activeTorrents.contains(it->second.torrent))
     {
@@ -54,9 +103,10 @@ std::vector<PeerCommand> PeerTracker::onPeerConnect(const http::PeerId &peer)
     const auto &torr = peerMap[peer].torrent;
     peerMap[peer].connected = PeerConnection::CONNECTED;
     peerMap[peer].hasConnectedBefore = true;
+    peersInfoMap[torr].incrConnected();
 
     spdlog::info("PeerTracker::onPeerConnect. currConnectedPeers={} torrent={} connectedToTorr={}",
-                 currConnectedPeers, torr, peerCountMap[torr].size());
+                 currConnectedPeers, torr, peersInfoMap[torr].getConnectedPeerCount());
 
     if (activeTorrents.contains(torr))
     {
@@ -76,18 +126,28 @@ std::vector<PeerCommand> PeerTracker::onAnnounce(const http::Announce &announce)
         }
     }
 
-    if (!peerCountMap.contains(announce.infoHash))
+    if (!peersInfoMap.contains(announce.infoHash))
     {
-        peerCountMap[announce.infoHash].clear();
+        peersInfoMap[announce.infoHash].makeAllInactive();
     }
 
     return makeCommand();
 }
 
+uint16_t PeerTracker::getKnownPeerCount(const common::InfoHash &ih) const
+{
+    return peersInfoMap.at(ih).getKnownPeerCount();
+}
+
+uint16_t PeerTracker::getConnectedPeerCount(const common::InfoHash &ih) const
+{
+    return peersInfoMap.at(ih).getConnectedPeerCount();
+}
+
 std::vector<PeerCommand> PeerTracker::makeCommandFor(const common::InfoHash &torrent)
 {
     std::vector<PeerCommand> cmds;
-    while (peerCountMap[torrent].size() < maxPeersPerTorrent &&
+    while (peersInfoMap[torrent].getActivePeerCount() < maxPeersPerTorrent &&
            currConnectedPeers < maxConnectedPeers)
     {
         auto peer = findNotConnectedPeer(torrent);
@@ -96,7 +156,7 @@ std::vector<PeerCommand> PeerTracker::makeCommandFor(const common::InfoHash &tor
         {
             peer->connected = PeerConnection::CONNECTING;
             currConnectedPeers++;
-            peerCountMap[torrent].emplace(peer->peer);
+            peersInfoMap[torrent].addActivePeer(peer->peer);
 
             cmds.emplace_back(PeerCommand{PeerCommandFlag::TRY_CONNECT, peer->peer, torrent});
         }
@@ -106,7 +166,7 @@ std::vector<PeerCommand> PeerTracker::makeCommandFor(const common::InfoHash &tor
         }
     }
 
-    if (cmds.empty() && peerCountMap[torrent].size() < maxPeersPerTorrent)
+    if (cmds.empty() && peersInfoMap[torrent].getActivePeerCount() < maxPeersPerTorrent)
     {
         return std::vector<PeerCommand>{requestAnnounce(torrent)};
     }
@@ -119,7 +179,7 @@ std::vector<PeerCommand> PeerTracker::makeCommandFor(const common::InfoHash &tor
 std::vector<PeerCommand> PeerTracker::makeCommand()
 {
     std::vector<PeerCommand> cmds;
-    for (auto &[torrent, _] : peerCountMap)
+    for (auto &[torrent, _] : peersInfoMap)
     {
         const auto torrCmds = makeCommandFor(torrent);
         cmds.insert(cmds.end(), torrCmds.begin(), torrCmds.end());

@@ -8,6 +8,7 @@
 
 #include <neither/either.hpp>
 
+#include "fractals/app/Event.h"
 #include "fractals/app/TorrentDisplayEntry.h"
 #include "fractals/common/Tagged.h"
 #include "fractals/persist/Event.h"
@@ -34,11 +35,15 @@ void TorrentDisplayEntry::update(std::chrono::nanoseconds nanos, const persist::
     uploadSpeed = timeDiff > 0 ? (stats.uploaded - uploaded) * 1e9 / timeDiff : 0;
     downloaded = stats.downloaded;
     uploaded = stats.uploaded;
-    connectedSeeders = stats.connectedSeeders;
-    totalSeeders = stats.totalSeeders;
-    connectedLeechers = stats.connectedLeechers;
-    totalLeechers = stats.totalLeechers;
     prevTime = nanos;
+}
+
+void TorrentDisplayEntry::update(const app::PeerStats& stats)
+{
+    connectedSeeders = stats.connectedPeersCount;
+    totalSeeders = stats.knownPeerCount;
+    connectedLeechers = 0;
+    totalLeechers = 0;
 }
 
 uint64_t TorrentDisplayEntry::getId() const

@@ -129,6 +129,15 @@ void TorrentController::processBtEvent(const app::ShutdownConfirmation &)
     m_terminal->reset();
 }
 
+void TorrentController::processBtEvent(const app::PeerStats & peerStats)
+{
+    auto it = idTorrentMap.find(peerStats.torrId);
+    if (it != idTorrentMap.end())
+    {
+        it->second.update(peerStats);
+    }
+}
+
 void TorrentController::processPersistEvent(const persist::TorrentStats &stats)
 {
     const auto now = std::chrono::high_resolution_clock::now().time_since_epoch();
@@ -209,6 +218,7 @@ void TorrentController::refreshStats()
         hashes.emplace_back(pair.first, pair.second.getInfoHash());
     }
     persistQueue.push(persist::RequestStats{hashes});
+    btQueue.push(app::RequestStats{hashes});
 }
 
 void TorrentController::stopTorrent(uint64_t torrentId)
@@ -291,8 +301,6 @@ void TorrentController::runUI()
         now += tenMs;
         ++loopCounter;
     }
-
-    spdlog::info("loop quit");
 }
 
 } // namespace fractals::app

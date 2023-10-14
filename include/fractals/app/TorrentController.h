@@ -56,6 +56,7 @@ class TorrentController
     void processBtEvent(const app::CompletedTorrent&);
     void processBtEvent(const app::ResumedTorrent&);
     void processBtEvent(const app::ShutdownConfirmation&);
+    void processBtEvent(const app::PeerStats&);
 
     void processPersistEvent(const persist::TorrentStats&);
     void processPersistEvent(const persist::AllTorrents&);

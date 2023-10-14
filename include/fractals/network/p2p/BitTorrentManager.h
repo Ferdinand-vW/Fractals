@@ -80,6 +80,7 @@ template <typename PeerServiceT> class BitTorrentManagerImpl
     void process(const app::StartTorrent &req);
     void process(const app::ResumeTorrent &req);
     void process(const app::Shutdown &req);
+    void process(const app::RequestStats& req);
     void process(const persist::AddedTorrent &resp);
     void process(const persist::TorrentExists &resp);
     void process(const persist::Pieces &);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fractals/app/Event.h"
 #include "fractals/common/Tagged.h"
 #include "fractals/persist/Event.h"
 #include "fractals/persist/Models.h"
@@ -28,6 +29,7 @@ class TorrentDisplayEntry
     TorrentDisplayEntry(uint64_t entryId, const persist::TorrentModel&);
 
     void update(std::chrono::nanoseconds nanos, const persist::TorrentStats& stats);
+    void update(const app::PeerStats& stats);
 
     uint64_t getId() const;
     const common::InfoHash& getInfoHash() const;

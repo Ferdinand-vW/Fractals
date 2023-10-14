@@ -219,7 +219,6 @@ void PersistClient::addAnnounce(const AddAnnounce &ann)
     {
         dbConn->insert(AnnounceModel{-1, torrId->second, ann.peerIp, ann.peerPort, ann.announceTime,
                                      ann.interval, ann.minInterval, false});
-        inMemoryStats[torrId->first].totalSeeders++;
     }
 }
 
@@ -254,7 +253,6 @@ TorrentStats PersistClient::loadTorrentStats(const common::InfoHash &infoHash)
     }
 
     auto pieces = loadPieces(infoHash);
-    auto announces = loadAnnounces(infoHash);
 
     TorrentStats stats;
     stats.infoHash = infoHash;
@@ -263,8 +261,6 @@ TorrentStats PersistClient::loadTorrentStats(const common::InfoHash &infoHash)
                                        {
                                            return acc + (p2.complete ? p2.size : 0);
                                        });
-    stats.totalSeeders = announces.size();
-
     inMemoryStats.emplace(infoHash, stats);
 
     return stats;
