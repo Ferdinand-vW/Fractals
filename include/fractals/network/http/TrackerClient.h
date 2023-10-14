@@ -13,6 +13,7 @@ class TrackerClient
   public:
     struct PollResult
     {
+        PollResult() = default;
         PollResult(const common::InfoHash &infoHash, const std::string &announce,
                    const std::string error)
             : infoHash(infoHash), announce(announce), error(error){};

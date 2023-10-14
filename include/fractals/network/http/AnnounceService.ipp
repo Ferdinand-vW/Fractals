@@ -1,5 +1,6 @@
 #include "AnnounceService.h"
 
+#include "fractals/AppId.h"
 #include "fractals/common/CurlPoll.h"
 #include "fractals/common/Tagged.h"
 #include "fractals/common/utils.h"
@@ -42,14 +43,6 @@ template <typename TrackerClientT> void AnnounceServiceImpl<TrackerClientT>::run
     {
         if (!executedRequests.empty() || !delayedRequests.empty())
         {
-            for (const auto &ex : executedRequests)
-            {
-                spdlog::info("ExecutedReq: ann={} ih={}", ex.first, ex.second.infoHash);
-            }
-            for (const auto &ex : delayedRequests)
-            {
-                spdlog::info("DelayedReq: ih={}", ex.first);
-            }
             coordinator.waitOnAnnounceServiceUpdate(std::chrono::milliseconds(500));
         }
         else
@@ -215,7 +208,7 @@ template <typename TrackerClientT>
 void AnnounceServiceImpl<TrackerClientT>::execute(const std::string &announce,
                                                   const RequestAnnounce &req)
 {
-    client.query(TrackerRequest(announce, req.torrent), std::chrono::milliseconds(5000));
+    client.query(TrackerRequest(announce, req.torrent, Fractals::APPID), std::chrono::milliseconds(5000));
 
     executedRequests.emplace(announce, req);
     trackerStates[announce].notifyOfRequest();

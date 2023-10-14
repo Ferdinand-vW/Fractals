@@ -2,6 +2,7 @@
 
 #include "fractals/common/utils.h"
 #include <array>
+#include <cstring>
 #include <istream>
 #include <string>
 
@@ -12,16 +13,14 @@ namespace fractals::common
 
 struct InfoHash
 {
-    InfoHash(){};
-    InfoHash(const std::string &str)
+    constexpr InfoHash(){};
+    constexpr InfoHash(std::string_view str)
     {
         std::copy(str.begin(), str.end(), underlying.data());
     }
-    InfoHash(const std::array<char, 20> &underlying) : underlying(underlying)
+    constexpr InfoHash(const std::array<char, 20> &underlying) : underlying(underlying)
     {
     }
-
-    std::array<char, 20> underlying;
 
     bool operator==(const InfoHash &h) const
     {
@@ -38,6 +37,8 @@ struct InfoHash
     {
         return std::string(underlying.begin(), underlying.end());
     }
+
+    std::array<char, 20> underlying{};
 };
 
 struct PieceHash

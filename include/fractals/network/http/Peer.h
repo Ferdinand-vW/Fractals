@@ -15,8 +15,8 @@ class PeerId
     std::string m_ip{""};
     uint16_t m_port{0};
 
-    PeerId() = default;
-    PeerId(std::string ip, uint16_t port);
+    constexpr PeerId() = default;
+    constexpr PeerId(std::string ip, uint16_t port) : m_ip(ip), m_port(port){};
 
     // Required for ordered data structures
     bool operator<(const PeerId &p2) const;

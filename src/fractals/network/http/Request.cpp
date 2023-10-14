@@ -80,18 +80,18 @@ bool TrackerResponse::operator==(const TrackerResponse &tr) const
            std::equal(peers.begin(), peers.end(), tr.peers.begin());
 }
 
-TrackerRequest::TrackerRequest(const std::string &announce, const torrent::MetaInfo &mi)
+TrackerRequest::TrackerRequest(const std::string &announce, const torrent::MetaInfo &mi, const std::array<char, 20>& peerId)
     : announce(announce),
       info_hash(common::sha1_encode<20>(bencode::encode(torrent::to_bdict(mi.info)))),
-      url_info_hash(common::url_encode<20>(info_hash.underlying)), peer_id(app::generate_peerId()),
+      url_info_hash(common::url_encode<20>(info_hash.underlying)), peer_id(peerId),
       url_peer_id(common::url_encode<20>(peer_id)), port(6882), uploaded(0), downloaded(0), left(0),
       compact(0)
 {
 }
 
-TrackerRequest::TrackerRequest(const std::string &announce, const persist::TorrentModel &model)
+TrackerRequest::TrackerRequest(const std::string &announce, const persist::TorrentModel &model, const std::array<char, 20>& peerId)
     : announce(announce), info_hash(model.infoHash),
-      url_info_hash(common::url_encode<20>(info_hash.underlying)), peer_id(app::generate_peerId()),
+      url_info_hash(common::url_encode<20>(info_hash.underlying)), peer_id(peerId),
       url_peer_id(common::url_encode<20>(peer_id)), port(6882), uploaded(0), downloaded(0), left(0),
       compact(0)
 {

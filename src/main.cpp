@@ -1,5 +1,5 @@
 
-
+#include "fractals/AppId.h"
 #include "fractals/app/AppEventQueue.h"
 #include "fractals/app/TorrentController.h"
 #include "fractals/common/TcpService.h"
@@ -36,6 +36,8 @@ int main()
     signal(SIGSEGV, common::segfaultHandler);
 
     common::setupLogging();
+
+    Fractals::initAppId();
 
     sync::QueueCoordinator coordinator;
 

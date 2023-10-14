@@ -23,8 +23,8 @@ struct TrackerRequest
 {
   public:
     TrackerRequest() = default;
-    TrackerRequest(const std::string &announce, const torrent::MetaInfo &metaInfo);
-    TrackerRequest(const std::string &announce, const persist::TorrentModel &model);
+    TrackerRequest(const std::string &announce, const torrent::MetaInfo &metaInfo, const std::array<char,20>& peerId);
+    TrackerRequest(const std::string &announce, const persist::TorrentModel &model, const std::array<char,20>& peerId);
     TrackerRequest(const std::string &announce,
                    const common::InfoHash &infoHash, const std::string urlInfoHash,
                    const std::array<char, 20> peerId, const std::string urlPeerId, int port,
