@@ -5,21 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/build/src/Fractals",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+            // "setupCommands": [
+            //     {
+            //         "description": "Enable pretty-printing for lldb",
+            //         "text": "-enable-pretty-printing",
+            //         "ignoreFailures": true
+            //     }
+            // ]
         }
     ]
 }
