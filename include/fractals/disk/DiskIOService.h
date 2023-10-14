@@ -132,7 +132,7 @@ template <typename IOLayer> class DiskIOServiceImpl
 
     void process(const InitTorrent &it)
     {
-        const auto &infoHash = it.tm.infoHash;
+        const common::InfoHash infoHash{it.tm.infoHash};
         spdlog::info("DIS::process(InitTorrent) infoHash={}", infoHash);
         if (torrents.count(infoHash))
         {
