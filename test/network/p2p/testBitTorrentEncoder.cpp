@@ -33,7 +33,7 @@ TEST(BT_ENCODER, HandShake)
     ASSERT_EQ(encoded, bytes);
 
     common::string_view view(bytes.begin(), bytes.end());
-    HandShake decoded = *encoder.decodeHandShake(view);
+    HandShake decoded = std::get<HandShake>(encoder.decodeHandShake(view));
     ASSERT_EQ(decoded, hs);
 
     common::string_view encodedView(encoded.begin(), encoded.end());
