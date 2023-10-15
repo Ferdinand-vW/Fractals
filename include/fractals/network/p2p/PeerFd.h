@@ -10,8 +10,8 @@ namespace fractals::network::p2p
 class PeerFd
 {
   public:
-    PeerFd() = default;
-    PeerFd(const http::PeerId &id, int32_t fd) : mId(id), mFd(fd)
+    constexpr PeerFd() = default;
+    constexpr PeerFd(const http::PeerId &id, int32_t fd) : mId(id), mFd(fd)
     {
     }
 
