@@ -18,6 +18,8 @@ struct ConnectionEstablished
     http::PeerId peer;
 };
 
+std::ostream &operator<<(std::ostream &os, const ConnectionEstablished &e);
+
 struct Message
 {
     http::PeerId peer;

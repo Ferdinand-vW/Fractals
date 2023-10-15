@@ -23,9 +23,11 @@
 #include "fractals/persist/PersistEventQueue.h"
 #include "fractals/sync/QueueCoordinator.h"
 #include "fractals/torrent/TorrentMeta.h"
+
 #include <chrono>
 #include <condition_variable>
 #include <type_traits>
+
 namespace fractals::network::p2p
 {
 
