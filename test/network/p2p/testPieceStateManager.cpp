@@ -2,8 +2,8 @@
 
 #include "gmock/gmock.h"
 #include <cmath>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <unordered_set>
 
 using namespace fractals::common;
@@ -16,37 +16,33 @@ const auto hash2 = hex_to_bytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
 const auto hash3 = hex_to_bytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
 const auto hash4 = hex_to_bytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
 
-std::unordered_map<uint32_t, std::vector<char>> testHashDataMap
-{
-  {0, hash0 },
-  {1, hash1 },
-  {2, hash2 },
-  {3, hash3 },
-  {4, hash4 },  
+std::vector<fractals::persist::PieceModel> testPieces{
+    {0, 0, 0, 30, hash0, false}, {0, 0, 1, 30, hash1, false}, {0, 0, 2, 30, hash2, false},
+    {0, 0, 3, 30, hash3, false}, {0, 0, 4, 3, hash4, false},
 };
 
 TEST(PieceStateManager, construct)
 {
-    std::vector<uint32_t> pieces{1,2,3,4,5};
-    PieceStateManager psm(pieces, {}, 123, testHashDataMap);
+    PieceStateManager psm;
+    psm.populate(testPieces);
 
     // 1  2  3  4   5
     // 30 30 30 30  3
     // 30 60 90 120 123
-    for(int i = 0; i < pieces.size() - 1; i++)
+    for (int i = 0; i < testPieces.size() - 1; i++)
     {
-        std::vector<uint32_t>::iterator it = pieces.begin();
+        auto it = testPieces.begin();
         std::advance(it, i);
-        auto* ps = psm.getPieceState(*it);
+        auto *ps = psm.getPieceState(it->piece);
 
         ASSERT_TRUE(ps);
 
         ASSERT_EQ(ps->getMaxSize(), 30);
     }
 
-    std::vector<uint32_t>::iterator it = pieces.begin();
-    std::advance(it, pieces.size() - 1);
-    auto * ps = psm.getPieceState(*it);
+    auto it = testPieces.begin();
+    std::advance(it, testPieces.size() - 1);
+    auto *ps = psm.getPieceState(it->piece);
 
     ASSERT_TRUE(ps);
 
@@ -55,40 +51,39 @@ TEST(PieceStateManager, construct)
 
 TEST(PieceStateManager, addBlock)
 {
-    PieceStateManager psm({1}, {}, 10, testHashDataMap);
+    PieceStateManager psm;
+    psm.populate(testPieces);
 
     auto ps = psm.nextAvailablePiece({1});
 
     ASSERT_TRUE(ps);
-    ASSERT_EQ(ps->getMaxSize(), 10);
-    ASSERT_EQ(ps->getRemainingSize(), 10);
+    ASSERT_EQ(ps->getMaxSize(), 30);
+    ASSERT_EQ(ps->getRemainingSize(), 30);
     ASSERT_EQ(ps->getNextBeginIndex(), 0);
     ASSERT_FALSE(ps->isComplete());
 
-    ps->addBlock({'1','2','3'}); //Added 3 chars
+    ps->addBlock("123"); // Added 3 chars
 
-    ASSERT_EQ(ps->getMaxSize(), 10);
-    ASSERT_EQ(ps->getRemainingSize(), 7);
+    ASSERT_EQ(ps->getMaxSize(), 30);
+    ASSERT_EQ(ps->getRemainingSize(), 27);
     ASSERT_EQ(ps->getNextBeginIndex(), 3);
     ASSERT_FALSE(ps->isComplete());
 
-    ps->addBlock({'1','2','3', '4'}); //Added 3 chars
+    ps->addBlock("1234"); // Added 4 chars
 
-    ASSERT_EQ(ps->getMaxSize(), 10);
-    ASSERT_EQ(ps->getRemainingSize(), 3);
+    ASSERT_EQ(ps->getMaxSize(), 30);
+    ASSERT_EQ(ps->getRemainingSize(), 23);
     ASSERT_EQ(ps->getNextBeginIndex(), 7);
     ASSERT_FALSE(ps->isComplete());
 
-    ps->addBlock({'1','2','3'}); //Added 3 chars
+    ps->addBlock("12345678912345678111122"); // Added 23 chars
 
-    ASSERT_EQ(ps->getMaxSize(), 10);
+    ASSERT_EQ(ps->getMaxSize(), 30);
     ASSERT_EQ(ps->getRemainingSize(), 0);
-    ASSERT_EQ(ps->getNextBeginIndex(), 10);
+    ASSERT_EQ(ps->getNextBeginIndex(), 30);
     ASSERT_TRUE(ps->isComplete());
 
     std::vector<char> buf(ps->getBuffer().begin(), ps->getBuffer().end());
-    EXPECT_THAT(buf, testing::ContainerEq<std::vector<char>>({'1','2','3','1','2','3','4','1','2','3'}));
+    std::string strBuf(buf.begin(), buf.end());
+    EXPECT_EQ(strBuf, "123123412345678912345678111122");
 }
-
-
-
