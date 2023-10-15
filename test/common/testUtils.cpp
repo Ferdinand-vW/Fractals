@@ -166,10 +166,10 @@ TEST(UTILS, pp_bytes)
     auto res3 = fractals::common::pp_bytes(i3);
     auto res4 = fractals::common::pp_bytes(i4);
 
-    ASSERT_EQ(res1, L"0.0 B");
-    ASSERT_EQ(res2, L"2.0 KB");
-    ASSERT_EQ(res3, L"4.53 MB");
-    ASSERT_EQ(res4, L"903.47 PB");
+    ASSERT_EQ(res1, "0.0 B");
+    ASSERT_EQ(res2, "2.0 KB");
+    ASSERT_EQ(res3, "4.53 MB");
+    ASSERT_EQ(res4, "903.47 PB");
 }
 
 TEST(UTILS, pp_bytes_per_second)
@@ -178,7 +178,7 @@ TEST(UTILS, pp_bytes_per_second)
 
     auto res = fractals::common::pp_bytes_per_second(i);
 
-    ASSERT_EQ(res, L"903.47 PB/s");
+    ASSERT_EQ(res, "903.47 PB/s");
 }
 
 TEST(UTILS, pp_time)
@@ -207,15 +207,15 @@ TEST(UTILS, pp_time)
     auto res10 = fractals::common::pp_time(i10);
     auto res11 = fractals::common::pp_time(i11);
 
-    ASSERT_EQ(res1, L"0s");
-    ASSERT_EQ(res2, L"12s");
-    ASSERT_EQ(res3, L"1m0s");
-    ASSERT_EQ(res4, L"5m10s");
-    ASSERT_EQ(res5, L"1h0m0s");
-    ASSERT_EQ(res6, L"1h10m20s");
-    ASSERT_EQ(res7, L"1d0h0m0s");
-    ASSERT_EQ(res8, L"1d3h31m0s");
-    ASSERT_EQ(res9, L"1y0m5d0h0m0s");
-    ASSERT_EQ(res10, L"1y1m20d20h40m0s");
-    ASSERT_EQ(res11, L"inf");
+    ASSERT_EQ(res1, "0s");
+    ASSERT_EQ(res2, "12s");
+    ASSERT_EQ(res3, "1m0s");
+    ASSERT_EQ(res4, "5m10s");
+    ASSERT_EQ(res5, "1h0m0s");
+    ASSERT_EQ(res6, "1h10m20s");
+    ASSERT_EQ(res7, "1d0h0m0s");
+    ASSERT_EQ(res8, "1d3h31m0s");
+    ASSERT_EQ(res9, "1y0m5d0h0m0s");
+    ASSERT_EQ(res10, "1y1m20d20h40m0s");
+    ASSERT_EQ(res11, "inf");
 }
