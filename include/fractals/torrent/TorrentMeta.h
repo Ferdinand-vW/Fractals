@@ -16,7 +16,7 @@ namespace fractals::torrent {
         public:
             TorrentMeta(const MetaInfo &mi,std::string fileName);
 
-            TorrentMeta() = default;
+            constexpr TorrentMeta(){};
             TorrentMeta(const TorrentMeta&) = default;
             TorrentMeta(TorrentMeta&&) = default;
             TorrentMeta& operator=(const TorrentMeta&) = default;
