@@ -10,7 +10,6 @@
 #include "fractals/network/p2p/PeerFd.h"
 #include "fractals/torrent/Bencode.h"
 #include "neither/maybe.hpp"
-#include "gmock/gmock.h"
 #include <boost/mp11/algorithm.hpp>
 #include <cassert>
 #include <chrono>
@@ -58,6 +57,7 @@ class MockBufferedQueueManager
         bool firstByte = true;
         int s = 0;
         ReadMsgState m;
+
         for (int i = 0; i < buf.size(); ++i)
         {
             if (firstByte)
@@ -95,6 +95,11 @@ class MockBufferedQueueManager
     WriteMsgState *getWriteBuffer(PeerFd peer)
     {
         return nullptr;
+    }
+
+    void removeFromWriteBuffer(PeerFd peer)
+    {
+        bufMap.erase(peer);
     }
 
     std::unordered_map<PeerFd, std::deque<ReadMsgState>> bufMap;
@@ -145,19 +150,25 @@ TEST(CONNECTION_READ, sub_and_unsub)
     mr.notify();
     queue.push(UnSubscribe(peer2));
     mr.notify();
+
     queue.push(Deactivate{});
     mr.notify();
 
     t.join();
 
-    ASSERT_EQ(queue.numToRead(), 5);
+    ASSERT_EQ(queue.numToRead(), 6);
     CtlResponse peer1Resp{peer1, ""};
+    ConnectionCloseEvent peer1Close{peer1.getId()};
     CtlResponse peer2Resp{peer2, ""};
+    ConnectionCloseEvent peer2Close{peer2.getId()};
     ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer1Resp);
     ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp);
     ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer1Resp);
+    ASSERT_EQ(std::get<ConnectionCloseEvent>(queue.pop()), peer1Close);
     ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp);
-    ASSERT_EQ(std::get<DeactivateResponse>(queue.pop()), DeactivateResponse{});
+    ASSERT_EQ(std::get<ConnectionCloseEvent>(queue.pop()), peer2Close);
+
+    ASSERT_FALSE(mr.isActive());
 }
 
 TEST(CONNECTION_READ, one_subscriber_read_one)
@@ -200,6 +211,8 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
     mr.notify();
 
     t.join();
+
+    ASSERT_FALSE(mr.isActive());
 }
 
 TEST(CONNECTION_READ, one_subscribed_read_multiple)
@@ -253,13 +266,6 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
     queue.push(Deactivate{});
     mr.notify();
 
-    {
-        std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, [&] { return queue.canPop(); });
-    }
-
-    DeactivateResponse _ = std::get<DeactivateResponse>(queue.pop());
-
     t.join();
 }
 
@@ -285,6 +291,8 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     queue.push(Subscribe{peer1});
     queue.push(Subscribe{peer2});
     queue.push(Subscribe{peer3});
+
+    mr.notify();
 
     writeToFd(writeFd1, "\x05peer1");
     writeToFd(writeFd2, "\x05peer2");
@@ -352,8 +360,6 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
             cv.wait(lock, [&] { return queue.numToRead() >= (p + 1) * 2; });
         }
     }
-
-
 
     for (int p = 0; p < numPeers; p++)
     {

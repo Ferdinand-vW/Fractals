@@ -160,7 +160,6 @@ void PREFIX::run()
             std::visit(common::overloaded{[&](Subscribe sub)
                                           {
                                               subscribe(sub.peer);
-                                              //   enableWrite(sub.peer);
                                               pending.emplace(sub.peer);
                                           },
                                           [&](UnSubscribe unsub)
