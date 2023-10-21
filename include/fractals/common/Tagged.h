@@ -11,10 +11,23 @@
 namespace fractals::common
 {
 
+struct AppId
+{
+    constexpr AppId(){};
+    constexpr AppId(const std::array<char, 20> appId)
+    : underlying(appId){}
+
+    std::array<char, 20> underlying{};
+};
+
 struct InfoHash
 {
     constexpr InfoHash(){};
     constexpr InfoHash(std::string_view str)
+    {
+        std::copy(str.begin(), str.end(), underlying.data());
+    }
+    constexpr InfoHash(std::vector<char> str)
     {
         std::copy(str.begin(), str.end(), underlying.data());
     }

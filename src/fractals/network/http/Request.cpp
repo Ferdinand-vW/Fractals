@@ -26,7 +26,7 @@ std::ostream &operator<<(std::ostream &os, const TrackerRequest &tr)
     os << "{ announce: " + tr.announce << std::endl;
     os << ", info_hash:" + common::bytes_to_hex<20>(tr.info_hash.underlying) << std::endl;
     os << ", url_info_hash:" + tr.url_info_hash << std::endl;
-    os << ", peer_id:" + common::bytes_to_hex<20>(tr.peer_id) << std::endl;
+    os << ", peer_id:" + common::bytes_to_hex<20>(tr.appId.underlying) << std::endl;
     os << ", url_peer_id:" + tr.url_peer_id << std::endl;
     os << ", port:" << tr.port << std::endl;
     os << ", uploaded:" << tr.uploaded << std::endl;
@@ -44,7 +44,8 @@ bool TrackerRequest::operator==(const TrackerRequest &tr) const
            std::equal(info_hash.underlying.begin(), info_hash.underlying.end(),
                       tr.info_hash.underlying.begin()) &&
            url_info_hash == tr.url_info_hash &&
-           std::equal(peer_id.begin(), peer_id.end(), tr.peer_id.begin()) &&
+           std::equal(appId.underlying.begin(), appId.underlying.end(),
+                      tr.appId.underlying.begin()) &&
            url_peer_id == tr.url_peer_id && port == tr.port && uploaded == tr.uploaded &&
            downloaded == tr.downloaded && left == tr.left && compact == tr.compact;
 }
@@ -80,28 +81,30 @@ bool TrackerResponse::operator==(const TrackerResponse &tr) const
            std::equal(peers.begin(), peers.end(), tr.peers.begin());
 }
 
-TrackerRequest::TrackerRequest(const std::string &announce, const torrent::MetaInfo &mi, const std::array<char, 20>& peerId)
+TrackerRequest::TrackerRequest(const std::string &announce, const torrent::MetaInfo &mi,
+                               const common::AppId &appId)
     : announce(announce),
       info_hash(common::sha1_encode<20>(bencode::encode(torrent::to_bdict(mi.info)))),
-      url_info_hash(common::url_encode<20>(info_hash.underlying)), peer_id(peerId),
-      url_peer_id(common::url_encode<20>(peer_id)), port(6882), uploaded(0), downloaded(0), left(0),
-      compact(0)
+      url_info_hash(common::url_encode<20>(info_hash.underlying)), appId(appId),
+      url_peer_id(common::url_encode<20>(appId.underlying)), port(6882), uploaded(0), downloaded(0),
+      left(0), compact(0)
 {
 }
 
-TrackerRequest::TrackerRequest(const std::string &announce, const persist::TorrentModel &model, const std::array<char, 20>& peerId)
+TrackerRequest::TrackerRequest(const std::string &announce, const persist::TorrentModel &model,
+                               const common::AppId &appId)
     : announce(announce), info_hash(model.infoHash),
-      url_info_hash(common::url_encode<20>(info_hash.underlying)), peer_id(peerId),
-      url_peer_id(common::url_encode<20>(peer_id)), port(6882), uploaded(0), downloaded(0), left(0),
-      compact(0)
+      url_info_hash(common::url_encode<20>(info_hash.underlying)), appId(appId),
+      url_peer_id(common::url_encode<20>(appId.underlying)), port(6882), uploaded(0), downloaded(0),
+      left(0), compact(0)
 {
 }
 
 TrackerRequest::TrackerRequest(const std::string &announce, const common::InfoHash &infoHash,
-                               const std::string urlInfoHash, const std::array<char, 20> peerId,
+                               const std::string urlInfoHash, const common::AppId &appId,
                                const std::string urlPeerId, int port, int uploaded, int downloaded,
                                int left, int compact)
-    : announce(announce), info_hash(infoHash), url_info_hash(urlInfoHash), peer_id(peerId),
+    : announce(announce), info_hash(infoHash), url_info_hash(urlInfoHash), appId(appId),
       url_peer_id(urlPeerId), port(port), uploaded(uploaded), downloaded(downloaded), left(left),
       compact(compact){};
 

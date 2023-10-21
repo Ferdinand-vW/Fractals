@@ -36,7 +36,7 @@ BitTorrentManagerImpl<PeerServiceT>::BitTorrentManagerImpl(
     persist::PersistEventQueue::LeftEndPoint persistQueue,
     disk::DiskEventQueue::LeftEndPoint diskQueue,
     http::AnnounceEventQueue::LeftEndPoint announceQueue, app::AppEventQueue::LeftEndPoint appQueue)
-    : clientId(Fractals::APPID), peerEventHandler{this}, diskEventHandler{this},
+    : appId(Fractals::APPID), peerEventHandler{this}, diskEventHandler{this},
       announceEventHandler{this}, persistEventHandler{this}, appEventHandler(this),
       peerService(peerService), coordinator(coordinator), persistQueue(persistQueue),
       diskQueue(diskQueue), announceQueue(announceQueue), appQueue(appQueue)
@@ -406,9 +406,9 @@ void BitTorrentManagerImpl<PeerServiceT>::handlePeerCommands(const std::vector<P
             if (peerService.connect(cmd.peer, currTime))
             {
                 auto &pm = *pieceMan.find(cmd.torrent);
-                const auto [connIt, _] = connections.emplace(
-                    cmd.peer, Protocol{clientId, cmd.peer, cmd.torrent, peerService, persistQueue,
-                                       diskQueue, pm.second});
+                const auto [connIt, _] =
+                    connections.emplace(cmd.peer, Protocol{appId, cmd.peer, cmd.torrent,
+                                                           peerService, diskQueue, pm.second});
             }
             break;
         case PeerCommandFlag::DO_ANNOUNCE:

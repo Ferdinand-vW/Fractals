@@ -19,9 +19,8 @@ namespace fractals::network::p2p
 template <typename PeerServiceT> class Protocol
 {
   public:
-    Protocol(const std::array<char, 20> clientId, http::PeerId peer,
+    Protocol(const common::AppId& appId, http::PeerId peer,
              const common::InfoHash &infoHash, PeerServiceT &peerService,
-             persist::PersistEventQueue::LeftEndPoint persistQueue,
              disk::DiskEventQueue::LeftEndPoint diskQueue, PieceStateManager &pieceRepository);
 
     bool sendHandShake(std::chrono::nanoseconds now);
@@ -52,12 +51,11 @@ template <typename PeerServiceT> class Protocol
     bool mPeerChoking{true};
     bool mPeerInterested{false};
 
-    std::array<char, 20> clientId;
+    common::AppId appId;
     http::PeerId peer;
     common::InfoHash infoHash;
     std::unordered_set<uint32_t> availablePieces;
     PeerServiceT &peerService;
-    persist::PersistEventQueue::LeftEndPoint persistQueue;
     disk::DiskEventQueue::LeftEndPoint diskQueue;
     PieceStateManager &pieceRepository;
 };

@@ -6,8 +6,6 @@
 #include "fractals/network/p2p/PeerService.h"
 #include "fractals/network/p2p/PieceStateManager.h"
 #include "fractals/network/p2p/Protocol.h"
-#include "fractals/persist/Event.h"
-#include "fractals/persist/PersistEventQueue.h"
 #include <boost/mp11/algorithm.hpp>
 #include <chrono>
 #include <cstdint>
@@ -16,13 +14,12 @@
 namespace fractals::network::p2p
 {
 template <typename PeerServiceT>
-Protocol<PeerServiceT>::Protocol(const std::array<char, 20> clientId, http::PeerId peer,
+Protocol<PeerServiceT>::Protocol(const common::AppId &appId, http::PeerId peer,
                                  const common::InfoHash &infoHash, PeerServiceT &peerService,
-                                 persist::PersistEventQueue::LeftEndPoint persistQueue,
                                  disk::DiskEventQueue::LeftEndPoint diskQueue,
                                  PieceStateManager &pieceRepository)
-    : clientId(clientId), peer(peer), infoHash(infoHash), peerService(peerService),
-      persistQueue(persistQueue), diskQueue(diskQueue), pieceRepository(pieceRepository)
+    : appId(appId), peer(peer), infoHash(infoHash), peerService(peerService),
+       diskQueue(diskQueue), pieceRepository(pieceRepository)
 {
 }
 
@@ -32,8 +29,8 @@ bool Protocol<PeerServiceT>::sendHandShake(std::chrono::nanoseconds now)
     spdlog::info("Protocol({}, {}). Write HandShake", peer.toString(), infoHash);
     static const std::string protocol("BitTorrent protocol");
     static const std::array<char, 8> reserved{0, 0, 0, 0, 0, 0, 0, 0};
-    return peerService.write(this->peer,
-                             HandShake{protocol, reserved, infoHash.underlying, clientId}, now);
+    return peerService.write(
+        this->peer, HandShake{protocol, reserved, infoHash.underlying, appId.underlying}, now);
 }
 
 template <typename PeerServiceT>

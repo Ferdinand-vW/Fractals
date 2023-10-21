@@ -105,7 +105,7 @@ template <typename PeerServiceT> class BitTorrentManagerImpl
     void handlePeerCommands(const std::vector<PeerCommand> &cmds);
     bool isComplete(const common::InfoHash &ih) const;
 
-    std::array<char, 20> clientId{};
+    common::AppId appId{};
     State state{State::InActive};
     std::unordered_set<uint8_t> tokens;
     std::chrono::nanoseconds currTime;

@@ -1,3 +1,5 @@
+#include "fractals/AppId.h"
+#include "fractals/common/Tagged.h"
 #include "fractals/common/utils.h"
 #include "fractals/disk/DiskEventQueue.h"
 #include "fractals/network/http/Peer.h"
@@ -8,6 +10,7 @@
 #include "fractals/persist/Event.h"
 #include "fractals/persist/PersistEventQueue.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <gmock/gmock.h>
@@ -30,66 +33,80 @@ const auto hash2 = common::hex_to_bytes("72f77e84ba0149b2af1051f1318128dccf60ab6
 const auto hash3 = common::hex_to_bytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
 const auto hash4 = common::hex_to_bytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
 
-std::unordered_map<uint32_t, std::vector<char>> testHashDataMap{
-    {0, hash0}, {1, hash1}, {2, hash2}, {3, hash3}, {4, hash4},
+std::vector<fractals::persist::PieceModel> testHashDataMap{
+    {0, 0, 0, 2, hash0, false}, {0, 0, 1, 2, hash1, false}, {0, 0, 2, 2, hash2, false},
+    {0, 0, 3, 2, hash3, false}, {0, 0, 4, 3, hash4, false},
 };
 
 class MockPeerService
 {
   public:
-    MOCK_METHOD(void, write, (fractals::network::http::PeerId, BitTorrentMessage &&));
+    MOCK_METHOD(void, write,
+                (fractals::network::http::PeerId, BitTorrentMessage &&, std::chrono::nanoseconds));
 };
 
 class ProtocolTest : public ::testing::Test
 {
   public:
-    PieceStateManager pieceRepo{{0, 1, 2, 3, 4}, {}, 11, testHashDataMap};
+    ProtocolTest()
+    {
+        pieceRepo.populate(testHashDataMap);
+    }
+
+    void SetUp() override
+    {
+        ::testing::Test::SetUp();
+        now = std::chrono::system_clock::now().time_since_epoch();
+        pieceRepo.setActive(true);
+    }
+
+  public:
+    PieceStateManager pieceRepo;
     network::http::PeerId peer{"host", 0};
     MockPeerService peerService;
-    persist::PersistEventQueue persistQueue;
-    persist::PersistEventQueue::RightEndPoint persistRightE{persistQueue.getRightEnd()};
     disk::DiskEventQueue diskQueue;
     disk::DiskEventQueue::RightEndPoint diskQueueE{diskQueue.getRightEnd()};
-    Protocol<MockPeerService> prot{Protocol(peer, "test", peerService, persistQueue.getLeftEnd(), diskQueue.getLeftEnd(), pieceRepo)};
+    Protocol<MockPeerService> prot{Protocol(Fractals::initAppId(), peer, common::InfoHash{"test"},
+                                            peerService, diskQueue.getLeftEnd(), pieceRepo)};
+    std::chrono::nanoseconds now;
 };
 
 TEST_F(ProtocolTest, standardEval)
 {
     {
-        prot.onMessage(Choke{});
+        prot.onMessage(Choke{}, now);
 
-        ASSERT_TRUE(persistRightE.numToRead() == 0);
         ASSERT_TRUE(diskQueueE.numToRead() == 0);
     }
 
     {
-        EXPECT_CALL(peerService, write(_, Eq(Interested{}))).Times(1);
-        prot.onMessage(Bitfield(common::bitfield_to_bytes({1, 1, 1, 1, 1, 0, 0, 0})));
+        EXPECT_CALL(peerService, write(_, Eq(Interested{}), _)).Times(1);
+        prot.onMessage(Bitfield(common::bitfield_to_bytes({1, 1, 1, 1, 1, 0, 0, 0})), now);
 
-        ASSERT_TRUE(persistRightE.numToRead() == 0);
         ASSERT_TRUE(diskQueueE.numToRead() == 0);
     }
 
     uint32_t pieceIndex = 4;
-    EXPECT_CALL(peerService, write(_, Eq(Request{pieceIndex, 0, static_cast<uint32_t>(testDataMap[pieceIndex].size())}))).Times(1);
-    prot.onMessage(UnChoke{});
+    EXPECT_CALL(
+        peerService,
+        write(_, Eq(Request{pieceIndex, 0, static_cast<uint32_t>(testDataMap[pieceIndex].size())}),
+              _))
+        .Times(1);
+    prot.onMessage(UnChoke{}, now);
 
-    ASSERT_TRUE(persistRightE.numToRead() == 0);
     ASSERT_TRUE(diskQueueE.numToRead() == 0);
 
-    auto receiveAndRespond = [&]() {
+    auto receiveAndRespond = [&]()
+    {
         const auto data = testDataMap[pieceIndex];
 
-        EXPECT_CALL(peerService, write(_, Eq(Request{pieceIndex-1, 0, static_cast<uint32_t>(testDataMap[pieceIndex-1].size())}))).Times(1);
-        prot.onMessage(Piece(pieceIndex, 0, data));
-
-        {
-            ASSERT_EQ(persistRightE.numToRead(), 1);
-            const auto storageEvent1 = persistRightE.pop();
-
-            ASSERT_TRUE(std::holds_alternative<persist::PieceComplete>(storageEvent1));
-            ASSERT_EQ(std::get<persist::PieceComplete>(storageEvent1).piece, pieceIndex);
-        }
+        EXPECT_CALL(peerService,
+                    write(_,
+                          Eq(Request{pieceIndex - 1, 0,
+                                     static_cast<uint32_t>(testDataMap[pieceIndex - 1].size())}),
+                          _))
+            .Times(1);
+        prot.onMessage(Piece(pieceIndex, 0, data), now);
 
         {
             ASSERT_EQ(diskQueueE.numToRead(), 1);
@@ -114,13 +131,8 @@ TEST_F(ProtocolTest, standardEval)
     receiveAndRespond();
     receiveAndRespond();
 
-    EXPECT_CALL(peerService, write(_, _)).Times(0);
-    prot.onMessage(Piece(0, 0, testDataMap[0]));
-
-    ASSERT_EQ(persistRightE.numToRead(), 1);
-    const auto storageEvent1 = persistRightE.pop();
-    ASSERT_TRUE(std::holds_alternative<persist::PieceComplete>(storageEvent1));
-    ASSERT_EQ(std::get<persist::PieceComplete>(storageEvent1).piece, 0);
+    EXPECT_CALL(peerService, write(_, _, _)).Times(0);
+    prot.onMessage(Piece(0, 0, testDataMap[0]), now);
 
     ASSERT_EQ(diskQueueE.numToRead(), 1);
     const auto diskEvent1 = diskQueueE.pop();
@@ -132,26 +144,24 @@ TEST_F(ProtocolTest, standardEval)
 TEST_F(ProtocolTest, partial_pieces)
 {
     {
-        EXPECT_CALL(peerService, write(_, Eq(Interested{}))).Times(1);
-        prot.onMessage(Have{0});
-        EXPECT_CALL(peerService, write(_, Eq(Request{0, 0, 2}))).Times(1);
-        prot.onMessage(UnChoke{});
+        EXPECT_CALL(peerService, write(_, Eq(Interested{}), _)).Times(1);
+        prot.onMessage(Have{0}, now);
+        EXPECT_CALL(peerService, write(_, Eq(Request{0, 0, 2}), _)).Times(1);
+        prot.onMessage(UnChoke{}, now);
     }
 
     {
-        EXPECT_CALL(peerService, write(_, Eq(Request{0, 1, 1}))).Times(1);
-        prot.onMessage(Piece(0, 0, std::vector<char>{'a'}));
+        EXPECT_CALL(peerService, write(_, Eq(Request{0, 1, 1}), _)).Times(1);
+        prot.onMessage(Piece(0, 0, std::vector<char>{'a'}), now);
 
         // Not enough data has been downloaded
-        ASSERT_EQ(persistRightE.numToRead(), 0);
         ASSERT_EQ(diskQueueE.numToRead(), 0);
     }
 
     {
-        EXPECT_CALL(peerService, write(_, _)).Times(0) ;
-        prot.onMessage(Piece(0, 1, std::vector<char>{'b'}));
+        EXPECT_CALL(peerService, write(_, _, _)).Times(0);
+        prot.onMessage(Piece(0, 1, std::vector<char>{'b'}), now);
 
-        ASSERT_EQ(persistRightE.numToRead(), 1);
         ASSERT_EQ(diskQueueE.numToRead(), 1);
     }
 }
@@ -159,24 +169,24 @@ TEST_F(ProtocolTest, partial_pieces)
 TEST_F(ProtocolTest, hash_check_fail)
 {
     {
-        EXPECT_CALL(peerService, write(_, Eq(Interested{}))).Times(1);
-        prot.onMessage(Have{0});
-        prot.onMessage(Have{1});
-        EXPECT_CALL(peerService, write(_, Eq(Request{1, 0, 2}))).Times(1);
-        prot.onMessage(UnChoke{});
+        EXPECT_CALL(peerService, write(_, Eq(Interested{}), _)).Times(1);
+        prot.onMessage(Have{0}, now);
+        prot.onMessage(Have{1}, now);
+        EXPECT_CALL(peerService, write(_, Eq(Request{1, 0, 2}), _)).Times(1);
+        prot.onMessage(UnChoke{}, now);
     }
 
     {
-        EXPECT_CALL(peerService, write(_, _)).Times(0);
-        const auto result = prot.onMessage(Piece(0, 0, std::vector<char>{'a', 'c'}));
+        EXPECT_CALL(peerService, write(_, _, _)).Times(0);
+        const auto result = prot.onMessage(Piece(0, 0, std::vector<char>{'a', 'c'}), now);
 
         ASSERT_EQ(result, ProtocolState::HASH_CHECK_FAIL);
         Mock::VerifyAndClearExpectations(&peerService);
     }
 
     {
-        EXPECT_CALL(peerService, write(_, Eq(Request{0, 0, 2}))).Times(1);
-        const auto result = prot.onMessage(Piece(1, 0, std::vector<char>{'d', 'e'}));
+        EXPECT_CALL(peerService, write(_, Eq(Request{0, 0, 2}), _)).Times(1);
+        const auto result = prot.onMessage(Piece(1, 0, std::vector<char>{'d', 'e'}), now);
 
         ASSERT_EQ(result, ProtocolState::OPEN);
     }

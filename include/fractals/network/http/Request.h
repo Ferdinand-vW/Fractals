@@ -23,11 +23,11 @@ struct TrackerRequest
 {
   public:
     TrackerRequest() = default;
-    TrackerRequest(const std::string &announce, const torrent::MetaInfo &metaInfo, const std::array<char,20>& peerId);
-    TrackerRequest(const std::string &announce, const persist::TorrentModel &model, const std::array<char,20>& peerId);
+    TrackerRequest(const std::string &announce, const torrent::MetaInfo &metaInfo, const common::AppId& appId);
+    TrackerRequest(const std::string &announce, const persist::TorrentModel &model, const common::AppId& appId);
     TrackerRequest(const std::string &announce,
                    const common::InfoHash &infoHash, const std::string urlInfoHash,
-                   const std::array<char, 20> peerId, const std::string urlPeerId, int port,
+                   const common::AppId& appId, const std::string urlPeerId, int port,
                    int uploaded, int downloaded, int left, int compact);
 
     std::string announce;
@@ -45,7 +45,7 @@ struct TrackerRequest
     /**
     20-byte string used as unique id for client
     */
-    std::array<char, 20> peer_id;
+    common::AppId appId;
 
     /**
     URL encoding of 20-byte string used as unique id for client
