@@ -1,10 +1,13 @@
+#include "fractals/app/AppEventQueue.h"
 #include "fractals/app/Event.h"
 #include "fractals/common/Tagged.h"
 #include "fractals/common/TcpService.h"
 #include "fractals/common/utils.h"
 #include "fractals/disk/DiskEventQueue.h"
+#include "fractals/network/http/AnnounceEventQueue.h"
+#include "fractals/network/http/Event.h"
 #include "fractals/network/http/Peer.h"
-#include "fractals/network/p2p/BitTorrentManager.h"
+#include "fractals/network/p2p/BitTorrentManager.ipp"
 #include "fractals/network/p2p/BitTorrentMsg.h"
 #include "fractals/network/p2p/BufferedQueueManager.h"
 #include "fractals/network/p2p/EpollMsgQueue.h"
@@ -12,14 +15,19 @@
 #include "fractals/network/p2p/EpollServiceEvent.h"
 #include "fractals/network/p2p/PeerEvent.h"
 #include "fractals/network/p2p/PeerService.h"
+#include "fractals/network/p2p/Protocol.ipp"
 #include "fractals/persist/Event.h"
+#include "fractals/persist/Models.h"
 #include "fractals/persist/PersistEventQueue.h"
+#include "fractals/sync/QueueCoordinator.h"
 
+#include <chrono>
 #include <epoll_wrapper/Error.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <ostream>
+#include <variant>
 
 using ::testing::_;
 using ::testing::Return;
@@ -27,21 +35,28 @@ using ::testing::Return;
 namespace fractals::network::p2p
 {
 
-// std::ostream& operator<<(std::ostream& os, const PeerEvent& event)
-// {
-//     std::visit(common::overloaded{
-//         [&](const auto&){},
-//     }, event);
-
-//     return os;
-// }
-
-const auto dummyPeer = http::PeerId{"host", 0};
-
 class MockPeerService
 {
   public:
+    EpollMsgQueue::LeftEndPoint getQueueEndPoint()
+    {
+        return queue.getLeftEnd();
+    }
+
+    bool connect(http::PeerId, std::chrono::nanoseconds)
+    {
+        return false;
+    }
+
+    void disconnectClient(http::PeerId)
+    {
+    }
+
     MOCK_METHOD(std::optional<PeerEvent>, read, ());
+    MOCK_METHOD(void, shutdown, ());
+
+  private:
+    p2p::EpollMsgQueue queue;
 };
 
 class BitTorrentManagerMock
@@ -49,9 +64,7 @@ class BitTorrentManagerMock
     using Base = BitTorrentManager;
 
   public:
-    BitTorrentManagerMock(MockPeerService &peerService,
-                          persist::PersistEventQueue::LeftEndPoint persistQueue,
-                          disk::DiskEventQueue &diskQueue)
+    BitTorrentManagerMock(MockPeerService &peerService)
         : peerService(peerService), eventHandler{this}
     {
     }
@@ -126,6 +139,8 @@ class BitTorrentManagerTest : public ::testing::Test
 {
   public:
     static constexpr common::InfoHash INFOHASH{"abcdef"};
+    static constexpr common::InfoHash INFOHASH2{"feghjk"};
+    static constexpr http::PeerId PEERID{"host", 1000};
 
     BitTorrentManagerTest()
     {
@@ -133,18 +148,29 @@ class BitTorrentManagerTest : public ::testing::Test
 
     MockPeerService peerService{};
     persist::PersistEventQueue persistQueue;
+    persist::PersistEventQueue::RightEndPoint persistResponses = persistQueue.getRightEnd();
     disk::DiskEventQueue diskQueue;
+    disk::DiskEventQueue::RightEndPoint diskResponses = diskQueue.getRightEnd();
+    http::AnnounceEventQueue annQueue;
+    http::AnnounceEventQueue::RightEndPoint annResponses = annQueue.getRightEnd();
+    app::AppEventQueue appQueue;
+    app::AppEventQueue::RightEndPoint appResponses = appQueue.getRightEnd();
 
-    BitTorrentManagerMock btManMock{peerService, persistQueue.getLeftEnd(), diskQueue};
+    BitTorrentManagerMock btManMock{peerService};
+
+    sync::QueueCoordinator queueCoordinator;
+    BitTorrentManagerImpl<MockPeerService> btManReal{
+        queueCoordinator,       peerService,           persistQueue.getLeftEnd(),
+        diskQueue.getLeftEnd(), annQueue.getLeftEnd(), appQueue.getLeftEnd()};
 };
 
 TEST_F(BitTorrentManagerTest, onValidPeerEvent)
 {
-    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{PEERID, Choke{}}));
 
     EXPECT_CALL(btManMock, shutdown()).Times(0);
     EXPECT_CALL(btManMock, disconnectPeer(_)).Times(0);
-    EXPECT_CALL(btManMock, forwardToPeerMock(dummyPeer, Choke{}))
+    EXPECT_CALL(btManMock, forwardToPeerMock(PEERID, Choke{}))
         .Times(1)
         .WillOnce(Return(std::make_pair(ProtocolState::OPEN, INFOHASH)));
 
@@ -153,11 +179,11 @@ TEST_F(BitTorrentManagerTest, onValidPeerEvent)
 
 TEST_F(BitTorrentManagerTest, onProtocolHashCheckFailure)
 {
-    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{PEERID, Choke{}}));
 
     EXPECT_CALL(btManMock, shutdown()).Times(0);
     EXPECT_CALL(btManMock, disconnectPeer(_)).Times(1);
-    EXPECT_CALL(btManMock, forwardToPeerMock(dummyPeer, std::move(Choke{})))
+    EXPECT_CALL(btManMock, forwardToPeerMock(PEERID, std::move(Choke{})))
         .Times(1)
         .WillOnce(Return(std::make_pair(ProtocolState::HASH_CHECK_FAIL, INFOHASH)));
 
@@ -166,11 +192,11 @@ TEST_F(BitTorrentManagerTest, onProtocolHashCheckFailure)
 
 TEST_F(BitTorrentManagerTest, onProtocolClose)
 {
-    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{PEERID, Choke{}}));
 
     EXPECT_CALL(btManMock, shutdown()).Times(0);
-    EXPECT_CALL(btManMock, disconnectPeer(dummyPeer)).Times(1);
-    EXPECT_CALL(btManMock, forwardToPeerMock(dummyPeer, std::move(Choke{})))
+    EXPECT_CALL(btManMock, disconnectPeer(PEERID)).Times(1);
+    EXPECT_CALL(btManMock, forwardToPeerMock(PEERID, std::move(Choke{})))
         .Times(1)
         .WillOnce(Return(std::make_pair(ProtocolState::CLOSED, INFOHASH)));
 
@@ -179,11 +205,11 @@ TEST_F(BitTorrentManagerTest, onProtocolClose)
 
 TEST_F(BitTorrentManagerTest, onProtocolError)
 {
-    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{dummyPeer, Choke{}}));
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(Message{PEERID, Choke{}}));
 
     EXPECT_CALL(btManMock, shutdown()).Times(1);
     EXPECT_CALL(btManMock, disconnectPeer(_)).Times(0);
-    EXPECT_CALL(btManMock, forwardToPeerMock(dummyPeer, std::move(Choke{})))
+    EXPECT_CALL(btManMock, forwardToPeerMock(PEERID, std::move(Choke{})))
         .Times(1)
         .WillOnce(Return(std::make_pair(ProtocolState::ERROR, INFOHASH)));
 
@@ -192,10 +218,10 @@ TEST_F(BitTorrentManagerTest, onProtocolError)
 
 TEST_F(BitTorrentManagerTest, onDisconnectEvent)
 {
-    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(ConnectionDisconnected{dummyPeer}));
+    EXPECT_CALL(peerService, read()).Times(1).WillOnce(Return(ConnectionDisconnected{PEERID}));
 
     EXPECT_CALL(btManMock, shutdown()).Times(0);
-    EXPECT_CALL(btManMock, process(ConnectionDisconnected{dummyPeer})).Times(1);
+    EXPECT_CALL(btManMock, process(ConnectionDisconnected{PEERID})).Times(1);
 
     btManMock.eval();
 }
@@ -210,9 +236,125 @@ TEST_F(BitTorrentManagerTest, onShutdownEvent)
     btManMock.eval();
 }
 
-TEST_F(BitTorrentManagerTest, dropOnPeerError)
+TEST_F(BitTorrentManagerTest, processAddTorrent)
 {
-    // btManMock.
+    btManReal.process(app::AddTorrent{"filepath.txt"});
+
+    ASSERT_TRUE(diskResponses.numToRead());
+    const auto msg = diskResponses.pop();
+    ASSERT_TRUE(std::holds_alternative<disk::Read>(msg));
+    const auto rd = std::get<disk::Read>(msg);
+    EXPECT_EQ(rd.filepath, "filepath.txt");
+}
+
+TEST_F(BitTorrentManagerTest, processRemoveTorrent)
+{
+    btManReal.process(app::RemoveTorrent{INFOHASH});
+
+    {
+        ASSERT_TRUE(persistResponses.numToRead());
+        const auto msg = persistResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<persist::RemoveTorrent>(msg));
+        const auto rt = std::get<persist::RemoveTorrent>(msg);
+        EXPECT_EQ(rt.infoHash, INFOHASH);
+    }
+    {
+        ASSERT_TRUE(annResponses.numToRead());
+        const auto msg = annResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<http::DeleteTrackers>(msg));
+        const auto dt = std::get<http::DeleteTrackers>(msg);
+        EXPECT_EQ(dt.infoHash, INFOHASH);
+    }
+    {
+        ASSERT_TRUE(appResponses.numToRead());
+        const auto msg = appResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<app::RemovedTorrent>(msg));
+        const auto rt = std::get<app::RemovedTorrent>(msg);
+        EXPECT_EQ(rt.infoHash, INFOHASH);
+    }
+}
+
+TEST_F(BitTorrentManagerTest, processStopTorrent)
+{
+    btManReal.process(app::StopTorrent{INFOHASH});
+
+    {
+        ASSERT_TRUE(annResponses.numToRead());
+        const auto msg = annResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<http::Pause>(msg));
+        const auto ps = std::get<http::Pause>(msg);
+        EXPECT_EQ(ps.infoHash, INFOHASH);
+    }
+    {
+        ASSERT_TRUE(appResponses.numToRead());
+        const auto msg = appResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<app::StoppedTorrent>(msg));
+        const auto st = std::get<app::StoppedTorrent>(msg);
+        EXPECT_EQ(st.infoHash, INFOHASH);
+    }
+}
+
+TEST_F(BitTorrentManagerTest, processStartTorrent)
+{
+    btManReal.process(app::StartTorrent{INFOHASH, persist::TorrentModel{}, {}});
+}
+
+TEST_F(BitTorrentManagerTest, processShutdown)
+{
+    {
+        EXPECT_CALL(peerService, shutdown()).Times(1);
+    }
+
+    btManReal.process(app::Shutdown{});
+
+    {
+        ASSERT_TRUE(annResponses.numToRead());
+        const auto msg = annResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<http::Shutdown>(msg));
+    }
+    {
+        ASSERT_TRUE(persistResponses.numToRead());
+        const auto msg = persistResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<persist::Shutdown>(msg));
+    }
+    {
+        ASSERT_TRUE(diskResponses.numToRead());
+        const auto msg = diskResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<disk::Shutdown>(msg));
+    }
+    {
+        ASSERT_TRUE(appResponses.numToRead());
+        const auto msg = appResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<app::ShutdownConfirmation>(msg));
+    }
+}
+
+TEST_F(BitTorrentManagerTest, processRequestStats)
+{
+    btManReal.process(app::StartTorrent{INFOHASH, persist::TorrentModel{}, {}});
+    appResponses.pop();
+    btManReal.process(app::StartTorrent{INFOHASH2, persist::TorrentModel{}, {}});
+    appResponses.pop();
+
+    btManReal.process(
+        app::RequestStats{{std::make_pair(0, INFOHASH), std::make_pair(1, INFOHASH2)}});
+
+    {
+        ASSERT_EQ(appResponses.numToRead(), 2);
+        const auto msg = appResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<app::PeerStats>(msg));
+        const auto ps1 = std::get<app::PeerStats>(msg);
+        EXPECT_EQ(ps1.connectedPeersCount, 0);
+        EXPECT_EQ(ps1.knownPeerCount, 0);
+        EXPECT_EQ(ps1.torrId, 0);
+
+        const auto msg2 = appResponses.pop();
+        ASSERT_TRUE(std::holds_alternative<app::PeerStats>(msg2));
+        const auto ps2 = std::get<app::PeerStats>(msg2);
+        EXPECT_EQ(ps2.connectedPeersCount, 0);
+        EXPECT_EQ(ps2.knownPeerCount, 0);
+        EXPECT_EQ(ps2.torrId, 1);
+    }
 }
 
 } // namespace fractals::network::p2p

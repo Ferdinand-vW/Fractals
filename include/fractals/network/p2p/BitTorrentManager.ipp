@@ -1,3 +1,4 @@
+#include "fractals/AppId.h"
 #include "fractals/app/AppEventQueue.h"
 #include "fractals/app/Client.h"
 #include "fractals/app/Event.h"
@@ -35,7 +36,7 @@ BitTorrentManagerImpl<PeerServiceT>::BitTorrentManagerImpl(
     persist::PersistEventQueue::LeftEndPoint persistQueue,
     disk::DiskEventQueue::LeftEndPoint diskQueue,
     http::AnnounceEventQueue::LeftEndPoint announceQueue, app::AppEventQueue::LeftEndPoint appQueue)
-    : clientId(app::generate_peerId()), peerEventHandler{this}, diskEventHandler{this},
+    : clientId(Fractals::APPID), peerEventHandler{this}, diskEventHandler{this},
       announceEventHandler{this}, persistEventHandler{this}, appEventHandler(this),
       peerService(peerService), coordinator(coordinator), persistQueue(persistQueue),
       diskQueue(diskQueue), announceQueue(announceQueue), appQueue(appQueue)
@@ -150,6 +151,40 @@ void BitTorrentManagerImpl<PeerServiceT>::process(const app::StopTorrent &req)
 }
 
 template <typename PeerServiceT>
+void BitTorrentManagerImpl<PeerServiceT>::process(const app::StartTorrent &req)
+{
+    spdlog::info("BtMan::process(StartTorrent) infoHash={}", req.infoHash);
+    auto torrIt = torrents.find(req.infoHash);
+    if (torrIt == torrents.end())
+    {
+        torrIt = torrents.emplace(req.infoHash, TorrentState{req.torrent, false}).first;
+    }
+
+    if (torrIt->second.isComplete)
+    {
+        appQueue.push(app::CompletedTorrent{req.infoHash});
+    }
+    else
+    {
+        peerTracker.activateTorrent(req.infoHash);
+        auto pieceIt = pieceMan.find(req.infoHash);
+        if (pieceIt != pieceMan.end())
+        {
+            pieceIt->second.setActive(true);
+        }
+        else
+        {
+            PieceStateManager psm;
+            psm.setActive(true);
+            pieceMan.emplace(req.infoHash, psm);
+        }
+
+        appQueue.push(app::ResumedTorrent{req.infoHash});
+        diskQueue.push(disk::InitTorrent{req.torrent, req.files});
+    }
+}
+
+template <typename PeerServiceT>
 void BitTorrentManagerImpl<PeerServiceT>::process(const app::Shutdown &req)
 {
     spdlog::info("BtMan::process(Shutdown)");
@@ -197,40 +232,6 @@ void BitTorrentManagerImpl<PeerServiceT>::process(const disk::ReadSuccess &resp)
 {
     spdlog::info("BtMan::process(ReadSuccess) infoHash={}", resp.tm.getInfoHash());
     persistQueue.push(persist::AddTorrent(resp.tm, resp.readPath, resp.writePath));
-}
-
-template <typename PeerServiceT>
-void BitTorrentManagerImpl<PeerServiceT>::process(const app::StartTorrent &req)
-{
-    spdlog::info("BtMan::process(StartTorrent) infoHash={}", req.infoHash);
-    auto torrIt = torrents.find(req.infoHash);
-    if (torrIt == torrents.end())
-    {
-        torrIt = torrents.emplace(req.infoHash, TorrentState{req.torrent, false}).first;
-    }
-
-    if (torrIt->second.isComplete)
-    {
-        appQueue.push(app::CompletedTorrent{req.infoHash});
-    }
-    else
-    {
-        peerTracker.activateTorrent(req.infoHash);
-        auto pieceIt = pieceMan.find(req.infoHash);
-        if (pieceIt != pieceMan.end())
-        {
-            pieceIt->second.setActive(true);
-        }
-        else
-        {
-            PieceStateManager psm;
-            psm.setActive(true);
-            pieceMan.emplace(req.infoHash, psm);
-        }
-
-        appQueue.push(app::ResumedTorrent{req.infoHash});
-        diskQueue.push(disk::InitTorrent{req.torrent, req.files});
-    }
 }
 
 template <typename PeerServiceT>
