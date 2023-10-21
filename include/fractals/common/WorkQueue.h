@@ -50,7 +50,7 @@ template <uint32_t SIZE, typename Event> class WorkQueueImpl
     {
         if (size() == QUEUE_SIZE)
         {
-            assert(false);
+            spdlog::error("WorkQueue::push -> droppping msg");
             return;
         }
         mEvents[mHead % QUEUE_SIZE] = event;
