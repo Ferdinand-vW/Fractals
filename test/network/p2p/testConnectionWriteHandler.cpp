@@ -56,17 +56,11 @@ class MockBufferedQueueManager
         const auto it = mBuffers.find(p);
         if (it == mBuffers.end())
         {
-            spdlog::info("new buffer of size={}", m.size());
             mBuffers.emplace(p, WriteMsgState(std::move(m)));
         }
         else if (it->second.isComplete())
         {
-            spdlog::info("overwrite buffer of size={}", m.size());
             mBuffers.at(p) = WriteMsgState(std::move(m));
-        }
-        else
-        {
-            spdlog::info("do nothing?={} {} {}", it->second.isComplete(), it->second.remaining(), m.size());
         }
     }
 
@@ -75,14 +69,18 @@ class MockBufferedQueueManager
         return true;
     }
 
-    std::deque<ReadMsgState>& getReadBuffers(const PeerFd p)
+    void removeFromWriteBuffer(const PeerFd& p)
+    {
+        mBuffers.erase(p);
+    }
+
+    std::deque<ReadMsgState>& getReadBuffers(const PeerFd& p)
     {
         return readBuffers;
     }
 
-    WriteMsgState *getWriteBuffer(const PeerFd p)
+    WriteMsgState *getWriteBuffer(const PeerFd& p)
     {
-        spdlog::info("getWriteBuffer for peer={}", p.getId().toString());
         return &mBuffers.at(p);
     }
 
@@ -96,9 +94,7 @@ using MockWriteHandler = EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>,
 std::vector<char> readFromFd(int fd)
 {
     char c[512];
-    spdlog::info("TEST::readFromFd waiting for data from fd={}", fd);
     int n = read(fd, &c[0], 512);
-    spdlog::info("TEST::readFromFd read {} bytes from fd={}", n, fd);
     assert(n > 0);
 
     return std::vector<char>(std::begin(c), std::begin(c) + n);
@@ -113,9 +109,6 @@ std::pair<int, PeerFd> createPeer()
 {
     int pipeFds[2];
     int pipeRes = pipe(pipeFds);
-
-    // Set file descriptor to non blocking
-    // fcntl(pipeFds[0], F_SETFL);
 
     assert(pipeRes == 0);
 
@@ -157,14 +150,19 @@ TEST(CONNECTION_WRITE, sub_and_unsub)
 
     t.join();
 
-    ASSERT_EQ(queue.numToRead(), 5);
+    ASSERT_EQ(queue.numToRead(), 6);
     CtlResponse peer1Resp{peer1, ""};
+    ConnectionCloseEvent peer1Close{peer1.getId()};
     CtlResponse peer2Resp{peer2, ""};
-    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer1Resp );
-    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp );
-    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer1Resp );
-    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp );
-    ASSERT_EQ(std::get<DeactivateResponse>(queue.pop()), DeactivateResponse{});
+    ConnectionCloseEvent peer2Close{peer2.getId()};
+    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer1Resp);
+    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp);
+    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer1Resp);
+    ASSERT_EQ(std::get<ConnectionCloseEvent>(queue.pop()), peer1Close);
+    ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp);
+    ASSERT_EQ(std::get<ConnectionCloseEvent>(queue.pop()), peer2Close);
+    
+    ASSERT_FALSE(mw.isActive());
 }
 
 TEST(CONNECTION_WRITE, one_subscriber_write_one)
@@ -184,7 +182,6 @@ TEST(CONNECTION_WRITE, one_subscriber_write_one)
 
     auto t = std::thread([&]() { mw.run(); });
 
-    // bqm.addToWriteBuffer(peer, writeData);
     queue.push(Subscribe{peer});
     queue.push(we);
     mw.notify();
@@ -223,46 +220,37 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
 
         const auto receiveData = readFromFd(readFd);
 
-        queue.push(UnSubscribe{peer});
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
     }
     {
-
         WriteEvent we{peer, {'t', 'e', 's', 't', '1'}};
 
-        queue.push(Subscribe(peer));
         queue.push(we);
         mw.notify();
 
         const auto receiveData = readFromFd(readFd);
 
-        queue.push(UnSubscribe{peer});
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
     }
     {
-
         WriteEvent we{peer, {'t', 'e', 's', 't', '2'}};
 
-        queue.push(Subscribe(peer));
         queue.push(we);
         mw.notify();
 
         const auto receiveData = readFromFd(readFd);
 
-        queue.push(UnSubscribe{peer});
         mw.notify();
 
         EXPECT_THAT(we.message, testing::ContainerEq(receiveData));
     }
-
     {
         WriteEvent we{peer, {'t', 'e', 's', 't', '4'}};
 
-        queue.push(Subscribe(peer));
         queue.push(we);
         mw.notify();
 

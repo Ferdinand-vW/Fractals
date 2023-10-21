@@ -169,7 +169,6 @@ void PREFIX::run()
                                           },
                                           [&](Deactivate stop)
                                           {
-                                              spdlog::info("EpollService::run. Deactivate");
                                               state = State::Inactive;
                                           },
                                           [&](WriteEvent data)
@@ -240,8 +239,6 @@ void PREFIX::run()
                     {
                         queue.push(ConnectionAccepted{peer});
                         pending.erase(peer);
-                        disableWrite(peer);
-                        continue;
                     }
 
                     auto *writeMsg = buffMan.getWriteBuffer(peer);
@@ -249,21 +246,22 @@ void PREFIX::run()
                     {
                         spdlog::error("EpollService::run. could not find write buffer for peer={}",
                                       peer.getId().toString());
+                        disableWrite(peer);
                         continue;
                     }
 
                     if (!writeData(peer, writeMsg))
                     {
-                        disableWrite(peer);
                         queue.push(WriteEventResponse{peer, "Could not write any data to peer"});
                     }
 
                     if (writeMsg->isComplete())
                     {
                         queue.push(WriteEventResponse{peer, ""});
-                        disableWrite(peer);
                         buffMan.removeFromWriteBuffer(peer);
                     }
+
+                    disableWrite(peer);
                 }
             }
             else
