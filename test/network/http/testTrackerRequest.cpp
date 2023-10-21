@@ -68,7 +68,7 @@ TEST_F(TrackerRequestTest, make_tracker_request_empty)
     std::string_view vw{sha1.begin(), sha1.end()};
     common::InfoHash infoHash{sha1};
     const TrackerRequest tr("announce.url", infoHash, common::url_encode<20>(infoHash.underlying),
-                            req.peer_id, common::url_encode<20>(req.peer_id), 6882, 0, 0, 0, 0);
+                            req.appId.underlying, common::url_encode<20>(req.appId.underlying), 6882, 0, 0, 0, 0);
 
     ASSERT_EQ(tr, req);
 }
@@ -97,7 +97,7 @@ TEST_F(TrackerRequestTest, match_torrent_file)
                                .info = info};
 
     TrackerRequest req("https://nyaa.si/", mi, APPID);
-    req.peer_id = sourceRequest.peer_id;
+    req.appId = sourceRequest.appId;
     req.url_peer_id = sourceRequest.url_peer_id;
 
     ASSERT_EQ(sourceMetaInfo, mi);
