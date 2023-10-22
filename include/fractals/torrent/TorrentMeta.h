@@ -58,11 +58,11 @@ namespace fractals::torrent {
              uint64_t getSize() const;
 
         private:
-            std::string m_name;
-            std::string m_dir;
-            std::vector<FileInfo> m_files;
-            MetaInfo m_mi;
-            common::InfoHash m_info_hash;
+            std::string name;
+            std::string dir;
+            std::vector<FileInfo> files;
+            MetaInfo metaInfo;
+            common::InfoHash infoHash;
     };
 
 }

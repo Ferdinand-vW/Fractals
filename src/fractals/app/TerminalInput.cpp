@@ -27,29 +27,29 @@ namespace fractals::app {
 
     // Component implementation.
     Element TerminalInputBase::Render() {
-        cursor_position =
-        std::max(0, std::min<int>(content_->size(), cursor_position));
-        auto main_decorator = flex | size(HEIGHT, EQUAL, 1);
-        bool is_focused = Focused();
+        cursorPosition =
+        std::max(0, std::min<int>(content_->size(), cursorPosition));
+        auto mainDecorator = flex | size(HEIGHT, EQUAL, 1);
+        bool isFocused = Focused();
         
         // Not focused.
-        if (!is_focused)
-            return text(*content_) | main_decorator | reflect(input_box_);
+        if (!isFocused)
+            return text(*content_) | mainDecorator | reflect(inputBox);
         
-        std::string part_before_cursor = content_->substr(0, cursor_position);
+        std::string partBeforeCursor = content_->substr(0, cursorPosition);
 
         return
             hbox(
                 text(L"> "),
-                text(part_before_cursor),
+                text(partBeforeCursor),
                 text(L"\u2588") // block character
-            ) | flex | frame | main_decorator | bold | color(Color::Blue) | reflect(input_box_);
+            ) | flex | frame | mainDecorator | bold | color(Color::Blue) | reflect(inputBox);
             // sadly blinking didn't seem to work
     }
     
     bool TerminalInputBase::OnEvent(Event event) {
-        cursor_position =
-        std::max(0, std::min<int>(content_->size(), cursor_position));
+        cursorPosition =
+        std::max(0, std::min<int>(content_->size(), cursorPosition));
     
         if (event.is_mouse())
             return OnMouseEvent(event);
@@ -58,32 +58,32 @@ namespace fractals::app {
     
         // Backspace.
         if (event == Event::Backspace) {
-            if (cursor_position == 0)
+            if (cursorPosition == 0)
                 return false;
-            content_->erase(cursor_position - 1, 1);
-            cursor_position--;
-            on_change();
+            content_->erase(cursorPosition - 1, 1);
+            cursorPosition--;
+            onChange();
             return true;
         }
         
         // Delete
         if (event == Event::Delete) {
-            if (cursor_position == int(content_->size()))
+            if (cursorPosition == int(content_->size()))
                 return false;
-            content_->erase(cursor_position, 1);
-            on_change();
+            content_->erase(cursorPosition, 1);
+            onChange();
             return true;
         }
         
         // Enter.
         if (event == Event::Return) {
-            on_enter();
+            onEnter();
             return true;
         }
 
         // Escape.
         if(event == Event::Escape) {
-            on_escape();
+            onEscape();
             return true;
         }
     
@@ -92,31 +92,31 @@ namespace fractals::app {
         }
     
         // Arrow keys
-        if (event == Event::ArrowLeft && cursor_position > 0) {
-            cursor_position--;
+        if (event == Event::ArrowLeft && cursorPosition > 0) {
+            cursorPosition--;
             return true;
         }
     
-        if (event == Event::ArrowRight && cursor_position < (int)content_->size()) {
-            cursor_position++;
+        if (event == Event::ArrowRight && cursorPosition < (int)content_->size()) {
+            cursorPosition++;
             return true;
         }
     
         if (event == Event::Home) {
-            cursor_position = 0;
+            cursorPosition = 0;
             return true;
         }
     
         if (event == Event::End) {
-            cursor_position = (int)content_->size();
+            cursorPosition = (int)content_->size();
             return true;
         }
     
         // Content
         if (event.is_character()) {
-            content_->insert(cursor_position, event.character()); // (cursor_position, 1, event.character())
-            cursor_position++;
-            on_change();
+            content_->insert(cursorPosition, event.character()); // (cursor_position, 1, event.character())
+            cursorPosition++;
+            onChange();
             return true;
         }
     return false;
@@ -125,19 +125,19 @@ namespace fractals::app {
     bool TerminalInputBase::OnMouseEvent(Event event) {
         if (!CaptureMouse(event))
             return false;
-        if (!input_box_.Contain(event.mouse().x, event.mouse().y))
+        if (!inputBox.Contain(event.mouse().x, event.mouse().y))
             return false;
         
         if (event.mouse().button == Mouse::Left &&
             event.mouse().motion == Mouse::Pressed) {
             TakeFocus();
-            int new_cursor_position =
-                cursor_position + event.mouse().x - cursor_box_.x_min;
-            new_cursor_position =
-                std::max(0, std::min<int>(content_->size(), new_cursor_position));
-            if (cursor_position != new_cursor_position) {
-            cursor_position = new_cursor_position;
-            on_change();
+            int newCursorPosition =
+                cursorPosition + event.mouse().x - cursorBox.x_min;
+            newCursorPosition =
+                std::max(0, std::min<int>(content_->size(), newCursorPosition));
+            if (cursorPosition != newCursorPosition) {
+            cursorPosition = newCursorPosition;
+            onChange();
             }
         }
         return true;

@@ -50,7 +50,7 @@ template <typename EpollService, typename TcpService> class PeerServiceImpl
         peerFds.erase(peer);
         handShaked.erase(peer);
 
-        int32_t fd = tcpService.connect(peer.m_ip, peer.m_port);
+        int32_t fd = tcpService.connect(peer.ip, peer.port);
 
         if (fd < 0)
         {
@@ -121,14 +121,14 @@ template <typename EpollService, typename TcpService> class PeerServiceImpl
                         {
                             static constexpr size_t MAX_SIZE{150};
                             int cappedSize = std::min(MAX_SIZE, event.mMessage.size());
-                            common::string_view vw(event.mMessage.begin(),
+                            std::string_view vw(event.mMessage.begin(),
                                                    event.mMessage.begin() + cappedSize);
 
                             const auto serError = std::get<SerializeError>(decoded);
                             spdlog::error("PeerService::ReadEvent. Serialization error. Peer={} "
                                           "error={} payload={}",
                                           event.peer.getId().toString(), serError.getError(),
-                                          common::bytes_to_hex(vw));
+                                          common::bytesToHex(vw));
                             return ConnectionDisconnected{event.peer.getId()};
                         }
                         else if (!std::holds_alternative<KeepAlive>(decoded))

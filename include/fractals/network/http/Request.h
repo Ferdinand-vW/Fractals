@@ -27,7 +27,7 @@ struct TrackerRequest
     TrackerRequest(const std::string &announce, const persist::TorrentModel &model, const common::AppId& appId);
     TrackerRequest(const std::string &announce,
                    const common::InfoHash &infoHash, const std::string urlInfoHash,
-                   const common::AppId& appId, const std::string urlPeerId, int port,
+                   const common::AppId& appId, const std::string urlAppId, int port,
                    int uploaded, int downloaded, int left, int compact);
 
     std::string announce;
@@ -35,12 +35,12 @@ struct TrackerRequest
     /**
     20-byte SHA1 hash of info value in MetaInfo file
     */
-    common::InfoHash info_hash;
+    common::InfoHash infoHash;
 
     /**
-    URL encoding of @info_hash
+    URL encoding of @infoHash
     */
-    std::string url_info_hash;
+    std::string urlInfoHash;
 
     /**
     20-byte string used as unique id for client
@@ -50,7 +50,7 @@ struct TrackerRequest
     /**
     URL encoding of 20-byte string used as unique id for client
     */
-    std::string url_peer_id;
+    std::string urlAppId;
 
     /**
     port number that client is listening on
@@ -100,7 +100,7 @@ struct TrackerResponse
     /**
     Populated if tracker returns error
     */
-    neither::Maybe<std::string> warning_message;
+    neither::Maybe<std::string> warningMessage;
 
     /**
     Expected time interval between each tracker request
@@ -110,9 +110,9 @@ struct TrackerResponse
     /**
     Minimum time interval allowed between each tracker request
     */
-    neither::Maybe<int> min_interval;
+    neither::Maybe<int> minInterval;
 
-    neither::Maybe<std::string> tracker_id;
+    neither::Maybe<std::string> trackerId;
 
     /**
     Number of seeders

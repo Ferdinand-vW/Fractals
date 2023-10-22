@@ -19,7 +19,7 @@ namespace fractals::app {
     }
 
     Color feedBackColor(Feedback fb) {
-        return feedBackTypeColor(fb.m_type);
+        return feedBackTypeColor(fb.msgType);
     }
 
 }

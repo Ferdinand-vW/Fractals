@@ -12,11 +12,11 @@ A peer is identified by ip address and port
 class PeerId
 {
   public:
-    std::string m_ip{""};
-    uint16_t m_port{0};
+    std::string ip{""};
+    uint16_t port{0};
 
     constexpr PeerId() = default;
-    constexpr PeerId(std::string ip, uint16_t port) : m_ip(ip), m_port(port){};
+    constexpr PeerId(const std::string& ip, uint16_t port) : ip(ip), port(port){};
 
     // Required for ordered data structures
     bool operator<(const PeerId &p2) const;
@@ -29,8 +29,8 @@ A Peer is also assigned some random unique name
 */
 struct Peer
 {
-    std::string peer_name;
-    PeerId peer_id;
+    std::string name;
+    PeerId id;
 
     bool operator==(const Peer &p) const;
 };
@@ -48,7 +48,7 @@ template <> struct std::hash<fractals::network::http::PeerId>
         // second and third and combine them using XOR
         // and bit shifting:
 
-        return ((std::hash<std::string>()(p.m_ip) ^ (std::hash<uint>()(p.m_port) << 1)) >> 1);
+        return ((std::hash<std::string>()(p.ip) ^ (std::hash<uint>()(p.port) << 1)) >> 1);
     }
 };
 } // namespace std

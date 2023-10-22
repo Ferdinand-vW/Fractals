@@ -15,12 +15,12 @@ namespace fractals::app {
         /**
         The actual screen object from FTXUI library
         */
-        ftxui::ScreenInteractive &m_screen;
+        ftxui::ScreenInteractive &screen;
         /**
         The thread responsible for updating the screen object
         */
-        std::optional<std::thread> m_ticker;
-        bool m_running = false;
+        std::optional<std::thread> ticker;
+        bool isRunning = false;
 
         public:
             ScreenTicker(ftxui::ScreenInteractive &screen);

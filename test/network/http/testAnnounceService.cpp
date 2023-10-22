@@ -118,7 +118,7 @@ TEST_F(AnnounceServiceTest, PollResponseSuccess)
     const Announce msg = requestQueue.pop();
     ASSERT_EQ(msg.infoHash, INFO_HASH);
     ASSERT_EQ(msg.peers.size(), 1);
-    ASSERT_EQ(msg.peers.front(), PEER_A.peer_id);
+    ASSERT_EQ(msg.peers.front(), PEER_A.id);
 }
 
 TEST_F(AnnounceServiceTest, PollResponseChanges)
@@ -145,7 +145,7 @@ TEST_F(AnnounceServiceTest, PollResponseChanges)
         const Announce msg = requestQueue.pop();
         ASSERT_EQ(msg.infoHash, INFO_HASH);
         ASSERT_EQ(msg.peers.size(), 1);
-        ASSERT_EQ(msg.peers.front(), PEER_A.peer_id);
+        ASSERT_EQ(msg.peers.front(), PEER_A.id);
     }
 
     { // Second query, exact same request and response
@@ -179,7 +179,7 @@ TEST_F(AnnounceServiceTest, PollResponseChanges)
         const Announce msg = requestQueue.pop();
         ASSERT_EQ(msg.infoHash, INFO_HASH);
         ASSERT_EQ(msg.peers.size(), 1);
-        ASSERT_EQ(msg.peers.front(), PEER_B.peer_id);
+        ASSERT_EQ(msg.peers.front(), PEER_B.id);
     }
 }
 

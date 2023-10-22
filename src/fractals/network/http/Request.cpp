@@ -20,14 +20,14 @@ namespace fractals::network::http
 {
 std::ostream &operator<<(std::ostream &os, const TrackerRequest &tr)
 {
-    auto info_hash_str = common::concat<20>(tr.info_hash.underlying);
+    auto infoHashStr = common::concat<20>(tr.infoHash.underlying);
 
     os << "Tracker Request: " << std::endl;
     os << "{ announce: " + tr.announce << std::endl;
-    os << ", info_hash:" + common::bytes_to_hex<20>(tr.info_hash.underlying) << std::endl;
-    os << ", url_info_hash:" + tr.url_info_hash << std::endl;
-    os << ", peer_id:" + common::bytes_to_hex<20>(tr.appId.underlying) << std::endl;
-    os << ", url_peer_id:" + tr.url_peer_id << std::endl;
+    os << ", infoHash:" + common::bytesToHex<20>(tr.infoHash.underlying) << std::endl;
+    os << ", urlInfoHash:" + tr.urlInfoHash << std::endl;
+    os << ", appId:" + common::bytesToHex<20>(tr.appId.underlying) << std::endl;
+    os << ", urlAppId:" + tr.urlAppId << std::endl;
     os << ", port:" << tr.port << std::endl;
     os << ", uploaded:" << tr.uploaded << std::endl;
     os << ", downloaded:" << tr.downloaded << std::endl;
@@ -41,33 +41,32 @@ std::ostream &operator<<(std::ostream &os, const TrackerRequest &tr)
 bool TrackerRequest::operator==(const TrackerRequest &tr) const
 {
     return announce == tr.announce &&
-           std::equal(info_hash.underlying.begin(), info_hash.underlying.end(),
-                      tr.info_hash.underlying.begin()) &&
-           url_info_hash == tr.url_info_hash &&
+           std::equal(infoHash.underlying.begin(), infoHash.underlying.end(),
+                      tr.infoHash.underlying.begin()) &&
+           urlInfoHash == tr.urlInfoHash &&
            std::equal(appId.underlying.begin(), appId.underlying.end(),
                       tr.appId.underlying.begin()) &&
-           url_peer_id == tr.url_peer_id && port == tr.port && uploaded == tr.uploaded &&
+           urlAppId == tr.urlAppId && port == tr.port && uploaded == tr.uploaded &&
            downloaded == tr.downloaded && left == tr.left && compact == tr.compact;
 }
 
 std::ostream &operator<<(std::ostream &os, const TrackerResponse &s)
 {
-    auto peers_str =
-        common::intercalate(", ", common::map_vector<Peer, std::string>(
-                                      s.peers,
-                                      [](const Peer &p)
-                                      {
-                                          return "(["s + p.peer_name + "]" + p.peer_id.m_ip + ":" +
-                                                 std::to_string(p.peer_id.m_port) + ")";
-                                      }));
+    auto peersStr = common::intercalate(
+        ", ", common::mapVector<Peer, std::string>(s.peers,
+                                                   [](const Peer &p)
+                                                   {
+                                                       return "(["s + p.name + "]" + p.id.ip + ":" +
+                                                              std::to_string(p.id.port) + ")";
+                                                   }));
     os << "Tracker Response: " << std::endl;
-    os << "{ tracker id: " + common::from_maybe(s.tracker_id, "<empty>"s) << std::endl;
+    os << "{ tracker id: " + common::fromMaybe(s.trackerId, "<empty>"s) << std::endl;
     os << ", complete: " + std::to_string(s.complete) << std::endl;
     os << ", incomplete: " + std::to_string(s.incomplete) << std::endl;
     os << ", interval: " + std::to_string(s.interval) << std::endl;
-    os << ", min interval: " + std::to_string(s.min_interval) << std::endl;
-    os << ", warning message: " + common::from_maybe(s.warning_message, "<empty>"s) << std::endl;
-    os << ", peers: " + peers_str << std::endl;
+    os << ", min interval: " + std::to_string(s.minInterval) << std::endl;
+    os << ", warning message: " + common::fromMaybe(s.warningMessage, "<empty>"s) << std::endl;
+    os << ", peers: " + peersStr << std::endl;
     os << "}" << std::endl;
 
     return os;
@@ -75,52 +74,53 @@ std::ostream &operator<<(std::ostream &os, const TrackerResponse &s)
 
 bool TrackerResponse::operator==(const TrackerResponse &tr) const
 {
-    return warning_message == tr.warning_message && interval == tr.interval &&
-           min_interval == tr.min_interval && tracker_id == tr.tracker_id &&
-           complete == tr.complete && incomplete == tr.incomplete &&
-           std::equal(peers.begin(), peers.end(), tr.peers.begin());
+    return warningMessage == tr.warningMessage && interval == tr.interval &&
+           minInterval == tr.minInterval && trackerId == tr.trackerId && complete == tr.complete &&
+           incomplete == tr.incomplete && std::equal(peers.begin(), peers.end(), tr.peers.begin());
 }
 
 TrackerRequest::TrackerRequest(const std::string &announce, const torrent::MetaInfo &mi,
                                const common::AppId &appId)
     : announce(announce),
-      info_hash(common::sha1_encode<20>(bencode::encode(torrent::to_bdict(mi.info)))),
-      url_info_hash(common::url_encode<20>(info_hash.underlying)), appId(appId),
-      url_peer_id(common::url_encode<20>(appId.underlying)), port(6882), uploaded(0), downloaded(0),
+      infoHash(common::sha1_encode<20>(bencode::encode(torrent::toBdict(mi.info)))),
+      urlInfoHash(common::urlEncode<20>(infoHash.underlying)), appId(appId),
+      urlAppId(common::urlEncode<20>(appId.underlying)), port(6882), uploaded(0), downloaded(0),
       left(0), compact(0)
 {
 }
 
 TrackerRequest::TrackerRequest(const std::string &announce, const persist::TorrentModel &model,
                                const common::AppId &appId)
-    : announce(announce), info_hash(model.infoHash),
-      url_info_hash(common::url_encode<20>(info_hash.underlying)), appId(appId),
-      url_peer_id(common::url_encode<20>(appId.underlying)), port(6882), uploaded(0), downloaded(0),
+    : announce(announce), infoHash(model.infoHash),
+      urlInfoHash(common::urlEncode<20>(infoHash.underlying)), appId(appId),
+      urlAppId(common::urlEncode<20>(appId.underlying)), port(6882), uploaded(0), downloaded(0),
       left(0), compact(0)
 {
 }
 
 TrackerRequest::TrackerRequest(const std::string &announce, const common::InfoHash &infoHash,
                                const std::string urlInfoHash, const common::AppId &appId,
-                               const std::string urlPeerId, int port, int uploaded, int downloaded,
+                               const std::string urlAppId, int port, int uploaded, int downloaded,
                                int left, int compact)
-    : announce(announce), info_hash(infoHash), url_info_hash(urlInfoHash), appId(appId),
-      url_peer_id(urlPeerId), port(port), uploaded(uploaded), downloaded(downloaded), left(left),
+    : announce(announce), infoHash(infoHash), urlInfoHash(urlInfoHash), appId(appId),
+      urlAppId(urlAppId), port(port), uploaded(uploaded), downloaded(downloaded), left(left),
       compact(compact){};
 
 std::string TrackerRequest::toHttpGetUrl() const
 {
-    std::string ann_base = announce + "?";
-    std::string ih_prm = "info_hash=" + url_info_hash;
-    std::string peer_prm = "peer_id=" + url_peer_id;
-    std::string port_prm = "port=" + std::to_string(port);
-    std::string upl_prm = "uploaded=" + std::to_string(uploaded);
-    std::string dl_prm = "downloaded=" + std::to_string(downloaded);
-    std::string lft_prm = "left=" + std::to_string(left);
-    std::string cmpt_prm = "compact=1"; //   +std::to_string(tr.compact);
+    // do not change string formatting
+    // this is BT protocol standard
+    std::string annBase = announce + "?";
+    std::string ihPrm = "info_hash=" + urlInfoHash;
+    std::string peerPrm = "peer_id=" + urlAppId;
+    std::string portPrm = "port=" + std::to_string(port);
+    std::string uplPrm = "uploaded=" + std::to_string(uploaded);
+    std::string dlPrm = "downloaded=" + std::to_string(downloaded);
+    std::string lftPrm = "left=" + std::to_string(left);
+    std::string cmptPrm = "compact=1"; //   +std::to_string(tr.compact);
 
-    std::string url = ann_base + common::intercalate("&", {ih_prm, peer_prm, port_prm, upl_prm,
-                                                           dl_prm, lft_prm, cmpt_prm});
+    std::string url = annBase + common::intercalate(
+                                    "&", {ihPrm, peerPrm, portPrm, uplPrm, dlPrm, lftPrm, cmptPrm});
     return url;
 }
 
@@ -128,26 +128,25 @@ std::string TrackerRequest::toHttpGetUrl() const
 // keys are peer id, ip and port
 neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl)
 {
-    auto parse_peer = [](const bdata &bd) -> Either<std::string, Peer>
+    auto parsePeer = [](const bdata &bd) -> Either<std::string, Peer>
     {
-        auto mpeer_dict = common::to_bdict(bd);
-        if (!mpeer_dict.hasValue)
+        auto mpeerDict = common::toBdict(bd);
+        if (!mpeerDict.hasValue)
         {
             return neither::left("Could not coerce bdata to bdict for peer"s);
         }
-        auto peer_dict = mpeer_dict.value;
+        auto peerDict = mpeerDict.value;
 
-        auto mpeer_id = common::to_maybe(peer_dict.find("peer id"))
-                            .flatMap(to_bstring)
+        auto mpeerId = common::toMaybe(peerDict.find("peer id"))
+                            .flatMap(toBstring)
                             .map(mem_fn(&bstring::to_string));
-        auto mip = common::to_maybe(peer_dict.find("ip"))
-                       .flatMap(to_bstring)
+        auto mip = common::toMaybe(peerDict.find("ip"))
+                       .flatMap(toBstring)
                        .map(mem_fn(&bstring::to_string));
-        auto mport = common::to_maybe(peer_dict.find("port"))
-                         .flatMap(to_bint)
-                         .map(std::mem_fn(&bint::value));
+        auto mport =
+            common::toMaybe(peerDict.find("port")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
-        if (!mpeer_id.hasValue)
+        if (!mpeerId.hasValue)
         {
             return neither::left("Could not find field peer id in peers dictionary"s);
         }
@@ -160,10 +159,10 @@ neither::Either<std::string, std::vector<Peer>> parsePeersDict(const blist &bl)
             return neither::left("Could not find field port in peers dictionary"s);
         }
 
-        return neither::right(Peer{mpeer_id.value, PeerId(mip.value, (uint)mport.value)});
+        return neither::right(Peer{mpeerId.value, PeerId(mip.value, (uint)mport.value)});
     };
 
-    return common::mmap_vector<bdata, std::string, Peer>(bl.values(), parse_peer);
+    return common::mmapVector<bdata, std::string, Peer>(bl.values(), parsePeer);
 }
 
 // tracker response peer model in binary format
@@ -191,8 +190,8 @@ neither::Either<std::string, std::vector<Peer>> parsePeersBin(std::vector<char> 
         ushort port = static_cast<unsigned char>(bytes[i + 4]) * 256 +
                       static_cast<unsigned char>(bytes[i + 5]);
 
-        auto peer_id = ip + ":" + std::to_string(port);
-        peers.push_back(Peer{peer_id, PeerId(ip, port)});
+        auto peerId = ip + ":" + std::to_string(port);
+        peers.emplace_back(Peer{peerId, PeerId(ip, port)});
     }
 
     return neither::right<std::vector<Peer>>(peers);
@@ -201,41 +200,41 @@ neither::Either<std::string, std::vector<Peer>> parsePeersBin(std::vector<char> 
 std::variant<std::string, TrackerResponse> TrackerResponse::decode(const bdict &bd)
 {
     auto optfailure = bd.find("failure reason");
-    std::string failure_reason;
+    std::string failureReason;
     if (optfailure)
     {
-        auto mfailure = common::to_maybe(optfailure).flatMap(common::to_bstring);
+        auto mfailure = common::toMaybe(optfailure).flatMap(common::toBstring);
         return mfailure.value.to_string();
     }
 
-    auto warning_message = common::to_maybe(bd.find("warning message"))
-                               .flatMap(to_bstring)
+    auto warningMessage = common::toMaybe(bd.find("warning message"))
+                               .flatMap(toBstring)
                                .map(mem_fn(&bstring::to_string));
 
     auto minterval =
-        common::to_maybe(bd.find("interval")).flatMap(to_bint).map(std::mem_fn(&bint::value));
+        common::toMaybe(bd.find("interval")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
-    auto min_interval =
-        common::to_maybe(bd.find("min interval")).flatMap(to_bint).map(std::mem_fn(&bint::value));
+    auto minInterval =
+        common::toMaybe(bd.find("min interval")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
-    auto tracker_id = common::to_maybe(bd.find("tracker id"))
-                          .flatMap(to_bstring)
+    auto trackerId = common::toMaybe(bd.find("tracker id"))
+                          .flatMap(toBstring)
                           .map(std::mem_fn(&bstring::to_string));
 
     auto mcomplete =
-        common::to_maybe(bd.find("complete")).flatMap(to_bint).map(std::mem_fn(&bint::value));
+        common::toMaybe(bd.find("complete")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
     auto mincomplete =
-        common::to_maybe(bd.find("incomplete")).flatMap(to_bint).map(std::mem_fn(&bint::value));
+        common::toMaybe(bd.find("incomplete")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
-    auto mpeers_unk = common::to_maybe(bd.find("peers"));
-    auto mpeers_dict = mpeers_unk.flatMap(to_blist);
-    auto mpeers_bin = mpeers_unk.flatMap(to_bstring).map(mem_fn(&bstring::value));
+    auto mpeersUnk = common::toMaybe(bd.find("peers"));
+    auto mpeersDict = mpeersUnk.flatMap(toBlist);
+    auto mpeersBin = mpeersUnk.flatMap(toBstring).map(mem_fn(&bstring::value));
 
     std::vector<Peer> peers;
-    if (mpeers_dict.hasValue)
+    if (mpeersDict.hasValue)
     {
-        auto epeers = parsePeersDict(mpeers_dict.value);
+        auto epeers = parsePeersDict(mpeersDict.value);
         if (epeers.isLeft)
         {
             return epeers.leftValue;
@@ -247,9 +246,9 @@ std::variant<std::string, TrackerResponse> TrackerResponse::decode(const bdict &
     }
     else
     {
-        if (mpeers_bin.hasValue)
+        if (mpeersBin.hasValue)
         {
-            auto epeers = parsePeersBin(mpeers_bin.value);
+            auto epeers = parsePeersBin(mpeersBin.value);
             if (epeers.isLeft)
             {
                 return epeers.leftValue;
@@ -278,10 +277,10 @@ std::variant<std::string, TrackerResponse> TrackerResponse::decode(const bdict &
         return "Could not find field incomplete in tracker response"s;
     }
 
-    return TrackerResponse{warning_message,
+    return TrackerResponse{warningMessage,
                            (int)minterval.value,
-                           (int)min_interval,
-                           tracker_id,
+                           (int)minInterval,
+                           trackerId,
                            (int)mcomplete.value,
                            (int)mincomplete.value,
                            peers};
@@ -293,8 +292,8 @@ Announce TrackerResponse::toAnnounce(const common::InfoHash &infoHash, time_t no
     std::transform(peers.begin(), peers.end(), std::back_insert_iterator(peerIds),
                    [](auto &p)
                    {
-                       return p.peer_id;
+                       return p.id;
                    });
-    return Announce{infoHash, now, interval, min_interval, peerIds};
+    return Announce{infoHash, now, interval, minInterval, peerIds};
 }
 } // namespace fractals::network::http

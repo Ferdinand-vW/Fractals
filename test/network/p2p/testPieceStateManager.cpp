@@ -10,11 +10,11 @@ using namespace fractals::common;
 
 using namespace fractals::network::p2p;
 
-const auto hash0 = hex_to_bytes("da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
-const auto hash1 = hex_to_bytes("600ccd1b71569232d01d110bc63e906beab04d8c");
-const auto hash2 = hex_to_bytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
-const auto hash3 = hex_to_bytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
-const auto hash4 = hex_to_bytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
+const auto hash0 = hexToBytes("da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
+const auto hash1 = hexToBytes("600ccd1b71569232d01d110bc63e906beab04d8c");
+const auto hash2 = hexToBytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
+const auto hash3 = hexToBytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
+const auto hash4 = hexToBytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
 
 std::vector<fractals::persist::PieceModel> testPieces{
     {0, 0, 0, 30, hash0, false}, {0, 0, 1, 30, hash1, false}, {0, 0, 2, 30, hash2, false},

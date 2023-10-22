@@ -57,7 +57,7 @@ bool PieceState::isComplete() const
     return getRemainingSize() == 0;
 }
 
-void PieceState::addBlock(const common::string_view block)
+void PieceState::addBlock(const std::string_view block)
 {
     common::append(mPieceData, block);
 }
@@ -67,9 +67,9 @@ std::vector<char> &&PieceState::extractData()
     return std::move(mPieceData);
 }
 
-common::string_view PieceState::getBuffer()
+std::string_view PieceState::getBuffer()
 {
-    return common::string_view{mPieceData.begin(), mPieceData.end()};
+    return std::string_view{mPieceData.begin(), mPieceData.end()};
 }
 
 void PieceStateManager::populate(const std::vector<persist::PieceModel> &pieceModels)

@@ -36,16 +36,16 @@ namespace fractals::app
 TorrentController::TorrentController(app::AppEventQueue::RightEndPoint btQueue,
                                      persist::AppPersistQueue::LeftEndPoint persistQueue)
     : btQueue(btQueue), persistQueue(persistQueue),
-      m_screen(ftxui::ScreenInteractive::Fullscreen()), m_ticker(m_screen)
+      screen(ftxui::ScreenInteractive::Fullscreen()), ticker(screen)
 {
 }
 
 void TorrentController::run()
 {
     // initialize view components
-    Component terminal_input = TerminalInput(&m_terminal_input, "");
-    m_terminal = terminal_input;
-    m_display = TorrentDisplay(terminal_input, idTorrentMap);
+    Component terminalInput = TerminalInput(&terminalInputText, "");
+    terminal = terminalInput;
+    display = TorrentDisplay(terminalInput, idTorrentMap);
 
     // load known torrents
     persistQueue.push(persist::LoadTorrents{});
@@ -66,10 +66,10 @@ void TorrentController::addTorrent(std::string filepath)
 void TorrentController::processBtEvent(const app::AddedTorrent &event)
 {
     spdlog::info("TC::processBtEvent AddedTorrent={}", event.infoHash);
-    m_torrent_counter++;
-    auto [it, _] = idTorrentMap.emplace(m_torrent_counter,
-                                        TorrentDisplayEntry(m_torrent_counter, event.torrent));
-    hashToIdMap.emplace(event.infoHash, m_torrent_counter);
+    idCounter++;
+    auto [it, _] = idTorrentMap.emplace(idCounter,
+                                        TorrentDisplayEntry(idCounter, event.torrent));
+    hashToIdMap.emplace(event.infoHash, idCounter);
 
     if (!it->second.isDownloadComplete())
     {
@@ -85,7 +85,7 @@ void TorrentController::processBtEvent(const app::AddedTorrent &event)
 void TorrentController::processBtEvent(const app::AddTorrentError &err)
 {
     spdlog::info("TC::processBtEvent AddedTorrentError={}", err.error);
-    TorrentDisplayBase::From(m_display.value())
+    TorrentDisplayBase::From(display.value())
         ->setFeedBack(Feedback{FeedbackType::Warning, err.error});
 }
 
@@ -124,9 +124,9 @@ void TorrentController::processBtEvent(const app::ShutdownConfirmation &)
     // we need to make sure that we remove any dependencies to components owned by this class
     // before the library attempts to clean up the components when we still have an existing pointer
     // to one removal of this line may cause segfaults
-    m_ticker.stop();
-    m_display->reset();
-    m_terminal->reset();
+    ticker.stop();
+    display->reset();
+    terminal->reset();
 }
 
 void TorrentController::processBtEvent(const app::PeerStats & peerStats)
@@ -158,9 +158,9 @@ void TorrentController::processPersistEvent(const persist::AllTorrents &loadedTo
         const auto &filesModel = torr.second;
         common::InfoHash infoHash{torrModel.infoHash};
 
-        m_torrent_counter++;
-        auto [it, _] = idTorrentMap.emplace(m_torrent_counter,
-                                            TorrentDisplayEntry(m_torrent_counter, torrModel));
+        idCounter++;
+        auto [it, _] = idTorrentMap.emplace(idCounter,
+                                            TorrentDisplayEntry(idCounter, torrModel));
         hashToIdMap.emplace(infoHash, it->first);
 
         if (it->second.isDownloadComplete())
@@ -245,55 +245,57 @@ void TorrentController::runUI()
 {
     using namespace ftxui;
 
-    auto terminal = m_terminal.value();
-    auto tdb = TorrentDisplayBase::From(m_display.value());
+    auto trmnl = terminal.value();
+    auto tdb = TorrentDisplayBase::From(display.value());
 
     // Sets up control flow of View -> Controller
-    tdb->m_on_add = std::bind(&TorrentController::addTorrent, this, std::placeholders::_1);
-    tdb->m_on_remove = std::bind(&TorrentController::removeTorrent, this, std::placeholders::_1);
-    tdb->m_on_stop = std::bind(&TorrentController::stopTorrent, this, std::placeholders::_1);
-    tdb->m_on_resume = std::bind(&TorrentController::resumeTorrent, this, std::placeholders::_1);
+    tdb->onAdd = std::bind(&TorrentController::addTorrent, this, std::placeholders::_1);
+    tdb->onRemove = std::bind(&TorrentController::removeTorrent, this, std::placeholders::_1);
+    tdb->onStop = std::bind(&TorrentController::stopTorrent, this, std::placeholders::_1);
+    tdb->onResume = std::bind(&TorrentController::resumeTorrent, this, std::placeholders::_1);
 
-    auto doExit = m_screen.ExitLoopClosure(); // had to move this outside of the on_enter definition
+    auto doExit = screen.ExitLoopClosure(); // had to move this outside of the on_enter definition
     // as it would otherwise not trigger. Not sure why though..
-    TerminalInputBase::From(terminal)->on_escape = [this, &doExit]()
+    TerminalInputBase::From(trmnl)->onEscape = [this, &doExit]()
     {
-        spdlog::info("do exit2");
         exit();
         doExit();
     };
-    TerminalInputBase::From(terminal)->on_enter = [this, &doExit]()
+    TerminalInputBase::From(trmnl)->onEnter = [this, &doExit]()
     {
         bool shouldExit =
-            TorrentDisplayBase::From(m_display.value())->parse_command(m_terminal_input);
+            TorrentDisplayBase::From(display.value())->parseCommand(terminalInputText);
         if (shouldExit)
         {
-            spdlog::info("do exit");
             exit();
             doExit();
         }
-        m_terminal_input = "";
+        terminalInputText = "";
     };
 
-    auto renderer = Renderer(terminal,
+    auto renderer = Renderer(trmnl,
                              [&]
                              {
-                                 return m_display.value()->Render();
+                                 return display.value()->Render();
                              });
-    m_ticker.start();
-    Loop loop(&m_screen, renderer);
+    ticker.start();
+    Loop loop(&screen, renderer);
 
     uint64_t loopCounter{0};
     static constexpr auto tenMs = std::chrono::milliseconds(10);
     auto now = std::chrono::high_resolution_clock::now() + tenMs;
     while (!loop.HasQuitted())
     {
-        m_screen.RequestAnimationFrame();
+        screen.RequestAnimationFrame();
         loop.RunOnce();
 
-        if (loopCounter % (tenMs.count() * 10) == 0)
+        if (loopCounter % 10 == 0)
         {
             readResponses();
+            
+        }
+        if (loopCounter % 100 == 0)
+        {
             refreshStats();
         }
 

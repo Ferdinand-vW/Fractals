@@ -46,10 +46,10 @@ std::variant<AddedTorrent, TorrentExists> PersistClient::addTorrent(const AddTor
                          at.writePath,
                          at.tm.getSize(),
                          mi.info.pieces.size(),
-                         mi.info.piece_length,
-                         mi.creation_date,
+                         mi.info.pieceLength,
+                         mi.creationDate,
                          mi.comment,
-                         mi.created_by,
+                         mi.createdBy,
                          mi.encoding,
                          mi.info.publish};
     const auto torrId = dbConn->insert(torrent);
@@ -71,17 +71,17 @@ std::variant<AddedTorrent, TorrentExists> PersistClient::addTorrent(const AddTor
 
     const auto &infoDict = at.tm.getMetaInfo().info;
     std::string_view vw(infoDict.pieces.begin(), infoDict.pieces.end());
-    uint32_t numPieces = infoDict.number_of_pieces();
+    uint32_t numPieces = infoDict.numberOfPieces();
     uint32_t pieceIndex{0};
     static constexpr uint64_t hashLength{20};
     for (; pieceIndex < numPieces - 1; ++pieceIndex)
     {
         const auto hashView = vw.substr(pieceIndex * hashLength, hashLength);
-        dbConn->insert(PieceModel{-1, torrId, pieceIndex, infoDict.piece_length,
+        dbConn->insert(PieceModel{-1, torrId, pieceIndex, infoDict.pieceLength,
                                   std::vector<char>(hashView.begin(), hashView.end()), false});
     }
 
-    const auto cumulativeSize = infoDict.piece_length * (infoDict.number_of_pieces() - 1);
+    const auto cumulativeSize = infoDict.pieceLength * (infoDict.numberOfPieces() - 1);
     // last piece usually has size different from pieceLength
     const auto lastPieceSize = at.tm.getSize() - cumulativeSize;
 
@@ -91,7 +91,7 @@ std::variant<AddedTorrent, TorrentExists> PersistClient::addTorrent(const AddTor
 
     TrackerModel mainTracker{-1, torrId, at.tm.getMetaInfo().announce};
     dbConn->insert(mainTracker);
-    for (const auto &annUrl : at.tm.getMetaInfo().announce_list)
+    for (const auto &annUrl : at.tm.getMetaInfo().announceList)
     {
         dbConn->insert(TrackerModel{-1, torrId, annUrl});
     }
@@ -127,7 +127,7 @@ std::vector<std::pair<TorrentModel, std::vector<FileModel>>> PersistClient::load
     for (const auto &torr : torrs)
     {
         torrentIds.emplace(common::InfoHash{torr.infoHash}, torr.id);
-        const auto files = dbConn->get_all<FileModel>(where(c(&FileModel::torrent_id) == torr.id));
+        const auto files = dbConn->get_all<FileModel>(where(c(&FileModel::torrentId) == torr.id));
 
         result.emplace_back(std::make_pair(torr, files));
     }
@@ -140,10 +140,10 @@ void PersistClient::deleteTorrent(const common::InfoHash &infoHash)
     auto torrId = torrentIds.find(infoHash);
     if (torrId != torrentIds.end())
     {
-        dbConn->remove_all<PieceModel>(where(c(&PieceModel::torrent_id) == torrId->second));
-        dbConn->remove_all<AnnounceModel>(where(c(&AnnounceModel::torrent_id) == torrId->second));
-        dbConn->remove_all<TrackerModel>(where(c(&TrackerModel::torrent_id) == torrId->second));
-        dbConn->remove_all<FileModel>(where(c(&FileModel::torrent_id) == torrId->second));
+        dbConn->remove_all<PieceModel>(where(c(&PieceModel::torrentId) == torrId->second));
+        dbConn->remove_all<AnnounceModel>(where(c(&AnnounceModel::torrentId) == torrId->second));
+        dbConn->remove_all<TrackerModel>(where(c(&TrackerModel::torrentId) == torrId->second));
+        dbConn->remove_all<FileModel>(where(c(&FileModel::torrentId) == torrId->second));
         dbConn->remove<TorrentModel>(torrId->second);
         torrentIds.erase(infoHash);
         inMemoryStats.erase(infoHash);
@@ -167,7 +167,7 @@ std::vector<TrackerModel> PersistClient::loadTrackers(const common::InfoHash &ih
     auto torrId = torrentIds.find(ih);
     if (torrId != torrentIds.end())
     {
-        return dbConn->get_all<TrackerModel>(where(c(&TrackerModel::torrent_id) == torrId->second));
+        return dbConn->get_all<TrackerModel>(where(c(&TrackerModel::torrentId) == torrId->second));
     }
 
     return {};
@@ -179,7 +179,7 @@ void PersistClient::addPiece(const PieceComplete &pm)
     if (torrId != torrentIds.end())
     {
         auto pieceResults = dbConn->get_all<PieceModel>(where(
-            c(&PieceModel::piece) == pm.piece && c(&PieceModel::torrent_id) == torrId->second));
+            c(&PieceModel::piece) == pm.piece && c(&PieceModel::torrentId) == torrId->second));
 
         assert(pieceResults.size() == 1);
         auto piece = pieceResults.front();
@@ -195,7 +195,7 @@ std::vector<PieceModel> PersistClient::loadPieces(const common::InfoHash &infoHa
     auto torrId = torrentIds.find(infoHash);
     if (torrId != torrentIds.end())
     {
-        return dbConn->get_all<PieceModel>(where(c(&PieceModel::torrent_id) == torrId->second));
+        return dbConn->get_all<PieceModel>(where(c(&PieceModel::torrentId) == torrId->second));
     }
 
     return {};
@@ -206,7 +206,7 @@ void PersistClient::deletePieces(const common::InfoHash &infoHash)
     auto torrId = torrentIds.find(infoHash);
     if (torrId != torrentIds.end())
     {
-        dbConn->remove_all<PieceModel>(where(c(&PieceModel::torrent_id) == torrId->second));
+        dbConn->remove_all<PieceModel>(where(c(&PieceModel::torrentId) == torrId->second));
 
         assert(false); // update inmemory?
     }
@@ -227,7 +227,7 @@ void PersistClient::deleteAnnounce(const common::InfoHash &infoHash)
     auto torrId = torrentIds.find(infoHash);
     if (torrId != torrentIds.end())
     {
-        dbConn->remove_all<AnnounceModel>(where(c(&AnnounceModel::torrent_id) == torrId->second));
+        dbConn->remove_all<AnnounceModel>(where(c(&AnnounceModel::torrentId) == torrId->second));
         assert(false); // update inmemory?
     }
 }
@@ -238,7 +238,7 @@ std::vector<AnnounceModel> PersistClient::loadAnnounces(const common::InfoHash &
     if (torrId != torrentIds.end())
     {
         return dbConn->get_all<AnnounceModel>(
-            where(c(&AnnounceModel::torrent_id) == torrId->second));
+            where(c(&AnnounceModel::torrentId) == torrId->second));
     }
 
     return {};

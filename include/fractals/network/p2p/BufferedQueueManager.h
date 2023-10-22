@@ -30,7 +30,7 @@ class ReadMsgState
 
     void reset();
 
-    common::string_view getBuffer() const;
+    std::string_view getBuffer() const;
 
     int32_t getRemaining() const;
 
@@ -45,13 +45,13 @@ class WriteMsgState
     WriteMsgState(std::vector<char> &&data);
 
     bool isComplete() const;
-    common::string_view &getBuffer();
+    std::string_view &getBuffer();
     uint32_t remaining() const;
     // Shift should be equal to amount of data written
     void flush(uint32_t shift);
 
   private:
-    common::string_view mBufferedQueueManagerView;
+    std::string_view mBufferedQueueManagerView;
     std::vector<char> buffer;
 };
 
@@ -62,7 +62,7 @@ class BufferedQueueManager
 
     template <typename Container> bool addToReadBuffer(const PeerFd &p, Container &&data)
     {
-        common::string_view view(data.begin(), data.end());
+        std::string_view view(data.begin(), data.end());
         bool hasCompletedMessage{false};
         while (!view.empty())
         {
@@ -72,7 +72,7 @@ class BufferedQueueManager
         return hasCompletedMessage;
     }
 
-    bool parseMessage(const PeerFd &p, common::string_view &data)
+    bool parseMessage(const PeerFd &p, std::string_view &data)
     {
         const auto it = mReadBuffers.find(p);
 
@@ -87,7 +87,7 @@ class BufferedQueueManager
             m.initialize(49 + len); // Size of HandShake message without len
             bytes = std::min(m.getRemaining(), static_cast<int32_t>(data.size()));
             m.append(data, bytes);
-            mReadBuffers[p].push_back(m);
+            mReadBuffers[p].emplace_back(m);
 
             complete = m.isComplete();
         }
@@ -116,7 +116,7 @@ class BufferedQueueManager
             if (m.getBuffer().size() >= 4)
             {
                 auto bufView = m.getBuffer();
-                const auto len = common::bytes_to_int<uint32_t>(bufView);
+                const auto len = common::bytesToInt<uint32_t>(bufView);
                 m.initialize(len + 4);
             }
 

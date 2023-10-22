@@ -8,29 +8,29 @@
 
 namespace fractals::app {
 
-    ScreenTicker::ScreenTicker(ftxui::ScreenInteractive &screen) : m_screen(screen) {}
+    ScreenTicker::ScreenTicker(ftxui::ScreenInteractive &screen) : screen(screen) {}
     ScreenTicker::~ScreenTicker() {
-        m_running = false;
-        m_ticker->join();
-        m_ticker.reset();
+        isRunning = false;
+        ticker->join();
+        ticker.reset();
     }
 
     void ScreenTicker::start() {
-        if(!m_running) {
-            m_running = true;
+        if(!isRunning) {
+            isRunning = true;
             //spawn a new thread that refreshes the display every 50ms
-            m_ticker = std::thread([this]() {
-                while(m_running) {
+            ticker = std::thread([this]() {
+                while(isRunning) {
                     using namespace std::chrono_literals;
                     std::this_thread::sleep_for(0.05s);
-                    m_screen.PostEvent(ftxui::Event::Custom);
+                    screen.PostEvent(ftxui::Event::Custom);
                 }
             });
         }
     }
 
     void ScreenTicker::stop() {
-        m_running = false;
+        isRunning = false;
     }
 
 }

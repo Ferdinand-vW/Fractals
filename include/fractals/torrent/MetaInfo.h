@@ -21,7 +21,7 @@ struct FileInfo
     std::vector<char> md5sum;
     std::vector<std::string> path;
 
-    std::string to_string(int /* len = 100 */)
+    std::string to_string(int /* len = 100 */) const
     {
         const auto md5sumStr = md5sum.empty() ? "<empty>" : std::string(md5sum.begin(), md5sum.end());
         return "{ length =  "s + std::to_string(length) + ", path = [" + common::intercalate(",", path) +
@@ -40,12 +40,12 @@ struct MultiFile
     std::string name; // directory name
     std::vector<FileInfo> files;
 
-    std::string to_string(int len = 100)
+    std::string to_string(int len = 100) const
     {
-        auto s_name = name.empty() ? "<empty>" : name;
-        auto file_to_string = [len](FileInfo f) { return f.to_string(len); };
-        auto s_files = common::map_vector<FileInfo, std::string>(files, file_to_string);
-        return "MF { directory: " + s_name + "\n" + "[ " + common::intercalate("\n, ", s_files) + "]";
+        auto sName = name.empty() ? "<empty>" : name;
+        auto fileToString = [len](FileInfo f) { return f.to_string(len); };
+        auto sFiles = common::mapVector<FileInfo, std::string>(files, fileToString);
+        return "MF { directory: " + sName + "\n" + "[ " + common::intercalate("\n, ", sFiles) + "]";
     }
 
     bool operator==(const MultiFile &file) const
@@ -61,7 +61,7 @@ struct SingleFile
     uint64_t length;
     std::vector<char> md5sum;
 
-    std::string to_string(int len = 100)
+    std::string to_string(int len = 100) const
     {
         const auto nameStr = name.empty() ? "<empty>" : name;
         const auto md5sumStr = md5sum.empty() ? "<empty>" : std::string(md5sum.begin(), md5sum.end());
@@ -77,39 +77,39 @@ struct SingleFile
 struct InfoDict
 {
   public:
-    uint64_t piece_length;
+    uint64_t pieceLength;
     std::vector<char> pieces;
     std::optional<int64_t> publish; // if set to 1 then publish
-    std::variant<SingleFile, MultiFile> file_mode;
+    std::variant<SingleFile, MultiFile> fileMode;
 
-    std::string to_string(int len = 100)
+    std::string to_string(int len = 100) const
     {
-        auto s_id = "InfoDict"s;
-        auto s_pl = "{ piece length: "s + std::to_string(piece_length);
-        auto s_pcs = ", pieces: <bytestring>"s;
+        auto sId = "InfoDict"s;
+        auto sPl = "{ piece length: "s + std::to_string(pieceLength);
+        auto sPcs = ", pieces: <bytestring>"s;
 
-        auto pb_to_string = [](auto a) { return std::to_string(a); };
-        auto s_pb = ", publish: "s + common::map_opt(pb_to_string, publish).value_or("<empty>"s);
+        auto pbToString = [](const auto& a) { return std::to_string(a); };
+        auto sPb = ", publish: "s + common::mapOpt(pbToString, publish).value_or("<empty>"s);
 
-        auto sf_to_string = [len](SingleFile sf) { return sf.to_string(len); };
-        auto mf_to_string = [len](MultiFile mf) { return mf.to_string(len); };
-        auto s_fm = ", file mode: "s +
-                    common::either_to_val<SingleFile, MultiFile, std::string>(file_mode, sf_to_string, mf_to_string);
-        auto s_end = "\n}\n"s;
-        auto v = {s_id, s_pl, s_pcs, s_pb};
-        auto to_line = [len](auto s) { return common::make_sized_line(s, len); };
-        return common::concat(common::map_vector<std::string, std::string>(v, to_line)) + s_fm + s_end;
+        auto sfToString = [len](const SingleFile& sf) { return sf.to_string(len); };
+        auto mfToString = [len](const MultiFile& mf) { return mf.to_string(len); };
+        auto sFm = ", file mode: "s +
+                    common::eitherToVal<SingleFile, MultiFile, std::string>(fileMode, sfToString, mfToString);
+        auto sEnd = "\n}\n"s;
+        auto v = {sId, sPl, sPcs, sPb};
+        auto toLine = [len](auto s) { return common::makeSizedLine(s, len); };
+        return common::concat(common::mapVector<std::string, std::string>(v, toLine)) + sFm + sEnd;
     }
 
-    uint64_t number_of_pieces() const
+    uint64_t numberOfPieces() const
     {
         return pieces.size() / 20;
     }
 
     bool operator==(const InfoDict &info) const
     {
-        return piece_length == info.piece_length && pieces == info.pieces && publish == info.publish &&
-               file_mode == info.file_mode;
+        return pieceLength == info.pieceLength && pieces == info.pieces && publish == info.publish &&
+               fileMode == info.fileMode;
     }
 };
 
@@ -120,38 +120,38 @@ struct MetaInfo
 {
   public:
     std::string announce;
-    std::vector<std::string> announce_list;
-    std::optional<int64_t> creation_date;
+    std::vector<std::string> announceList;
+    std::optional<int64_t> creationDate;
     std::optional<std::string> comment;
-    std::optional<std::string> created_by;
+    std::optional<std::string> createdBy;
     std::optional<std::string> encoding;
     InfoDict info;
 
     std::string to_string(int len = 100)
     {
-        auto s_mi = "MetaInfo"s;
-        auto s_ann = "{ announce: "s + announce;
+        auto sMi = "MetaInfo"s;
+        auto sAnn = "{ announce: "s + announce;
 
-        auto s_ann_l = ", announce_list: ["s + common::intercalate(", ", announce_list) + "]";
-        auto int_to_string = [](const auto &i) { return std::to_string(i); };
-        auto s_cd = ", creation_date: "s + common::map_opt(int_to_string, creation_date).value_or("<empty>"s);
-        auto s_cmm = ", comment: "s + comment.value_or("<empty>"s);
-        auto s_cb = ", created_by: "s + created_by.value_or("<empty>"s);
-        auto s_enc = ", encoding: "s + encoding.value_or("<empty>"s);
-        auto s_info = ", info: "s + info.to_string(len);
-        auto s_end = "\n}\n"s;
+        auto sAnnL = ", announceList: ["s + common::intercalate(", ", announceList) + "]";
+        auto cdToString = [](const auto& a) { return std::to_string(a); };
+        auto sCd = ", creationDate: "s + common::mapOpt(cdToString, creationDate).value_or("<empty>"s);
+        auto sCmm = ", comment: "s + comment.value_or("<empty>"s);
+        auto sCb = ", createdBy: "s + createdBy.value_or("<empty>"s);
+        auto sEnc = ", encoding: "s + encoding.value_or("<empty>"s);
+        auto sInfo = ", info: "s + info.to_string(len);
+        auto sEnd = "\n}\n"s;
 
-        auto v = {s_mi, s_ann, s_ann_l, s_cd, s_cmm, s_cb, s_enc};
+        auto v = {sMi, sAnn, sAnnL, sCd, sCmm, sCb, sEnc};
         // shorten string to max size and add new lines then concat
-        auto to_line = [len](auto s) { return common::make_sized_line(s, len); };
-        return common::concat(common::map_vector<std::string, std::string>(v, to_line)) + s_info + s_end;
+        auto toLine = [len](const auto& s) { return common::makeSizedLine(s, len); };
+        return common::concat(common::mapVector<std::string, std::string>(v, toLine)) + sInfo + sEnd;
     }
 
     bool operator==(const MetaInfo &metaInfo) const
     {
-        bool b = announce == metaInfo.announce && announce_list == metaInfo.announce_list &&
-                 creation_date == metaInfo.creation_date && comment == metaInfo.comment &&
-                 created_by == metaInfo.created_by && encoding == metaInfo.encoding && info == metaInfo.info;
+        bool b = announce == metaInfo.announce && announceList == metaInfo.announceList &&
+                 creationDate == metaInfo.creationDate && comment == metaInfo.comment &&
+                 createdBy == metaInfo.createdBy && encoding == metaInfo.encoding && info == metaInfo.info;
         return b;
     }
 };

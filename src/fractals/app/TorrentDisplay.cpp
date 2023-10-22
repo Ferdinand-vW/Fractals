@@ -23,16 +23,16 @@ using namespace ftxui;
 namespace fractals::app
 {
 
-ftxui::Component TorrentDisplay(ftxui::Component terminal_input,
+ftxui::Component TorrentDisplay(ftxui::Component terminalInput,
                                 const std::unordered_map<uint64_t, TorrentDisplayEntry> &torrents)
 {
-    return Make<TorrentDisplayBase>(terminal_input, torrents);
+    return Make<TorrentDisplayBase>(terminalInput, torrents);
 }
 
 TorrentDisplayBase::TorrentDisplayBase(
-    ftxui::Component terminal_input,
+    ftxui::Component terminalInput,
     const std::unordered_map<uint64_t, TorrentDisplayEntry> &torrents)
-    : m_terminal_input(terminal_input), torrents(torrents)
+    : terminalInput(terminalInput), torrents(torrents)
 {
 }
 
@@ -43,18 +43,18 @@ TorrentDisplayBase *TorrentDisplayBase::From(ftxui::Component component)
 
 void TorrentDisplayBase::unSetFeedback()
 {
-    m_feedback.m_msg = "";
-    m_feedback.m_type = FeedbackType::Info;
+    feedback.msg = "";
+    feedback.msgType = FeedbackType::Info;
 }
 
-void TorrentDisplayBase::setFeedBack(const Feedback& feedback)
+void TorrentDisplayBase::setFeedBack(const Feedback& aFeedback)
 {
-    m_feedback = feedback;
+    feedback = aFeedback;
 }
 
 // @ws contains a by user written command. Here we attempt to parse it and call the relevant
 // functions.
-bool TorrentDisplayBase::parse_command(StringRef ws)
+bool TorrentDisplayBase::parseCommand(StringRef ws)
 {
     std::stringstream ss(ws->data());
     std::string com;
@@ -62,31 +62,31 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
 
     if (com == "exit")
     {
-        m_feedback.m_msg = "Exiting...";
-        m_feedback.m_type = FeedbackType::Warning;
+        feedback.msg = "Exiting...";
+        feedback.msgType = FeedbackType::Warning;
         return true;
     }
 
     if (com == "help")
     {
-        m_feedback.m_msg = "Available commands: exit, add <filepath>, stop <torrent name or id>, "
+        feedback.msg = "Available commands: exit, add <filepath>, stop <torrent name or id>, "
                            "resume <torrent name or id>, remove <torrent name or id>";
-        m_feedback.m_type = FeedbackType::Info;
+        feedback.msgType = FeedbackType::Info;
         return false;
     }
 
     if (!common::elem(com, "add", "stop", "resume", "remove"))
     {
-        m_feedback.m_msg = "unknown command: " + com;
-        m_feedback.m_type = FeedbackType::Error;
+        feedback.msg = "unknown command: " + com;
+        feedback.msgType = FeedbackType::Error;
 
         return false;
     }
 
     if (!ss.rdbuf()->in_avail())
     {
-        m_feedback.m_msg = "expecting exactly 1 argument but got none";
-        m_feedback.m_type = FeedbackType::Error;
+        feedback.msg = "expecting exactly 1 argument but got none";
+        feedback.msgType = FeedbackType::Error;
 
         return false;
     }
@@ -96,7 +96,7 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
     // parse string identifiers with format '#<integer>'
     // the integer *should* refer to a torrent id
     // return error messages on failure
-    auto parse_ident = [](auto &ident) -> neither::Either<std::string, int>
+    auto parseIdent = [](auto &ident) -> neither::Either<std::string, int>
     {
         if (ident.substr(0, 1) != "#")
         {
@@ -104,9 +104,9 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
                 "torrent identifier must start with #. Expected format is #<torrent id>.");
         }
 
-        auto s_num = ident.substr(1, ident.size() - 1);
+        auto sNumm = ident.substr(1, ident.size() - 1);
         int num = -1;
-        auto b = boost::conversion::try_lexical_convert<int>(s_num, num);
+        auto b = boost::conversion::try_lexical_convert<int>(sNumm, num);
         if (!b)
         {
             return neither::left<std::string>(
@@ -124,12 +124,12 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
         ss >> path;
         if (!std::filesystem::exists(path))
         {
-            m_feedback.m_msg = "path does not exist: " + path;
-            m_feedback.m_type = FeedbackType::Error;
+            feedback.msg = "path does not exist: " + path;
+            feedback.msgType = FeedbackType::Error;
         }
         else
         {
-            m_on_add(path);
+            onAdd(path);
         }
 
         return false;
@@ -140,17 +140,17 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
         // parse and validate the second argument
         std::string ident;
         ss >> ident;
-        auto arg_ident = parse_ident(ident);
+        auto argIdent = parseIdent(ident);
 
-        if (arg_ident.isLeft)
+        if (argIdent.isLeft)
         {
-            m_feedback.m_msg = arg_ident.leftValue;
-            m_feedback.m_type = FeedbackType::Error;
+            feedback.msg = argIdent.leftValue;
+            feedback.msgType = FeedbackType::Error;
         }
         else
         {
             // send stop message to TorrentController
-            m_on_stop(arg_ident.rightValue);
+            onStop(argIdent.rightValue);
         }
     }
 
@@ -159,17 +159,17 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
         // parse and validate the second argument
         std::string ident;
         ss >> ident;
-        auto arg_ident = parse_ident(ident);
+        auto argIdent = parseIdent(ident);
 
-        if (arg_ident.isLeft)
+        if (argIdent.isLeft)
         {
-            m_feedback.m_msg = arg_ident.leftValue;
-            m_feedback.m_type = FeedbackType::Error;
+            feedback.msg = argIdent.leftValue;
+            feedback.msgType = FeedbackType::Error;
         }
         else
         {
             // send resume message to TorrentController
-            m_on_resume(arg_ident.rightValue);
+            onResume(argIdent.rightValue);
         }
     }
 
@@ -178,17 +178,17 @@ bool TorrentDisplayBase::parse_command(StringRef ws)
         // parse and validate the second argument
         std::string ident;
         ss >> ident;
-        auto arg_ident = parse_ident(ident);
+        auto argIdent = parseIdent(ident);
 
-        if (arg_ident.isLeft)
+        if (argIdent.isLeft)
         {
-            m_feedback.m_msg = arg_ident.leftValue;
-            m_feedback.m_type = FeedbackType::Error;
+            feedback.msg = argIdent.leftValue;
+            feedback.msgType = FeedbackType::Error;
         }
         else
         {
             // send remove message to TorrentController
-            m_on_remove(arg_ident.rightValue);
+            onRemove(argIdent.rightValue);
         }
     }
 
@@ -214,10 +214,10 @@ Element TorrentDisplayBase::Render()
     auto colOfSize = [column](std::string name, int i)
     {
         int rem = i - name.length();
-        int b_size = std::floor(rem / 2);
-        int a_size = std::ceil(rem / 2);
-        std::string before(b_size, ' ');
-        std::string after(a_size, ' ');
+        int bSize = std::floor(rem / 2);
+        int aSize = std::ceil(rem / 2);
+        std::string before(bSize, ' ');
+        std::string after(aSize, ' ');
         std::string wbefore(before.begin(), before.end());
         std::string wafter(after.begin(), after.end());
         return hbox({text(wbefore), column(name), text(wafter)});
@@ -243,45 +243,45 @@ Element TorrentDisplayBase::Render()
             {
                 continue;
             }
-            idElems.push_back(cell(std::to_string(tv.getId())));
-            stateElems.push_back(cell(s));
-            nameElems.push_back(cell(tv.getName()));
-            sizeElems.push_back(cell(common::pp_bytes(tv.getSize())));
-            progressElems.push_back(cell(common::pp_bytes(tv.getDownloaded())));
-            downElems.push_back(cell(common::pp_bytes_per_second(tv.getDownloadSpeed())));
-            upElems.push_back(cell(common::pp_bytes_per_second(tv.getUploadSpeed())));
+            idElems.emplace_back(cell(std::to_string(tv.getId())));
+            stateElems.emplace_back(cell(s));
+            nameElems.emplace_back(cell(tv.getName()));
+            sizeElems.emplace_back(cell(common::ppBytes(tv.getSize())));
+            progressElems.emplace_back(cell(common::ppBytes(tv.getDownloaded())));
+            downElems.emplace_back(cell(common::ppBytesPerSecond(tv.getDownloadSpeed())));
+            upElems.emplace_back(cell(common::ppBytesPerSecond(tv.getUploadSpeed())));
             auto connects = [](auto act, auto tot)
             {
                 return std::to_string(act) + "(" + std::to_string(tot) + ")";
             };
-            seederElems.push_back(cell(connects(tv.getConnectedSeeders(), tv.getTotalSeeders())));
-            leecherElems.push_back(
+            seederElems.emplace_back(cell(connects(tv.getConnectedSeeders(), tv.getTotalSeeders())));
+            leecherElems.emplace_back(
                 cell(connects(tv.getConnectedLeechers(), tv.getTotalLeechers())));
-            etaElems.push_back(cell(common::pp_time(tv.getEta())));
+            etaElems.emplace_back(cell(common::ppTime(tv.getEta())));
         }
     };
 
     // set column headers
-    idElems.push_back(colOfSize("#", 4));
-    idElems.push_back(separator() | color(Color::GreenLight));
-    stateElems.push_back(colOfSize("State", 10));
-    stateElems.push_back(separator() | color(Color::GreenLight));
-    nameElems.push_back(column("Torrent Name"));
-    nameElems.push_back(separator() | color(Color::GreenLight));
-    sizeElems.push_back(colOfSize("Size", 12));
-    sizeElems.push_back(separator() | color(Color::GreenLight));
-    progressElems.push_back(colOfSize("Progress", 16));
-    progressElems.push_back(separator() | color(Color::GreenLight));
-    downElems.push_back(colOfSize("Down", 12));
-    downElems.push_back(separator() | color(Color::GreenLight));
-    upElems.push_back(colOfSize("Up", 12));
-    upElems.push_back(separator() | color(Color::GreenLight));
-    seederElems.push_back(colOfSize("Seeders", 12));
-    seederElems.push_back(separator() | color(Color::GreenLight));
-    leecherElems.push_back(colOfSize("Leechers", 12));
-    leecherElems.push_back(separator() | color(Color::GreenLight));
-    etaElems.push_back(column("ETA"));
-    etaElems.push_back(separator() | color(Color::GreenLight));
+    idElems.emplace_back(colOfSize("#", 4));
+    idElems.emplace_back(separator() | color(Color::GreenLight));
+    stateElems.emplace_back(colOfSize("State", 10));
+    stateElems.emplace_back(separator() | color(Color::GreenLight));
+    nameElems.emplace_back(column("Torrent Name"));
+    nameElems.emplace_back(separator() | color(Color::GreenLight));
+    sizeElems.emplace_back(colOfSize("Size", 12));
+    sizeElems.emplace_back(separator() | color(Color::GreenLight));
+    progressElems.emplace_back(colOfSize("Progress", 16));
+    progressElems.emplace_back(separator() | color(Color::GreenLight));
+    downElems.emplace_back(colOfSize("Down", 12));
+    downElems.emplace_back(separator() | color(Color::GreenLight));
+    upElems.emplace_back(colOfSize("Up", 12));
+    upElems.emplace_back(separator() | color(Color::GreenLight));
+    seederElems.emplace_back(colOfSize("Seeders", 12));
+    seederElems.emplace_back(separator() | color(Color::GreenLight));
+    leecherElems.emplace_back(colOfSize("Leechers", 12));
+    leecherElems.emplace_back(separator() | color(Color::GreenLight));
+    etaElems.emplace_back(column("ETA"));
+    etaElems.emplace_back(separator() | color(Color::GreenLight));
 
     // //populate each column; each column 1 cell per torrent
     populate("Running", TorrentDisplayEntry::State::Running);
@@ -296,9 +296,9 @@ Element TorrentDisplayBase::Render()
                        vbox(seederElems), vbox({separator()}), vbox(leecherElems),
                        vbox({separator()}), vbox(etaElems) | xflex}) |
                      flex,
-                 hbox({text(m_feedback.m_msg) | color(feedBackColor(m_feedback))}),
+                 hbox({text(feedback.msg) | color(feedBackColor(feedback))}),
                  separator() | color(Color::GreenLight),
-                 hbox({m_terminal_input->Render()}) | color(Color::GreenLight),
+                 hbox({terminalInput->Render()}) | color(Color::GreenLight),
                  separator() | color(Color::GreenLight)}) |
            bold | flex | color(Color::Blue);
 }

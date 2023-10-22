@@ -27,11 +27,11 @@ std::unordered_map<uint32_t, std::vector<char>> testDataMap{
     {0, {'a', 'b'}}, {1, {'d', 'e'}}, {2, {'f', 'g'}}, {3, {'h', 'k'}}, {4, {'q', 'w', 'e'}},
 };
 
-const auto hash0 = common::hex_to_bytes("da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
-const auto hash1 = common::hex_to_bytes("600ccd1b71569232d01d110bc63e906beab04d8c");
-const auto hash2 = common::hex_to_bytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
-const auto hash3 = common::hex_to_bytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
-const auto hash4 = common::hex_to_bytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
+const auto hash0 = common::hexToBytes("da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
+const auto hash1 = common::hexToBytes("600ccd1b71569232d01d110bc63e906beab04d8c");
+const auto hash2 = common::hexToBytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
+const auto hash3 = common::hexToBytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
+const auto hash4 = common::hexToBytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
 
 std::vector<fractals::persist::PieceModel> testHashDataMap{
     {0, 0, 0, 2, hash0, false}, {0, 0, 1, 2, hash1, false}, {0, 0, 2, 2, hash2, false},
@@ -81,7 +81,7 @@ TEST_F(ProtocolTest, standardEval)
 
     {
         EXPECT_CALL(peerService, write(_, Eq(Interested{}), _)).Times(1);
-        prot.onMessage(Bitfield(common::bitfield_to_bytes({1, 1, 1, 1, 1, 0, 0, 0})), now);
+        prot.onMessage(Bitfield(common::bitfieldToBytes({1, 1, 1, 1, 1, 0, 0, 0})), now);
 
         ASSERT_TRUE(diskQueueE.numToRead() == 0);
     }

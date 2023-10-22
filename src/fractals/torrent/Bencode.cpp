@@ -38,225 +38,225 @@ template <typename T, typename Ret> Maybe<Ret> bdataToValueM(const bdata *t)
     return maybe();
 }
 
-template <> Either<std::string, SingleFile> from_bdict<SingleFile>(const bdict &bd)
+template <> Either<std::string, SingleFile> fromBdict<SingleFile>(const bdict &bd)
 {
-    auto name = to_maybe(bd.find("name")).flatMap(to_bstring).map(mem_fn(&bstring::to_string));
-    auto m_length = to_maybe(bd.find("length")).flatMap(to_bint).map(std::mem_fn(&bint::value));
-    auto e_length = maybe_to_either(m_length, "Missing length field for structure SingleFile");
+    auto name = toMaybe(bd.find("name")).flatMap(toBstring).map(mem_fn(&bstring::to_string));
+    auto mLength = toMaybe(bd.find("length")).flatMap(toBint).map(std::mem_fn(&bint::value));
+    auto eLength = maybeToEither(mLength, "Missing length field for structure SingleFile");
 
-    auto md5sum = common::from_maybe(bdataToValueM<bstring, std::vector<char>>(bd.find("md5sum")),
+    auto md5sum = common::fromMaybe(bdataToValueM<bstring, std::vector<char>>(bd.find("md5sum")),
                                      std::vector<char>{});
 
-    return e_length.rightMap(
+    return eLength.rightMap(
         [name, md5sum](const uint64_t length) {
-            return SingleFile{common::from_maybe(name, ""s), length, md5sum};
+            return SingleFile{common::fromMaybe(name, ""s), length, md5sum};
         });
 }
 
-template <> Either<std::string, FileInfo> from_bdict<FileInfo>(const bdict &bd)
+template <> Either<std::string, FileInfo> fromBdict<FileInfo>(const bdict &bd)
 {
-    auto m_length = bdataToValueM<bint, uint64_t>(bd.find("length"));
-    auto e_length = maybe_to_either(m_length, "Missing length field for structure SingleFile");
+    auto mLength = bdataToValueM<bint, uint64_t>(bd.find("length"));
+    auto eLength = maybeToEither(mLength, "Missing length field for structure SingleFile");
 
-    auto md5sum = common::from_maybe(bdataToValueM<bstring, std::vector<char>>(bd.find("md5sum")),
+    auto md5sum = common::fromMaybe(bdataToValueM<bstring, std::vector<char>>(bd.find("md5sum")),
                                      std::vector<char>{});
 
-    auto m_bdpath = bdataToValueM<blist, std::vector<bdata>>(bd.find("path"));
+    auto mBdPath = bdataToValueM<blist, std::vector<bdata>>(bd.find("path"));
 
     auto f = [](const auto &bd) -> Maybe<std::string>
-    { return to_bstring(bd).map(mem_fn(&bstring::to_string)); };
-    auto m_path = m_bdpath.flatMap([f](const auto &v) -> Maybe<std::vector<std::string>>
-                                   { return mmap_vector<bdata, std::string>(v, f); });
+    { return toBstring(bd).map(mem_fn(&bstring::to_string)); };
+    auto mPath = mBdPath.flatMap([f](const auto &v) -> Maybe<std::vector<std::string>>
+                                   { return mmapVector<bdata, std::string>(v, f); });
     std::vector<std::string> path;
-    if (!m_path.hasValue)
+    if (!mPath.hasValue)
     {
         return left("Missing path field for structure FileInfo"s);
     }
     else
     {
-        path = m_path.value;
+        path = mPath.value;
     }
 
-    return e_length.rightMap(
+    return eLength.rightMap(
         [md5sum, path](const uint64_t &length) {
             return FileInfo{length, md5sum, path};
         });
 }
 
-template <> Either<std::string, FileInfo> from_bdata<FileInfo>(const bdata &bd)
+template <> Either<std::string, FileInfo> fromBdata<FileInfo>(const bdata &bd)
 {
-    const auto e_bd_id =
-        maybe_to_either(common::to_bdict(bd), "Bencode should start with bdict for FileInfo");
+    const auto eBdId =
+        maybeToEither(common::toBdict(bd), "Bencode should start with bdict for FileInfo");
 
-    return e_bd_id.rightFlatMap(from_bdict<FileInfo>);
+    return eBdId.rightFlatMap(fromBdict<FileInfo>);
 }
 
-template <> Either<std::string, MultiFile> from_bdict<MultiFile>(const bdict &bd)
+template <> Either<std::string, MultiFile> fromBdict<MultiFile>(const bdict &bd)
 {
     auto name =
-        common::from_maybe(bdataToValueM<bstring, std::vector<char>>(bd.find("name"))
+        common::fromMaybe(bdataToValueM<bstring, std::vector<char>>(bd.find("name"))
                                .map([](const auto &v) { return std::string(v.begin(), v.end()); }),
                            ""s);
 
-    auto e_bdfiles = maybe_to_either(bdataToValueM<blist, std::vector<bdata>>(bd.find("files")),
+    auto eBdFiles = maybeToEither(bdataToValueM<blist, std::vector<bdata>>(bd.find("files")),
                                      "Missing files field for structure MultiFile");
 
-    auto e_files = e_bdfiles.rightFlatMap(
+    auto eFiles = eBdFiles.rightFlatMap(
         [](const auto &v) -> Either<std::string, std::vector<FileInfo>>
-        { return mmap_vector<bdata, std::string, FileInfo>(v, from_bdata<FileInfo>); });
+        { return mmapVector<bdata, std::string, FileInfo>(v, fromBdata<FileInfo>); });
 
-    return e_files.rightMap([name](const auto &files) { return MultiFile{name, files}; });
+    return eFiles.rightMap([name](const auto &files) { return MultiFile{name, files}; });
 }
 
-template <> Either<std::string, InfoDict> from_bdict<InfoDict>(const bdict &bd)
+template <> Either<std::string, InfoDict> fromBdict<InfoDict>(const bdict &bd)
 {
-    auto m_piece_length =
-        to_maybe(bd.find("piece length")).flatMap(to_bint).map(std::mem_fn(&bint::value));
-    uint64_t piece_length;
-    if (!m_piece_length.hasValue)
+    auto mPieceLength =
+        toMaybe(bd.find("piece length")).flatMap(toBint).map(std::mem_fn(&bint::value));
+    uint64_t pieceLength;
+    if (!mPieceLength.hasValue)
     {
         return left("Attribute piece length missing from info"s);
     }
     else
     {
-        piece_length = m_piece_length.value;
+        pieceLength = mPieceLength.value;
     }
 
-    auto m_pieces = to_maybe(bd.find("pieces")).flatMap(to_bstring).map(mem_fn(&bstring::value));
+    auto mPieces = toMaybe(bd.find("pieces")).flatMap(toBstring).map(mem_fn(&bstring::value));
     std::vector<char> pieces;
-    if (!m_pieces)
+    if (!mPieces)
     {
         return left("Attribute pieces missing from info"s);
     }
     else
     {
-        pieces = m_pieces.value;
+        pieces = mPieces.value;
     }
 
-    auto publish = to_maybe(bd.find("private")).flatMap(to_bint).map(std::mem_fn(&bint::value));
+    auto publish = toMaybe(bd.find("private")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
-    const auto e_single_file = from_bdict<SingleFile>(bd);
-    const auto e_multi_file = from_bdict<MultiFile>(bd);
+    const auto eSingleFile = fromBdict<SingleFile>(bd);
+    const auto eMultiFile = fromBdict<MultiFile>(bd);
 
-    const auto e_file_mode = either_of(e_single_file, e_multi_file);
+    const auto eFileMode = eitherOf(eSingleFile, eMultiFile);
 
-    const auto infoDict = e_file_mode.rightMap(
-        [piece_length, pieces, publish](auto file_mode)
+    const auto infoDict = eFileMode.rightMap(
+        [pieceLength, pieces, publish](const auto& fileMode)
         {
-            return InfoDict{piece_length, pieces, common::maybeToOpt(publish),
-                            eitherToVariant(file_mode)};
+            return InfoDict{pieceLength, pieces, common::maybeToOpt(publish),
+                            eitherToVariant(fileMode)};
         });
     return infoDict;
 }
 
-template <> Either<std::string, InfoDict> from_bdata<InfoDict>(const bdata &bd)
+template <> Either<std::string, InfoDict> fromBdata<InfoDict>(const bdata &bd)
 {
-    const auto e_bd_id =
-        maybe_to_either(common::to_bdict(bd), "Bencode should start with bdict for InfoDict");
+    const auto eBdId =
+        maybeToEither(common::toBdict(bd), "Bencode should start with bdict for InfoDict");
 
-    return e_bd_id.rightFlatMap(from_bdict<InfoDict>);
+    return eBdId.rightFlatMap(fromBdict<InfoDict>);
 }
 
-bdict to_bdict(const FileInfo &fi)
+bdict toBdict(const FileInfo &fi)
 {
-    std::map<bstring, bdata> kv_map;
-    const bstring key_l("length");
-    const bint val_l(fi.length);
-    kv_map.insert({key_l, bdata(val_l)});
+    std::map<bstring, bdata> kvMap;
+    const bstring keyL("length");
+    const bint valL(fi.length);
+    kvMap.insert({keyL, bdata(valL)});
 
     if (!fi.md5sum.empty())
     {
-        const bstring key_md5("md5sum");
-        const bstring val_md5(fi.md5sum);
-        kv_map.insert({key_md5, val_md5});
+        const bstring keyMd5("md5sum");
+        const bstring valMd5(fi.md5sum);
+        kvMap.insert({keyMd5, valMd5});
     }
 
-    const bstring key_ps("path");
+    const bstring keyPs("path");
     auto paths =
-        map_vector<std::string, bdata>(fi.path, [](const auto &s) { return bdata(bstring(s)); });
-    const blist val_ps(paths);
-    kv_map.insert({key_ps, bdata(val_ps)});
+        mapVector<std::string, bdata>(fi.path, [](const auto &s) { return bdata(bstring(s)); });
+    const blist valPs(paths);
+    kvMap.insert({keyPs, bdata(valPs)});
 
-    return {kv_map};
+    return {kvMap};
 }
 
-bdict to_bdict(const SingleFile &sf)
+bdict toBdict(const SingleFile &sf)
 {
-    std::map<bstring, bdata> kv_map;
-    const bstring key_l("length");
-    const bint val_l(sf.length);
-    kv_map.insert({key_l, bdata(val_l)});
+    std::map<bstring, bdata> kvMap;
+    const bstring keyL("length");
+    const bint valL(sf.length);
+    kvMap.insert({keyL, bdata(valL)});
 
     if (!sf.md5sum.empty())
     {
-        const bstring key_md5("md5sum");
-        const bstring val_md5(sf.md5sum);
-        kv_map.insert({key_md5, val_md5});
+        const bstring keyMd5("md5sum");
+        const bstring valMd5(sf.md5sum);
+        kvMap.insert({keyMd5, valMd5});
     }
 
-    const bstring key_name("name");
-    const bstring val_name(sf.name);
-    kv_map.insert({key_name, val_name});
+    const bstring keyName("name");
+    const bstring valName(sf.name);
+    kvMap.insert({keyName, valName});
 
-    return bdict(kv_map);
+    return bdict(kvMap);
 }
 
-bdict to_bdict(const MultiFile &mf)
+bdict toBdict(const MultiFile &mf)
 {
-    std::map<bstring, bdata> kv_map;
-    const bstring key_fs("files");
+    std::map<bstring, bdata> kvMap;
+    const bstring keyFs("files");
 
-    std::function<bdata(FileInfo)> fi_lam = [](const auto &fi) { return bdata(to_bdict(fi)); };
-    blist val_fs(map_vector(mf.files, fi_lam));
+    std::function<bdata(FileInfo)> fiLam = [](const auto &fi) { return bdata(toBdict(fi)); };
+    blist valFs(mapVector(mf.files, fiLam));
 
-    const bstring key_name("name");
-    const bstring val_name(mf.name);
-    kv_map.insert({key_name, bdata(val_name)});
+    const bstring keyName("name");
+    const bstring valName(mf.name);
+    kvMap.insert({keyName, bdata(valName)});
 
-    kv_map.insert({key_fs, bdata(val_fs)});
-    return bdict(kv_map);
+    kvMap.insert({keyFs, bdata(valFs)});
+    return bdict(kvMap);
 }
 
-bdict to_bdict(const InfoDict &id)
+bdict toBdict(const InfoDict &id)
 {
-    bstring key_pl("piece length");
-    bdata val_pl(id.piece_length);
+    bstring keyPl("piece length");
+    bdata valPl(id.pieceLength);
 
-    std::string key_pcs("pieces");
-    bstring val_pcs(id.pieces);
+    std::string keyPcs("pieces");
+    bstring valPcs(id.pieces);
 
-    std::function<bdict(SingleFile)> sf_lam = [](const auto &sf) { return to_bdict(sf); };
-    std::function<bdict(MultiFile)> mf_lam = [](const auto &mf) { return to_bdict(mf); };
-    bdict fm = either_to_val<SingleFile, MultiFile, bdict>(id.file_mode, sf_lam, mf_lam);
+    std::function<bdict(SingleFile)> sfLam = [](const auto &sf) { return toBdict(sf); };
+    std::function<bdict(MultiFile)> mfLam = [](const auto &mf) { return toBdict(mf); };
+    bdict fm = eitherToVal<SingleFile, MultiFile, bdict>(id.fileMode, sfLam, mfLam);
 
-    fm.insert(key_pl, val_pl);
-    fm.insert(key_pcs, val_pcs);
+    fm.insert(keyPl, valPl);
+    fm.insert(keyPcs, valPcs);
 
     if (id.publish)
     {
-        std::string key_prvt("private");
-        bint val_prvt(id.publish.value());
-        fm.insert(key_prvt, val_prvt);
+        std::string keyPrvt("private");
+        bint valPrvt(id.publish.value());
+        fm.insert(keyPrvt, valPrvt);
     }
 
     return fm;
 }
 
-template <> Either<std::string, MetaInfo> from_bdata<MetaInfo>(const bdata &bd)
+template <> Either<std::string, MetaInfo> fromBdata<MetaInfo>(const bdata &bd)
 {
-    auto m_bd_mi = common::to_bdict(bd);
+    auto mBdMi = common::toBdict(bd);
 
-    auto to_metainfo = [](const bdict &m) -> Either<std::string, MetaInfo>
+    auto toMetaInfo = [](const bdict &m) -> Either<std::string, MetaInfo>
     {
-        auto m_ann =
-            to_maybe(m.find("announce")).flatMap(to_bstring).map(mem_fn(&bstring::to_string));
+        auto mAnn =
+            toMaybe(m.find("announce")).flatMap(toBstring).map(mem_fn(&bstring::to_string));
 
-        auto make_announce_list = [](const blist &bl) -> std::vector<std::string>
+        auto makeAnnounceList = [](const blist &bl) -> std::vector<std::string>
         {
-            auto bl_val = bl.values();
+            auto blVal = bl.values();
 
             std::vector<std::string> result;
-            for (auto &item : bl_val)
+            for (const auto &item : blVal)
             {
                 Maybe<std::vector<bdata>> innerVec =
                     bdataToValueM<blist, std::vector<bdata>>(&item);
@@ -265,7 +265,7 @@ template <> Either<std::string, MetaInfo> from_bdata<MetaInfo>(const bdata &bd)
                     continue;
                 }
 
-                for (auto &innerItem : innerVec.value)
+                for (const auto &innerItem : innerVec.value)
                 {
                     const auto mstr = innerItem.get_bstring();
 
@@ -278,47 +278,47 @@ template <> Either<std::string, MetaInfo> from_bdata<MetaInfo>(const bdata &bd)
 
             return result;
         };
-        auto ann_l =
-            from_maybe(to_maybe(m.find("announce-list")).flatMap(to_blist).map(make_announce_list),
+        auto annL =
+            fromMaybe(toMaybe(m.find("announce-list")).flatMap(toBlist).map(makeAnnounceList),
                        std::vector<std::string>{});
 
-        auto m_cd =
-            to_maybe(m.find("creation date")).flatMap(to_bint).map(std::mem_fn(&bint::value));
+        auto mCd =
+            toMaybe(m.find("creation date")).flatMap(toBint).map(std::mem_fn(&bint::value));
 
-        auto m_cm =
-            to_maybe(m.find("comment")).flatMap(to_bstring).map(mem_fn(&bstring::to_string));
+        auto mCm =
+            toMaybe(m.find("comment")).flatMap(toBstring).map(mem_fn(&bstring::to_string));
 
-        auto m_cb =
-            to_maybe(m.find("created by")).flatMap(to_bstring).map(mem_fn(&bstring::to_string));
+        auto mCb =
+            toMaybe(m.find("created by")).flatMap(toBstring).map(mem_fn(&bstring::to_string));
 
-        auto m_ec =
-            to_maybe(m.find("encoding")).flatMap(to_bstring).map(mem_fn(&bstring::to_string));
+        auto mEc =
+            toMaybe(m.find("encoding")).flatMap(toBstring).map(mem_fn(&bstring::to_string));
 
-        auto e_id =
-            maybe_to_either(to_maybe(m.find("info")), "Missing field info in meta info bdict")
-                .rightFlatMap(from_bdata<InfoDict>);
+        auto eId =
+            maybeToEither(toMaybe(m.find("info")), "Missing field info in meta info bdict")
+                .rightFlatMap(fromBdata<InfoDict>);
 
-        auto make_metainfo = [m_ann, ann_l, m_cb, m_cd, m_cm, m_ec,
-                              e_id](const auto &inf) -> Either<std::string, MetaInfo>
+        auto makeMetaInfo = [mAnn, annL, mCb, mCd, mCm, mEc,
+                              eId](const auto &inf) -> Either<std::string, MetaInfo>
         {
-            if (!m_ann.hasValue)
+            if (!mAnn.hasValue)
             {
                 return left("Missing field announce in meta info dict"s);
             }
-            const MetaInfo mi = {m_ann.value,
-                                 ann_l,
-                                 common::maybeToOpt(m_cd),
-                                 common::maybeToOpt(m_cm),
-                                 common::maybeToOpt(m_cb),
-                                 common::maybeToOpt(m_ec),
+            const MetaInfo mi = {mAnn.value,
+                                 annL,
+                                 common::maybeToOpt(mCd),
+                                 common::maybeToOpt(mCm),
+                                 common::maybeToOpt(mCb),
+                                 common::maybeToOpt(mEc),
                                  inf};
             return right(mi);
         };
-        return e_id.rightFlatMap(make_metainfo);
+        return eId.rightFlatMap(makeMetaInfo);
     };
 
-    auto e_bd_mi = maybe_to_either(m_bd_mi, "Bencode should start with bdict for MetaInfo");
-    return e_bd_mi.rightFlatMap(to_metainfo);
+    auto eBdMi = maybeToEither(mBdMi, "Bencode should start with bdict for MetaInfo");
+    return eBdMi.rightFlatMap(toMetaInfo);
 }
 
 } // namespace fractals::torrent

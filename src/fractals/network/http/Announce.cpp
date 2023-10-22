@@ -5,9 +5,9 @@ namespace fractals::network::http
 
 bool Announce::operator==(const Announce& ann) const
     {
-        return announce_time == ann.announce_time
+        return announceTime == ann.announceTime
             && interval == ann.interval
-            && min_interval == ann.min_interval
+            && minInterval == ann.minInterval
             && std::equal(peers.begin(), peers.end(), ann.peers.begin());
     }
 

@@ -41,7 +41,7 @@ class TrackerRequestTest : public ::testing::Test
         buffer << fs.rdbuf();
 
         const auto mi =
-            torrent::from_bdata<torrent::MetaInfo>(bencode::decode<bdata>(buffer).value());
+            torrent::fromBdata<torrent::MetaInfo>(bencode::decode<bdata>(buffer).value());
 
         fs.close();
 
@@ -53,29 +53,29 @@ TEST_F(TrackerRequestTest, make_tracker_request_empty)
 {
     const torrent::SingleFile sf{.name = "", .length = 0, .md5sum = {}};
     const torrent::InfoDict info{
-        .piece_length = 0, .pieces = std::vector<char>(), .publish = std::nullopt, .file_mode = sf};
+        .pieceLength = 0, .pieces = std::vector<char>(), .publish = std::nullopt, .fileMode = sf};
     const torrent::MetaInfo mi{.announce = "announce.url",
-                               .announce_list = {},
-                               .creation_date = std::nullopt,
+                               .announceList = {},
+                               .creationDate = std::nullopt,
                                .comment = std::nullopt,
                                .encoding = std::nullopt,
                                .info = info};
 
-    const TrackerRequest req("announce.url", mi, app::generate_peerId());
+    const TrackerRequest req("announce.url", mi, app::generateAppId());
 
     std::string bencoded("d6:lengthi0e4:name0:12:piece lengthi0e6:pieces0:e");
     const auto sha1 = common::sha1_encode<20>(bencoded);
     std::string_view vw{sha1.begin(), sha1.end()};
     common::InfoHash infoHash{sha1};
-    const TrackerRequest tr("announce.url", infoHash, common::url_encode<20>(infoHash.underlying),
-                            req.appId.underlying, common::url_encode<20>(req.appId.underlying), 6882, 0, 0, 0, 0);
+    const TrackerRequest tr("announce.url", infoHash, common::urlEncode<20>(infoHash.underlying),
+                            req.appId.underlying, common::urlEncode<20>(req.appId.underlying), 6882, 0, 0, 0, 0);
 
     ASSERT_EQ(tr, req);
 }
 
 TEST_F(TrackerRequestTest, match_torrent_file)
 {
-    const auto APPID = app::generate_peerId();
+    const auto APPID = app::generateAppId();
     const auto sourceMetaInfo = readTorrentFile();
     const TrackerRequest sourceRequest("https://nyaa.si/", sourceMetaInfo, APPID);
 
@@ -86,19 +86,19 @@ TEST_F(TrackerRequestTest, match_torrent_file)
 
     const torrent::MultiFile mf{.name = "DummyTorrent"s, .files = {f1, f2, f3, f4}};
     const torrent::InfoDict info{
-        .piece_length = 32768, .pieces = sourceMetaInfo.info.pieces, .publish = 0, .file_mode = mf};
+        .pieceLength = 32768, .pieces = sourceMetaInfo.info.pieces, .publish = 0, .fileMode = mf};
     const std::vector<std::string> announceList{"https://nyaa.si/", "https://opentrackr.org/"};
     const torrent::MetaInfo mi{.announce = "https://nyaa.si/",
-                               .announce_list = {{announceList}},
-                               .creation_date = 1677099753,
+                               .announceList = {{announceList}},
+                               .creationDate = 1677099753,
                                .comment = {"This is a test torrent"},
-                               .created_by = {"Ferdinand"},
+                               .createdBy = {"Ferdinand"},
                                .encoding = {"UTF-8"},
                                .info = info};
 
     TrackerRequest req("https://nyaa.si/", mi, APPID);
     req.appId = sourceRequest.appId;
-    req.url_peer_id = sourceRequest.url_peer_id;
+    req.urlAppId = sourceRequest.urlAppId;
 
     ASSERT_EQ(sourceMetaInfo, mi);
     ASSERT_EQ(sourceRequest, req);

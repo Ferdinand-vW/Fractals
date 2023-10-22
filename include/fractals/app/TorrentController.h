@@ -69,14 +69,14 @@ class TorrentController
     Counter used to assign unique id to each torrent.
     The id of a torrent is visible in the '#' column.
     */
-    int m_torrent_counter = 0;
+    int idCounter = 0;
 
-    std::optional<ftxui::Component> m_display;
-    std::optional<ftxui::Component> m_terminal;
-    std::string m_terminal_input;
+    std::optional<ftxui::Component> display;
+    std::optional<ftxui::Component> terminal;
+    std::string terminalInputText;
 
-    ftxui::ScreenInteractive m_screen;
-    ScreenTicker m_ticker;
+    ftxui::ScreenInteractive screen;
+    ScreenTicker ticker;
 
     std::unordered_map<common::InfoHash, uint64_t> hashToIdMap;
     std::unordered_map<uint64_t, TorrentDisplayEntry> idTorrentMap;

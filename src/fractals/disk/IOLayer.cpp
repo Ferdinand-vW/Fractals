@@ -102,7 +102,7 @@ void IOLayer::close()
     stream.close();
 }
 
-void IOLayer::write(common::string_view bytes, uint64_t numBytes)
+void IOLayer::write(std::string_view bytes, uint64_t numBytes)
 {
     if (!stream.is_open())
     {
@@ -113,7 +113,7 @@ void IOLayer::write(common::string_view bytes, uint64_t numBytes)
     stream.write(bytes.data(), numBytes);
 }
 
-void IOLayer::writeFrom(int64_t offset, common::string_view bytes, uint64_t numBytes)
+void IOLayer::writeFrom(int64_t offset, std::string_view bytes, uint64_t numBytes)
 {
     if (!stream.is_open())
     {

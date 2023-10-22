@@ -18,8 +18,6 @@
 namespace fractals::common
 {
 
-using string_view = std::basic_string_view<char>;
-
 // helper type for the visitor #4
 template <class... Ts> struct overloaded : Ts... {
     using Ts::operator()...;
@@ -31,11 +29,11 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 Apply function to each member of vector
 */
 template <class A, class B>
-std::vector<B> map_vector(const std::vector<A> &v, std::function<B(A)> f)
+std::vector<B> mapVector(const std::vector<A> &v, std::function<B(A)> f)
 {
-    std::vector<B> vec_out;
-    std::transform(v.begin(), v.end(), std::back_inserter(vec_out), f);
-    return vec_out;
+    std::vector<B> result;
+    std::transform(v.begin(), v.end(), std::back_inserter(result), f);
+    return result;
 }
 
 template <typename> struct GetArraySize;
@@ -87,7 +85,7 @@ std::string intercalate(std::string del, const std::deque<char> &v);
 /**
 Remove characters from string after a certain size
 */
-std::string make_sized_line(std::string s, int len);
+std::string makeSizedLine(std::string s, int len);
 
 /**
 Check whether @f is equal to one of @t
@@ -100,14 +98,14 @@ template <typename First, typename... T> bool elem(First &&f, T &&...t)
 /**
 Returns a randomly generated alphanumerical string of length @length
 */
-std::string random_alphaNumerical(int length);
+std::string randomAlphaNumerical(int length);
 
 /**
 Convert bytes to hex format
 */
-std::string bytes_to_hex(common::string_view view);
-std::string bytes_to_hex(const std::vector<char> &bytes);
-template <int N> std::string bytes_to_hex(const std::array<char, N> &bytes)
+std::string bytesToHex(std::string_view view);
+std::string bytesToHex(const std::vector<char> &bytes);
+template <int N> std::string bytesToHex(const std::array<char, N> &bytes)
 {
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
@@ -117,12 +115,12 @@ template <int N> std::string bytes_to_hex(const std::array<char, N> &bytes)
 
     return ss.str();
 }
-std::string bytes_to_hex(const std::deque<char> &bytes);
+std::string bytesToHex(const std::deque<char> &bytes);
 
 /**
 Convert hex format to bytes
 */
-std::vector<char> hex_to_bytes(const std::string &s);
+std::vector<char> hexToBytes(const std::string &s);
 
 // int is 4 bytes
 // if int n consist of bytes W X Y Z then converting to char leaves us with Z
@@ -130,7 +128,7 @@ std::vector<char> hex_to_bytes(const std::string &s);
 //  v.push_back(n >> 16); //Move X to 0 0 W X
 //  v.push_back(n >> 8); //Move Y to 0 W X Y
 //  v.push_back(n); //Z is already in right location
-template <class T> std::vector<char> int_to_bytes(T t)
+template <class T> std::vector<char> intToBytes(T t)
 {
     auto size = sizeof(T);
     std::vector<char> v;
@@ -147,7 +145,7 @@ template <class T> std::vector<char> int_to_bytes(T t)
 /**
 Parse bytes as int
 */
-template <typename T> T bytes_to_int(common::string_view &d)
+template <typename T> T bytesToInt(std::string_view &d)
 {
     if (d.size() < 1) {
         return {};
@@ -172,21 +170,21 @@ template <typename T> T bytes_to_int(common::string_view &d)
 
     return n;
 }
-int bytes_to_int(std::deque<char> &d);
+int bytesToInt(std::deque<char> &d);
 
 /**
 BitTorrent bitfield to byte representation
 */
-std::vector<char> bitfield_to_bytes(const std::vector<bool> &bitfields);
+std::vector<char> bitfieldToBytes(const std::vector<bool> &bitfields);
 /**
 Byte representation of BitTorrent bitfield to actual
 */
-std::vector<bool> bytes_to_bitfield(int len, std::deque<char> &bitfields);
-std::vector<bool> bytes_to_bitfield(int len, common::string_view bitfields);
+std::vector<bool> bytesToBitfield(int len, std::deque<char> &bitfields);
+std::vector<bool> bytesToBitfield(int len, std::string_view bitfields);
 
-std::string pp_bytes(int64_t bytes);
-std::string pp_bytes_per_second(int64_t bytes);
-std::string pp_time(int64_t seconds);
+std::string ppBytes(int64_t bytes);
+std::string ppBytesPerSecond(int64_t bytes);
+std::string ppTime(int64_t seconds);
 
 template <typename T>
 std::string toString(const T& t)
@@ -224,6 +222,6 @@ std::unordered_set<typename Container::key_type> keysOfMap(const Container &c)
     return s;
 }
 
-void print_err(std::string &&s);
+void printErr(std::string &&s);
 
 } // namespace fractals::common

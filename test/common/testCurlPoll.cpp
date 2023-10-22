@@ -9,7 +9,7 @@ namespace fractals::common
 
 TEST(CURLPOLL, live_test)
 {
-    fractals::common::CurlPoll curl;
+    common::CurlPoll curl;
 
     curl.add("google.com", std::chrono::milliseconds{100000});
 
@@ -25,7 +25,7 @@ TEST(CURLPOLL, live_test)
 
 TEST(CURLPOLL, live_test_timeout)
 {
-    fractals::common::CurlPoll curl;
+    common::CurlPoll curl;
 
     curl.add("google.com", std::chrono::milliseconds{1});
 
@@ -41,7 +41,7 @@ TEST(CURLPOLL, live_test_timeout)
 
 TEST(CURLPOLL, bad_host)
 {
-    fractals::common::CurlPoll curl;
+    common::CurlPoll curl;
 
     curl.add("gooasfaawewgle.com", std::chrono::milliseconds{10000});
 

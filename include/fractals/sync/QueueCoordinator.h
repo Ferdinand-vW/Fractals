@@ -20,7 +20,7 @@ class QueueCoordinator
     template <typename Queue> void addAsPublisherForBitTorrentManager(Left<Queue> left)
     {
         left.attachNotifier(btManMutex, btManCv);
-        btManPreds.push_back(
+        btManPreds.emplace_back(
             [left]()
             {
                 return left.canPop();
@@ -40,7 +40,7 @@ class QueueCoordinator
     template <typename Queue> void addAsPublisherForAnnounceService(Right<Queue> right)
     {
         right.attachNotifier(annServiceMutex, annServiceCv);
-        annServicePreds.push_back(
+        annServicePreds.emplace_back(
             [right]()
             {
                 return right.canPop();
@@ -62,7 +62,7 @@ class QueueCoordinator
     template <typename Queue> void addAsPublisherForPersistService(Right<Queue> right)
     {
         right.attachNotifier(persistServiceMutex, persistServiceCv);
-        persistServicePreds.push_back(
+        persistServicePreds.emplace_back(
             [right]()
             {
                 return right.canPop();
@@ -83,7 +83,7 @@ class QueueCoordinator
     template <typename Queue> void addAsPublisherForDiskService(Right<Queue> right)
     {
         right.attachNotifier(diskServiceMutex, diskServiceCv);
-        diskServicePreds.push_back(
+        diskServicePreds.emplace_back(
             [right]()
             {
                 return right.canPop();

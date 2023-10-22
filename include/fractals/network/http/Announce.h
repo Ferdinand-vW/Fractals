@@ -14,9 +14,9 @@ namespace fractals::network::http
     */
     struct Announce {
         common::InfoHash infoHash;
-        time_t announce_time;
+        time_t announceTime;
         int interval;
-        std::optional<int> min_interval;
+        std::optional<int> minInterval;
         std::vector<PeerId> peers;
 
         bool operator==(const Announce& ann) const;

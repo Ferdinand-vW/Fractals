@@ -36,7 +36,7 @@ namespace fractals::network::p2p
 
     std::string_view ReadMsgState::getBuffer() const
     {
-        return std::basic_string_view<char>(buffer.cbegin(),buffer.cend());
+        return std::string_view(buffer.cbegin(),buffer.cend());
     }
 
     int32_t ReadMsgState::getRemaining() const
@@ -47,7 +47,7 @@ namespace fractals::network::p2p
     WriteMsgState::WriteMsgState(std::vector<char>&& data) 
         : buffer(std::move(data))
     {
-        mBufferedQueueManagerView = common::string_view(buffer.begin(), buffer.end());
+        mBufferedQueueManagerView = std::string_view(buffer.begin(), buffer.end());
     }
 
     bool WriteMsgState::isComplete() const

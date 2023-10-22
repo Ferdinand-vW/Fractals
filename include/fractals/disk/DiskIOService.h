@@ -9,7 +9,6 @@
 #include "fractals/sync/QueueCoordinator.h"
 #include "fractals/torrent/Bencode.h"
 #include "fractals/torrent/MetaInfo.h"
-#include "fractals/torrent/Piece.h"
 #include "fractals/torrent/TorrentMeta.h"
 #include <condition_variable>
 #include <cstdint>
@@ -79,7 +78,7 @@ template <typename IOLayer> class DiskIOServiceImpl
         }
 
         bencode::bdict bd = mbd.value();
-        auto mMetaInfo = torrent::from_bdata<torrent::MetaInfo>(bd);
+        auto mMetaInfo = torrent::fromBdata<torrent::MetaInfo>(bd);
 
         if (mMetaInfo.isLeft)
         {
@@ -104,7 +103,7 @@ template <typename IOLayer> class DiskIOServiceImpl
 
         uint64_t index = 0;
         uint64_t offset = writeData.offset;
-        common::string_view view(writeData.mData.begin(), writeData.mData.end());
+        std::string_view view(writeData.mData.begin(), writeData.mData.end());
         std::string dirName = it->second.first.dirName;
         for (auto &fi : it->second.second)
         {
@@ -178,7 +177,7 @@ template <typename IOLayer> class DiskIOServiceImpl
 
   private:
     void writeToFile(uint32_t piece, const std::filesystem::path &path, uint64_t offset,
-                     common::string_view buffer, uint64_t numBytes)
+                     std::string_view buffer, uint64_t numBytes)
     {
         if (!ioLayer.open(path))
         {

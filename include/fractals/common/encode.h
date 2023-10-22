@@ -21,11 +21,11 @@ namespace fractals::common {
     std::array<char, N> sha1_encode(const Container& bytes)
     {
          //use openssl lib to generate a SHA1 hash
-        unsigned char info_hash[SHA_DIGEST_LENGTH];
-        SHA1((unsigned char*)(&bytes[0]), bytes.size(), info_hash);
+        unsigned char infoHash[SHA_DIGEST_LENGTH];
+        SHA1((unsigned char*)(&bytes[0]), bytes.size(), infoHash);
 
         std::array<char, 20> res;
-        std::copy(&info_hash[0], &info_hash[20], res.data());
+        std::copy(&infoHash[0], &infoHash[20], res.data());
 
         return res;
     }
@@ -35,9 +35,9 @@ namespace fractals::common {
     @param bytes vectorised input sequence of bytes
     @return string type representing the URL encoding of @bytes
     */
-    std::string url_encode (const std::vector<char> &bytes);
+    std::string urlEncode (const std::vector<char> &bytes);
     template <int N>
-    std::string url_encode (const std::array<char, N>& bytes)
+    std::string urlEncode (const std::array<char, N>& bytes)
     {
         //use curl lib to apply url encoding
         CURL *curl = curl_easy_init();
@@ -54,7 +54,7 @@ namespace fractals::common {
         }
     }
 
-    std::string ascii_decode(const std::vector<char> &bytes);
-    std::string ascii_decode(const std::deque<char> &bytes);
+    std::string asciiDecode(const std::vector<char> &bytes);
+    std::string asciiDecode(const std::deque<char> &bytes);
 
 }

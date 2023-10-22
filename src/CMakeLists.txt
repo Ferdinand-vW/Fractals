@@ -26,20 +26,15 @@ set(SOURCES
             fractals/network/p2p/PeerEvent.cpp
             fractals/network/p2p/PieceStateManager.cpp
             fractals/network/p2p/Protocol.cpp
-            fractals/network/p2p/Connection.cpp
             fractals/network/p2p/EpollServiceEvent.cpp
             fractals/network/p2p/EpollService.cpp
             fractals/network/p2p/EpollWrapper.cpp
-            fractals/network/p2p/PeerManager.cpp
             fractals/network/p2p/PeerTracker.cpp
-            fractals/network/p2p/Message.cpp 
-            fractals/network/p2p/MessageType.cpp
             fractals/network/http/Peer.cpp
             fractals/torrent/Bencode.cpp
             fractals/torrent/TorrentMeta.cpp
             fractals/persist/PersistClient.cpp
-            fractals/persist/PersistService.cpp
-            fractals/torrent/File.cpp)
+            fractals/persist/PersistService.cpp)
 
 # Add source to this project's executable.
 add_library(Fractals_lib ${SOURCES})

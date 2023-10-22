@@ -13,7 +13,7 @@ class Fractals
   public:
     static const common::AppId& initAppId()
     {
-        APPID = app::generate_peerId();
+        APPID = app::generateAppId();
         return APPID;
     }
 

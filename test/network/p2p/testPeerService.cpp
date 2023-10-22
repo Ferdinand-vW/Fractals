@@ -62,7 +62,7 @@ class PeerServiceTest : public ::testing::Test
 
     void doConnect()
     {
-        EXPECT_CALL(tcpService, connect(PEERID.m_ip, PEERID.m_port)).WillOnce(Return(1));
+        EXPECT_CALL(tcpService, connect(PEERID.ip, PEERID.port)).WillOnce(Return(1));
         EXPECT_CALL(epollService, notify());
         peerService.connect(PEERID, 0ns);
         ASSERT_EQ(requestQueue.numToRead(), 1);

@@ -11,12 +11,12 @@ ADT for announce model in database
 struct AnnounceModel
 {
     int id;
-    int torrent_id;
-    std::string peer_ip;
-    uint16_t peer_port;
-    time_t announce_time;
+    int torrentId;
+    std::string peerIp;
+    uint16_t peerPort;
+    time_t announceTime;
     int interval;
-    std::optional<int> min_interval;
+    std::optional<int> minInterval;
     bool tested = false; // have we tried connecting to a peer?
 };
 
@@ -26,7 +26,7 @@ ADT for piece model in database
 struct PieceModel
 {
     int id;
-    int torrent_id;
+    int torrentId;
     uint32_t piece;
     uint64_t size;
     std::vector<char> hash;
@@ -36,14 +36,14 @@ struct PieceModel
 struct TrackerModel
 {
     int id;
-    int torrent_id;
+    int torrentId;
     std::string url;
 };
 
 struct FileModel
 {
     int id;
-    int torrent_id;
+    int torrentId;
     std::string fileName;
     std::string dirName;
     uint64_t length;
@@ -59,8 +59,8 @@ struct TorrentModel
     std::string infoHash;
     std::string name;
     std::string dirName;
-    std::string meta_info_path;
-    std::string write_path;
+    std::string metaInfoPath;
+    std::string writePath;
     uint64_t size;
     uint64_t numPieces;
     uint64_t pieceLength;
@@ -85,8 +85,8 @@ inline auto makeDatabase(std::string db)
                    make_column("infoHash", &TorrentModel::infoHash, unique()),
                    make_column("name", &TorrentModel::name, unique()),
                    make_column("dirName", &TorrentModel::dirName),
-                   make_column("meta_info_file", &TorrentModel::meta_info_path),
-                   make_column("write_path", &TorrentModel::write_path),
+                   make_column("metaInfoPath", &TorrentModel::metaInfoPath),
+                   make_column("writePath", &TorrentModel::writePath),
                    make_column("size", &TorrentModel::size),
                    make_column("numPieces", &TorrentModel::numPieces),
                    make_column("pieceLength", &TorrentModel::pieceLength),
@@ -96,30 +96,30 @@ inline auto makeDatabase(std::string db)
                    make_column("encoding", &TorrentModel::encoding),
                    make_column("publish", &TorrentModel::publish)),
         make_table("file", make_column("id", &FileModel::id, primary_key()),
-                   make_column("torrent_id", &FileModel::torrent_id),
+                   make_column("torrentId", &FileModel::torrentId),
                    make_column("fileName", &FileModel::fileName),
                    make_column("dirName", &FileModel::dirName),
                    make_column("length", &FileModel::length),
                    make_column("md5sum", &FileModel::md5sum),
-                   foreign_key(&FileModel::torrent_id).references(&TorrentModel::id)),
+                   foreign_key(&FileModel::torrentId).references(&TorrentModel::id)),
         make_table("piece", make_column("id", &PieceModel::id, primary_key()),
-                   make_column("torrent_id", &PieceModel::torrent_id),
+                   make_column("torrentId", &PieceModel::torrentId),
                    make_column("piece", &PieceModel::piece), make_column("size", &PieceModel::size),
                    make_column("hash", &PieceModel::hash),
                    make_column("complete", &PieceModel::complete),
-                   foreign_key(&PieceModel::torrent_id).references(&TorrentModel::id)),
+                   foreign_key(&PieceModel::torrentId).references(&TorrentModel::id)),
         make_table("tracker", make_column("id", &TrackerModel::id, primary_key()),
-                   make_column("torrent_id", &TrackerModel::torrent_id),
+                   make_column("torrentId", &TrackerModel::torrentId),
                    make_column("url", &TrackerModel::url),
-                   foreign_key(&TrackerModel::torrent_id).references(&TorrentModel::id)),
+                   foreign_key(&TrackerModel::torrentId).references(&TorrentModel::id)),
         make_table("announce", make_column("id", &AnnounceModel::id, primary_key()),
-                   make_column("torrent_id", &AnnounceModel::torrent_id),
-                   make_column("peer_ip", &AnnounceModel::peer_ip),
-                   make_column("peer_port", &AnnounceModel::peer_port),
-                   make_column("announce_time", &AnnounceModel::announce_time),
+                   make_column("torrentId", &AnnounceModel::torrentId),
+                   make_column("peerIp", &AnnounceModel::peerIp),
+                   make_column("peerPort", &AnnounceModel::peerPort),
+                   make_column("announceTime", &AnnounceModel::announceTime),
                    make_column("interval", &AnnounceModel::interval),
-                   make_column("min_interval", &AnnounceModel::min_interval),
-                   foreign_key(&AnnounceModel::torrent_id).references(&TorrentModel::id)));
+                   make_column("minInterval", &AnnounceModel::minInterval),
+                   foreign_key(&AnnounceModel::torrentId).references(&TorrentModel::id)));
 }
 // namespace
 

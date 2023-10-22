@@ -17,8 +17,8 @@ class IOLayer
 
     bool open(const std::filesystem::path& filePath);
     void close();
-    void write(common::string_view bytes, uint64_t numBytes);
-    void writeFrom(int64_t offset, common::string_view bytes, uint64_t numBytes);
+    void write(std::string_view bytes, uint64_t numBytes);
+    void writeFrom(int64_t offset, std::string_view bytes, uint64_t numBytes);
     std::istream& getStream();
 
   private:

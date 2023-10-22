@@ -145,15 +145,15 @@ std::ostream &operator<<(std::ostream &os, const HandShake &msg)
     os << "Pstr: " << msg.getPstr() << ", ";
 
     const auto reservedBytes =
-        common::bytes_to_hex(std::vector<char>(msg.getReserved().begin(), msg.getReserved().end()));
+        common::bytesToHex(std::vector<char>(msg.getReserved().begin(), msg.getReserved().end()));
     os << "Reserved: " << reservedBytes << ", ";
 
     const auto ihBytes =
-        common::bytes_to_hex(std::vector<char>(msg.getInfoHash().begin(), msg.getInfoHash().end()));
+        common::bytesToHex(std::vector<char>(msg.getInfoHash().begin(), msg.getInfoHash().end()));
     os << "InfoHash: " << ihBytes << ", ";
 
     const auto pBytes =
-        common::bytes_to_hex(std::vector<char>(msg.getPeerId().begin(), msg.getPeerId().end()));
+        common::bytesToHex(std::vector<char>(msg.getPeerId().begin(), msg.getPeerId().end()));
     os << "PeerId: " << pBytes << "}";
 
     return os;
@@ -161,7 +161,7 @@ std::ostream &operator<<(std::ostream &os, const HandShake &msg)
 
 std::vector<char> KeepAlive::getPrefix() const
 {
-    return common::int_to_bytes(MSG_LEN);
+    return common::intToBytes(MSG_LEN);
 }
 
 bool operator==(const KeepAlive &, const KeepAlive &)
@@ -181,7 +181,7 @@ uint32_t KeepAlive::getLen() const
 
 std::vector<char> Choke::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -204,7 +204,7 @@ uint32_t Choke::getLen() const
 
 std::vector<char> UnChoke::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -227,7 +227,7 @@ uint32_t UnChoke::getLen() const
 
 std::vector<char> Interested::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -250,7 +250,7 @@ uint32_t Interested::getLen() const
 
 std::vector<char> NotInterested::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -277,7 +277,7 @@ Have::Have(uint32_t pieceIndex) : mPieceIndex(pieceIndex)
 
 std::vector<char> Have::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -305,7 +305,7 @@ uint32_t Have::getLen() const
 
 std::vector<char> Bitfield::getPrefix() const
 {
-    auto result = common::int_to_bytes(getLen());
+    auto result = common::intToBytes(getLen());
     result.push_back(MSG_TYPE);
 
     return result;
@@ -316,9 +316,9 @@ uint32_t Bitfield::getLen() const
     return MSG_MIN_LEN + mBitfield.size();
 }
 
-const common::string_view Bitfield::getBitfield() const
+const std::string_view Bitfield::getBitfield() const
 {
-    return common::string_view(mBitfield.begin(), mBitfield.end());
+    return std::string_view(mBitfield.begin(), mBitfield.end());
 }
 
 bool operator==(const Bitfield &bf1, const Bitfield &bf2)
@@ -338,7 +338,7 @@ Request::Request(uint32_t reqIndex, uint32_t reqBegin, uint32_t reqLen)
 
 std::vector<char> Request::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -381,7 +381,7 @@ std::ostream &operator<<(std::ostream &os, const Request &msg)
 
 std::vector<char> Piece::getPrefix() const
 {
-    auto result = common::int_to_bytes(getLen());
+    auto result = common::intToBytes(getLen());
     result.push_back(MSG_TYPE);
 
     return result;
@@ -402,9 +402,9 @@ uint32_t Piece::getPieceBegin() const
     return mBegin;
 }
 
-const common::string_view Piece::getBlock() const
+const std::string_view Piece::getBlock() const
 {
-    return common::string_view(mBlock.begin(), mBlock.end());
+    return std::string_view(mBlock.begin(), mBlock.end());
 }
 
 bool operator==(const Piece &p1, const Piece &p2)
@@ -429,7 +429,7 @@ Cancel::Cancel(uint32_t index, uint32_t begin, uint32_t len)
 
 std::vector<char> Cancel::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -477,7 +477,7 @@ Port::Port(uint16_t port) : mPort(port)
 
 std::vector<char> Port::getPrefix() const
 {
-    auto result = common::int_to_bytes(MSG_LEN);
+    auto result = common::intToBytes(MSG_LEN);
     result.push_back(MSG_TYPE);
 
     return result;
@@ -508,9 +508,9 @@ std::vector<char> SerializeError::getPrefix() const
     return {};
 }
 
-const common::string_view SerializeError::getBuffer() const
+const std::string_view SerializeError::getBuffer() const
 {
-    return common::string_view(buffMan.begin(), buffMan.end());
+    return std::string_view(buffMan.begin(), buffMan.end());
 }
 
 uint32_t SerializeError::getLen() const
@@ -527,7 +527,7 @@ std::ostream &operator<<(std::ostream &os, const SerializeError &msg)
 {
     os << "SerializeError{MsgType: " << msg.msgType << ", ";
     os << "Error: " << msg.mError << ", ";
-    os << "BufferedQueueManager: " << common::bytes_to_hex(msg.buffMan) << "}";
+    os << "BufferedQueueManager: " << common::bytesToHex(msg.buffMan) << "}";
     return os;
 }
 } // namespace fractals::network::p2p

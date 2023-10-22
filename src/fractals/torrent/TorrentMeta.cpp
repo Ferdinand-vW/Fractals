@@ -14,10 +14,10 @@
 namespace fractals::torrent {
 
     TorrentMeta::TorrentMeta(const MetaInfo &mi,std::string fileName)
-                            : m_mi(mi), m_name(fileName) {
+                            : metaInfo(mi), name(fileName) {
 
-        auto info = m_mi.info; // Info dict tells us how the underlying data is structured
-        auto fm = info.file_mode;
+        auto info = metaInfo.info; // Info dict tells us how the underlying data is structured
+        auto fm = info.fileMode;
         std::filesystem::path p(fileName);
 
         // unpack the file info structure in MetaInfo into something more easily usable
@@ -28,7 +28,7 @@ namespace fractals::torrent {
             std::vector<std::string> paths;
             paths.push_back(fname);
             // We only need to push one file
-            m_files.push_back(
+            files.push_back(
                     FileInfo { singleFile.length
                                ,singleFile.md5sum
                                ,paths});
@@ -38,41 +38,41 @@ namespace fractals::torrent {
             // multi file mode
             auto mdir = multiFile.name;
             //if no dir is specified then use filename without extension
-            m_dir = mdir.empty() ? p.filename().stem().string() : mdir;
+            dir = mdir.empty() ? p.filename().stem().string() : mdir;
             // Push multiple files
             std::copy( multiFile.files.begin()
                       ,multiFile.files.end()
-                      ,back_inserter(m_files));
+                      ,back_inserter(files));
         }
 
         // Compute info hash and store
-        m_info_hash = sha1_encode<20>(encode(torrent::to_bdict(m_mi.info)));
+        infoHash = sha1_encode<20>(encode(torrent::toBdict(metaInfo.info)));
     }
 
     std::string TorrentMeta::getName() const {
-        return m_name;
+        return name;
     }
 
     std::string TorrentMeta::getDirectory() const {
-        return m_dir;
+        return dir;
     }
 
     std::vector<FileInfo> TorrentMeta::getFiles() const {
-        return m_files;
+        return files;
     }
 
 
     const MetaInfo& TorrentMeta::getMetaInfo() const {
-        return m_mi;
+        return metaInfo;
     }
 
     const common::InfoHash& TorrentMeta::getInfoHash() const {
-        return m_info_hash;
+        return infoHash;
     }
 
     uint64_t TorrentMeta::getSize() const {
         uint64_t sum = 0;
-        for(auto &f : m_files) {
+        for(const auto &f : files) {
             sum+= f.length;
         }
 

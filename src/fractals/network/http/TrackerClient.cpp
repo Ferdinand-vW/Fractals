@@ -11,7 +11,7 @@ namespace fractals::network::http
 void TrackerClient::query(const TrackerRequest &tr, std::chrono::milliseconds recvTimeout)
 {
     auto reqId = poller.add(tr.toHttpGetUrl(), recvTimeout);
-    nameMap.emplace(reqId, std::make_pair(tr.info_hash, tr.announce));
+    nameMap.emplace(reqId, std::make_pair(tr.infoHash, tr.announce));
 }
 
 TrackerClient::PollResult TrackerClient::poll()

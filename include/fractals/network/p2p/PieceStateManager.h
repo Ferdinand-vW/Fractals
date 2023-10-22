@@ -33,9 +33,9 @@ class PieceState
 
     bool isComplete() const;
 
-    void addBlock(const common::string_view block);
+    void addBlock(const std::string_view block);
 
-    common::string_view getBuffer();
+    std::string_view getBuffer();
     std::vector<char> &&extractData();
 
   private:
@@ -68,8 +68,8 @@ class PieceStateManager
         if (it != mHashes.end())
         {
             const auto sha1 = common::sha1_encode<20>(pieceData);
-            const auto sha1Hex = common::bytes_to_hex<20>(sha1);
-            const auto storedHex = common::bytes_to_hex<20>(it->second.underlying);
+            const auto sha1Hex = common::bytesToHex<20>(sha1);
+            const auto storedHex = common::bytesToHex<20>(it->second.underlying);
             spdlog::info("PSM::hashCheck. Storedhash={} computedHash={}",storedHex, sha1Hex);
             return common::sha1_encode<20>(pieceData) == it->second;
         }

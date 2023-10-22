@@ -19,20 +19,20 @@ namespace fractals::persist
 
 inline bool operator==(const TorrentModel &lhs, const TorrentModel &rhs)
 {
-    return lhs.id == rhs.id && lhs.name == rhs.name && lhs.meta_info_path == rhs.meta_info_path &&
-           lhs.write_path == rhs.write_path;
+    return lhs.id == rhs.id && lhs.name == rhs.name && lhs.metaInfoPath == rhs.metaInfoPath &&
+           lhs.writePath == rhs.writePath;
 }
 
 inline bool operator==(const PieceModel &lhs, const PieceModel &rhs)
 {
-    return lhs.id == rhs.id && lhs.torrent_id == rhs.torrent_id && lhs.piece == rhs.piece;
+    return lhs.id == rhs.id && lhs.torrentId == rhs.torrentId && lhs.piece == rhs.piece;
 }
 
 inline bool operator==(const AnnounceModel &lhs, const AnnounceModel &rhs)
 {
-    return lhs.id == rhs.id && lhs.torrent_id == rhs.torrent_id && lhs.peer_ip == rhs.peer_ip &&
-           lhs.peer_port == rhs.peer_port && lhs.announce_time == rhs.announce_time &&
-           lhs.interval == rhs.interval && lhs.min_interval == rhs.min_interval;
+    return lhs.id == rhs.id && lhs.torrentId == rhs.torrentId && lhs.peerIp == rhs.peerIp &&
+           lhs.peerPort == rhs.peerPort && lhs.announceTime == rhs.announceTime &&
+           lhs.interval == rhs.interval && lhs.minInterval == rhs.minInterval;
 }
 
 class MockPersistClient
@@ -69,7 +69,7 @@ class PersistServiceTest : public ::testing::Test
     PersistServiceTest()
     {
         torrent::MetaInfo metaInfo;
-        metaInfo.info.file_mode =
+        metaInfo.info.fileMode =
             torrent::MultiFile{"dirName",
                                {torrent::FileInfo{10, {}, {"dir1", "dir2", "file1.txt"}},
                                 torrent::FileInfo{20, {}, {"abc", "deff", "file2.txt"}},

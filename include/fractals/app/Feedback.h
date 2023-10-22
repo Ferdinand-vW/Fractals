@@ -14,8 +14,8 @@ namespace fractals::app {
     Feedback data type consists of severity level and message 
     */
     struct Feedback {
-        FeedbackType m_type;
-        std::string m_msg;
+        FeedbackType msgType;
+        std::string msg;
     };
 
     /**

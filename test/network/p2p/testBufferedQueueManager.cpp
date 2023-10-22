@@ -103,17 +103,17 @@ TEST(BUFFER_MANAGER, HandShakeWrite)
 
     wmsg->flush(4);
 
-    common::string_view reservedView(reserved.begin(), reserved.end());
+    std::string_view reservedView(reserved.begin(), reserved.end());
     EXPECT_THAT(view.substr(0, 8), testing::ContainerEq(reservedView));
 
     wmsg->flush(8);
 
-    common::string_view infoHashView(infoHash.begin(), infoHash.end());
+    std::string_view infoHashView(infoHash.begin(), infoHash.end());
     EXPECT_THAT(view.substr(0, 20), testing::ContainerEq(infoHashView));
 
     wmsg->flush(20);
 
-    common::string_view peerIdView(peerId.begin(), peerId.end());
+    std::string_view peerIdView(peerId.begin(), peerId.end());
     EXPECT_THAT(view, testing::ContainerEq(peerIdView));
 
     wmsg->flush(20);

@@ -94,7 +94,7 @@ template <typename TrackerClientT> void AnnounceServiceImpl<TrackerClientT>::pol
         executedRequests.erase(announce);
 
         const time_t now = time(nullptr);
-        trackerState.setInterval(resp.response->min_interval, resp.response->interval);
+        trackerState.setInterval(resp.response->minInterval, resp.response->interval);
         trackerState.update(std::chrono::system_clock::from_time_t(now).time_since_epoch());
 
         auto announceResponse = resp.response->toAnnounce(infoHash, now);

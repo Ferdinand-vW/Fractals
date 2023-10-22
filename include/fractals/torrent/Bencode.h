@@ -22,13 +22,13 @@ namespace fractals::torrent {
     Conversions between bencoded data and a more structural form in terms of the MetaInfo ADT.
     */
     template <class A>
-    Either<std::string,A> from_bdata(const bdata &bd);
+    Either<std::string,A> fromBdata(const bdata &bd);
     template <class A>
-    Either<std::string,A> from_bdict(const bdict &bd);
+    Either<std::string,A> fromBdict(const bdict &bd);
 
-    bdict to_bdict(const FileInfo &fi);
-    bdict to_bdict(const SingleFile &sf);
-    bdict to_bdict(const MultiFile &mf);
-    bdict to_bdict(const InfoDict &id);
+    bdict toBdict(const FileInfo &fi);
+    bdict toBdict(const SingleFile &sf);
+    bdict toBdict(const MultiFile &mf);
+    bdict toBdict(const InfoDict &id);
 
 }

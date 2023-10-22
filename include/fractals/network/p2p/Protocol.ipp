@@ -108,7 +108,7 @@ template <typename PeerServiceT>
 ProtocolState Protocol<PeerServiceT>::onMessage(const Bitfield &hs, std::chrono::nanoseconds now)
 {
     spdlog::info("Protocol({}, {}). Received Bitfield", peer.toString(), infoHash);
-    const auto vb = common::bytes_to_bitfield(hs.getBitfield().size(), hs.getBitfield());
+    const auto vb = common::bytesToBitfield(hs.getBitfield().size(), hs.getBitfield());
     std::stringstream ss;
     for (auto i : vb)
     {

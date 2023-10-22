@@ -12,7 +12,7 @@ namespace fractals::network::p2p
 template <>
 void BitTorrentEncoder::encodePayload<HandShake>(const HandShake& t, std::vector<char>& buf)
 {
-    buf.push_back(t.getPstrLn());
+    buf.emplace_back(t.getPstrLn());
 
     common::append(buf, t.getPstr());
 
@@ -26,7 +26,7 @@ void BitTorrentEncoder::encodePayload<HandShake>(const HandShake& t, std::vector
 template <>
 void BitTorrentEncoder::encodePayload<KeepAlive>(const KeepAlive& t, std::vector<char>& buf)
 {
-    common::append(buf, common::int_to_bytes(t.getLen()));
+    common::append(buf, common::intToBytes(t.getLen()));
 }
 
 
@@ -53,7 +53,7 @@ void BitTorrentEncoder::encodePayload<NotInterested>(const NotInterested& t, std
 template <>
 void BitTorrentEncoder::encodePayload<Have>(const Have& t, std::vector<char>& buf)
 {
-    common::append(buf, common::int_to_bytes(t.getPieceIndex()));
+    common::append(buf, common::intToBytes(t.getPieceIndex()));
 }
 
 template <>
@@ -65,19 +65,19 @@ void BitTorrentEncoder::encodePayload<Bitfield>(const Bitfield& t, std::vector<c
 template <>
 void BitTorrentEncoder::encodePayload<Request>(const Request& t, std::vector<char>& buf)
 {
-    common::append(buf, common::int_to_bytes(t.getReqIndex()));
+    common::append(buf, common::intToBytes(t.getReqIndex()));
 
-    common::append(buf, common::int_to_bytes(t.getReqBegin()));
+    common::append(buf, common::intToBytes(t.getReqBegin()));
 
-    common::append(buf, common::int_to_bytes(t.getReqLength()));
+    common::append(buf, common::intToBytes(t.getReqLength()));
 }
 
 template <>
 void BitTorrentEncoder::encodePayload<Piece>(const Piece& t, std::vector<char>& buf)
 {
-    common::append(buf, common::int_to_bytes(t.getPieceIndex()));
+    common::append(buf, common::intToBytes(t.getPieceIndex()));
 
-    common::append(buf, common::int_to_bytes(t.getPieceBegin()));
+    common::append(buf, common::intToBytes(t.getPieceBegin()));
 
     common::append(buf, t.getBlock());
 }
@@ -85,17 +85,17 @@ void BitTorrentEncoder::encodePayload<Piece>(const Piece& t, std::vector<char>& 
 template <>
 void BitTorrentEncoder::encodePayload<Cancel>(const Cancel& t, std::vector<char>& buf)
 {
-    common::append(buf, common::int_to_bytes(t.getCancelIndex()));
+    common::append(buf, common::intToBytes(t.getCancelIndex()));
 
-    common::append(buf, common::int_to_bytes(t.getCancelBegin()));
+    common::append(buf, common::intToBytes(t.getCancelBegin()));
 
-    common::append(buf, common::int_to_bytes(t.getCancelLength()));
+    common::append(buf, common::intToBytes(t.getCancelLength()));
 }
 
 template <>
 void BitTorrentEncoder::encodePayload<Port>(const Port& t, std::vector<char>& buf)
 {
-    common::append(buf, common::int_to_bytes<uint16_t>(t.getPort()));
+    common::append(buf, common::intToBytes<uint16_t>(t.getPort()));
 }
 
 
@@ -106,7 +106,7 @@ void BitTorrentEncoder::encodePayload<SerializeError>(const SerializeError& t, s
 }
 
 template<>
-std::optional<HandShake> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t pstrLen)
+std::optional<HandShake> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t pstrLen)
 {
     std::string pstr(buf.begin(), buf.begin() + pstrLen);
     
@@ -129,7 +129,7 @@ std::optional<HandShake> BitTorrentEncoder::decodePayloadImpl(common::string_vie
 }
 
 template<>
-std::optional<KeepAlive> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<KeepAlive> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == KeepAlive::MSG_LEN)
     {
@@ -140,7 +140,7 @@ std::optional<KeepAlive> BitTorrentEncoder::decodePayloadImpl(common::string_vie
 }
 
 template<>
-std::optional<Choke> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Choke> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == Choke::MSG_LEN)
     {
@@ -151,7 +151,7 @@ std::optional<Choke> BitTorrentEncoder::decodePayloadImpl(common::string_view& b
 }
 
 template<>
-std::optional<UnChoke> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<UnChoke> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == UnChoke::MSG_LEN)
     {
@@ -162,7 +162,7 @@ std::optional<UnChoke> BitTorrentEncoder::decodePayloadImpl(common::string_view&
 }
 
 template<>
-std::optional<Interested> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Interested> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == Interested::MSG_LEN)
     {
@@ -173,7 +173,7 @@ std::optional<Interested> BitTorrentEncoder::decodePayloadImpl(common::string_vi
 }
 
 template<>
-std::optional<NotInterested> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<NotInterested> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == NotInterested::MSG_LEN)
     {
@@ -184,11 +184,11 @@ std::optional<NotInterested> BitTorrentEncoder::decodePayloadImpl(common::string
 }
 
 template<>
-std::optional<Have> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Have> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == Have::MSG_LEN)
     {
-        const auto pieceIndex = common::bytes_to_int<uint32_t>(buf);
+        const auto pieceIndex = common::bytesToInt<uint32_t>(buf);
         return Have(pieceIndex);
     }
 
@@ -196,7 +196,7 @@ std::optional<Have> BitTorrentEncoder::decodePayloadImpl(common::string_view& bu
 }
 
 template<>
-std::optional<Bitfield> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Bitfield> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len >= Bitfield::MSG_MIN_LEN - 1)
     {
@@ -207,13 +207,13 @@ std::optional<Bitfield> BitTorrentEncoder::decodePayloadImpl(common::string_view
 }
 
 template<>
-std::optional<Request> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Request> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == Request::MSG_LEN)
     {
-        const auto reqIndex = common::bytes_to_int<uint32_t>(buf);
-        const auto reqBegin = common::bytes_to_int<uint32_t>(buf);
-        const auto reqLen = common::bytes_to_int<uint32_t>(buf);
+        const auto reqIndex = common::bytesToInt<uint32_t>(buf);
+        const auto reqBegin = common::bytesToInt<uint32_t>(buf);
+        const auto reqLen = common::bytesToInt<uint32_t>(buf);
         return Request(reqIndex, reqBegin, reqLen);
     }
 
@@ -221,12 +221,12 @@ std::optional<Request> BitTorrentEncoder::decodePayloadImpl(common::string_view&
 }
 
 template<>
-std::optional<Piece> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Piece> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len >= Piece::MSG_MIN_LEN)
     {
-        const auto pieceIndex = common::bytes_to_int<uint32_t>(buf);
-        const auto pieceBegin = common::bytes_to_int<uint32_t>(buf);
+        const auto pieceIndex = common::bytesToInt<uint32_t>(buf);
+        const auto pieceBegin = common::bytesToInt<uint32_t>(buf);
         const auto block = buf;
         return Piece(pieceIndex, pieceBegin, block);
     }
@@ -235,13 +235,13 @@ std::optional<Piece> BitTorrentEncoder::decodePayloadImpl(common::string_view& b
 }
 
 template<>
-std::optional<Cancel> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Cancel> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == Cancel::MSG_LEN)
     {
-        const auto cancelIndex = common::bytes_to_int<uint32_t>(buf);
-        const auto cancelBegin = common::bytes_to_int<uint32_t>(buf);
-        const auto cancelLen = common::bytes_to_int<uint32_t>(buf);
+        const auto cancelIndex = common::bytesToInt<uint32_t>(buf);
+        const auto cancelBegin = common::bytesToInt<uint32_t>(buf);
+        const auto cancelLen = common::bytesToInt<uint32_t>(buf);
         return Cancel(cancelIndex, cancelBegin, cancelLen);
     }
 
@@ -249,11 +249,11 @@ std::optional<Cancel> BitTorrentEncoder::decodePayloadImpl(common::string_view& 
 }
 
 template<>
-std::optional<Port> BitTorrentEncoder::decodePayloadImpl(common::string_view& buf, uint32_t len)
+std::optional<Port> BitTorrentEncoder::decodePayloadImpl(std::string_view& buf, uint32_t len)
 {
     if (len == Port::MSG_LEN)
     {
-        const auto port = common::bytes_to_int<uint16_t>(buf);
+        const auto port = common::bytesToInt<uint16_t>(buf);
         return Port(port);
     }
 

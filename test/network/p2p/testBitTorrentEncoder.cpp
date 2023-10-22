@@ -32,11 +32,11 @@ TEST(BT_ENCODER, HandShake)
     auto encoded = encoder.encode(hs);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     HandShake decoded = std::get<HandShake>(encoder.decodeHandShake(view));
     ASSERT_EQ(decoded, hs);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeHandShake(encodedView), hs);
 }
 
@@ -51,11 +51,11 @@ TEST(BT_ENCODER, KeepAlive)
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     KeepAlive decoded = *encoder.decodeOpt<KeepAlive>(view);
     ASSERT_EQ(decoded, ka);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<KeepAlive>(encodedView), ka);
 }
 
@@ -70,11 +70,11 @@ TEST(BT_ENCODER, Choke)
     auto encoded = encoder.encode(choke);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Choke decoded = *encoder.decodeOpt<Choke>(view);
     ASSERT_EQ(decoded, choke);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Choke>(encodedView), choke);
 }
 
@@ -89,11 +89,11 @@ TEST(BT_ENCODER, UnChoke)
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     UnChoke decoded = *encoder.decodeOpt<UnChoke>(view);
     ASSERT_EQ(decoded, ka);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<UnChoke>(encodedView), ka);
 }
 
@@ -108,11 +108,11 @@ TEST(BT_ENCODER, Interested)
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Interested decoded = *encoder.decodeOpt<Interested>(view);
     ASSERT_EQ(decoded, ka);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Interested>(encodedView), ka);
 }
 
@@ -127,11 +127,11 @@ TEST(BT_ENCODER, NotInterested)
     auto encoded = encoder.encode(ka);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     NotInterested decoded = *encoder.decodeOpt<NotInterested>(view);
     ASSERT_EQ(decoded, ka);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<NotInterested>(encodedView), ka);
 }
 
@@ -141,18 +141,18 @@ TEST(BT_ENCODER, Have)
 
     Have have{1234};
 
-    auto pieceAsBytes = common::int_to_bytes(1234);
+    auto pieceAsBytes = common::intToBytes(1234);
     std::vector<char> bytes{0, 0, 0, 5, 4};
     bytes.insert(bytes.end(), pieceAsBytes.begin(), pieceAsBytes.end());
 
     auto encoded = encoder.encode(have);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Have decoded = *encoder.decodeOpt<Have>(view);
     ASSERT_EQ(decoded, have);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Have>(encodedView), have);
 }
 
@@ -162,7 +162,7 @@ TEST(BT_ENCODER, Bitfield)
 
     // 10 bits
     std::vector<bool> bits{0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0};
-    const auto bitsAsBytes = common::bitfield_to_bytes(bits);
+    const auto bitsAsBytes = common::bitfieldToBytes(bits);
     Bitfield bf{bitsAsBytes};
 
     std::vector<char> bytes{0, 0, 0, static_cast<char>(bitsAsBytes.size() + 1), 5};
@@ -172,11 +172,11 @@ TEST(BT_ENCODER, Bitfield)
     auto encoded = encoder.encode(bf);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Bitfield decoded = *encoder.decodeOpt<Bitfield>(view);
     ASSERT_EQ(decoded, bf);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Bitfield>(encodedView), bf);
 }
 
@@ -186,9 +186,9 @@ TEST(BT_ENCODER, Request)
 
     Request rq(32, 1024, 200);
 
-    const auto reqIndex = common::int_to_bytes(32);
-    const auto reqBegin = common::int_to_bytes(1024);
-    const auto reqLen = common::int_to_bytes(200);
+    const auto reqIndex = common::intToBytes(32);
+    const auto reqBegin = common::intToBytes(1024);
+    const auto reqLen = common::intToBytes(200);
 
     std::vector<char> bytes{0, 0, 0, 13, 6};
     bytes.insert(bytes.end(), reqIndex.begin(), reqIndex.end());
@@ -198,11 +198,11 @@ TEST(BT_ENCODER, Request)
     auto encoded = encoder.encode(rq);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Request decoded = *encoder.decodeOpt<Request>(view);
     ASSERT_EQ(decoded, rq);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Request>(encodedView), rq);
 }
 
@@ -213,8 +213,8 @@ TEST(BT_ENCODER, Piece)
     const std::vector<char> block{'a', 'w', 'c', 'd', '1', 68, 111, 20, -20};
     Piece pc{32, 1024, block};
 
-    const auto pcIndex = common::int_to_bytes(32);
-    const auto pcBegin = common::int_to_bytes(1024);
+    const auto pcIndex = common::intToBytes(32);
+    const auto pcBegin = common::intToBytes(1024);
     std::vector<char> bytes{0, 0, 0, 18, 7};
     bytes.insert(bytes.end(), pcIndex.begin(), pcIndex.end());
     bytes.insert(bytes.end(), pcBegin.begin(), pcBegin.end());
@@ -223,11 +223,11 @@ TEST(BT_ENCODER, Piece)
     auto encoded = encoder.encode(pc);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Piece decoded = *encoder.decodeOpt<Piece>(view);
     ASSERT_EQ(decoded, pc);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Piece>(encodedView), pc);
 }
 
@@ -237,9 +237,9 @@ TEST(BT_ENCODER, Cancel)
 
     Cancel cnl(32, 1024, 200);
 
-    const auto cnlIndex = common::int_to_bytes(32);
-    const auto cnlBegin = common::int_to_bytes(1024);
-    const auto cnlLen = common::int_to_bytes(200);
+    const auto cnlIndex = common::intToBytes(32);
+    const auto cnlBegin = common::intToBytes(1024);
+    const auto cnlLen = common::intToBytes(200);
 
     std::vector<char> bytes{0, 0, 0, 13, 8};
     bytes.insert(bytes.end(), cnlIndex.begin(), cnlIndex.end());
@@ -249,11 +249,11 @@ TEST(BT_ENCODER, Cancel)
     auto encoded = encoder.encode(cnl);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Cancel decoded = *encoder.decodeOpt<Cancel>(view);
     ASSERT_EQ(decoded, cnl);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Cancel>(encodedView), cnl);
 }
 
@@ -263,7 +263,7 @@ TEST(BT_ENCODER, Port)
 
     Port prt(15000);
 
-    const auto portNum = common::int_to_bytes<uint16_t>(15000);
+    const auto portNum = common::intToBytes<uint16_t>(15000);
 
     std::vector<char> bytes{0, 0, 0, 3, 9};
     bytes.insert(bytes.end(), portNum.begin(), portNum.end());
@@ -271,11 +271,11 @@ TEST(BT_ENCODER, Port)
     auto encoded = encoder.encode(prt);
     ASSERT_EQ(encoded, bytes);
 
-    common::string_view view(bytes.begin(), bytes.end());
+    std::string_view view(bytes.begin(), bytes.end());
     Port decoded = *encoder.decodeOpt<Port>(view);
     ASSERT_EQ(decoded, prt);
 
-    common::string_view encodedView(encoded.begin(), encoded.end());
+    std::string_view encodedView(encoded.begin(), encoded.end());
     ASSERT_EQ(encoder.decodeOpt<Port>(encodedView), prt);
 }
 

@@ -25,8 +25,8 @@ namespace fractals::app {
             ConstStringRef placeholder_;
 
             bool OnMouseEvent(ftxui::Event);
-            Box input_box_;
-            Box cursor_box_;
+            Box inputBox;
+            Box cursorBox;
 
         public:
             /**
@@ -37,14 +37,14 @@ namespace fractals::app {
             TerminalInputBase(StringRef content, ConstStringRef placeholder);
             ~TerminalInputBase() override = default;
 
-            int cursor_position = 0;
+            int cursorPosition = 0;
 
             /**
             Callbacks on user interactions.
             */ 
-            std::function<void()> on_change = [] {};
-            std::function<void()> on_enter = [] {};
-            std::function<void()> on_escape = [] {};
+            std::function<void()> onChange = [] {};
+            std::function<void()> onEnter = [] {};
+            std::function<void()> onEscape = [] {};
 
             /**
             Required implementation of ComponentBase

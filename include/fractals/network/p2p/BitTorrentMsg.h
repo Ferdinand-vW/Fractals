@@ -12,8 +12,6 @@
 #include <variant>
 
 #include "fractals/common/WorkQueue.h"
-#include "fractals/network/p2p/MessageType.h"
-
 #include "fractals/common/utils.h"
 
 namespace fractals::network::p2p
@@ -180,12 +178,12 @@ struct SerializeError;
         public:
             Bitfield() = default;
             explicit Bitfield(const std::vector<char>& c) : mBitfield(c.begin(), c.end()) {}
-            explicit Bitfield(const common::string_view& c) : mBitfield(c.begin(), c.end()) {}
+            explicit Bitfield(const std::string_view& c) : mBitfield(c.begin(), c.end()) {}
             
 
             uint32_t getLen() const;
             std::vector<char> getPrefix() const;
-            const common::string_view getBitfield() const;
+            const std::string_view getBitfield() const;
 
             friend bool operator==(const Bitfield&, const Bitfield&);
             friend std::ostream& operator<<(std::ostream& os, const Bitfield& msg);
@@ -235,7 +233,7 @@ struct SerializeError;
             std::vector<char> getPrefix() const;
             uint32_t getPieceIndex() const;
             uint32_t getPieceBegin() const;
-            const common::string_view getBlock() const;
+            const std::string_view getBlock() const;
 
             const std::vector<char>& extractBlock();
 
@@ -312,7 +310,7 @@ struct SerializeError;
                 : buffMan(buffer.begin(), buffer.end()), mError(std::move(reason)) {}
 
             std::vector<char> getPrefix() const;
-            const common::string_view getBuffer() const;
+            const std::string_view getBuffer() const;
             uint32_t getLen() const;
             const std::string& getError() const;
 

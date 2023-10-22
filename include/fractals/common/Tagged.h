@@ -14,8 +14,9 @@ namespace fractals::common
 struct AppId
 {
     constexpr AppId(){};
-    constexpr AppId(const std::array<char, 20> appId)
-    : underlying(appId){}
+    constexpr AppId(const std::array<char, 20> appId) : underlying(appId)
+    {
+    }
 
     std::array<char, 20> underlying{};
 };
@@ -42,8 +43,8 @@ struct InfoHash
 
     friend std::ostream &operator<<(std::ostream &os, const InfoHash &hash)
     {
-        common::string_view view(hash.underlying.begin(), hash.underlying.begin() + 5);
-        return os << bytes_to_hex(view);
+        std::string_view view(hash.underlying.begin(), hash.underlying.begin() + 5);
+        return os << bytesToHex(view);
     }
 
     std::string toString() const
@@ -78,7 +79,7 @@ struct PieceHash
 
     friend std::ostream &operator<<(std::ostream &os, const PieceHash &hash)
     {
-        return os << bytes_to_hex<20>(hash.underlying);
+        return os << bytesToHex<20>(hash.underlying);
     }
 };
 

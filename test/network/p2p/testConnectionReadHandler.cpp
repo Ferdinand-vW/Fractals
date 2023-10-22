@@ -18,7 +18,6 @@
 #include <epoll_wrapper/Epoll.h>
 #include <epoll_wrapper/EpollImpl.ipp>
 #include <epoll_wrapper/Event.h>
-#include <fractals/network/http/Tracker.h>
 #include <fractals/torrent/MetaInfo.h>
 
 #include <fstream>
