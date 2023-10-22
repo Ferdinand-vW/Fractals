@@ -220,7 +220,7 @@ TEST_F(PeerServiceTest, onConnectionCloseEvent)
 
 TEST_F(PeerServiceTest, onConnectionError)
 {
-   doConnect();
+    doConnect();
 
     ASSERT_FALSE(peerService.canRead());
     queue.getRightEnd().push(ConnectionError{PEERID});

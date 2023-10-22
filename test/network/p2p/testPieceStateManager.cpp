@@ -6,15 +6,14 @@
 #include <gtest/gtest.h>
 #include <unordered_set>
 
-using namespace fractals::common;
+namespace fractals::network::p2p
+{
 
-using namespace fractals::network::p2p;
-
-const auto hash0 = hexToBytes("da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
-const auto hash1 = hexToBytes("600ccd1b71569232d01d110bc63e906beab04d8c");
-const auto hash2 = hexToBytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
-const auto hash3 = hexToBytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
-const auto hash4 = hexToBytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
+const auto hash0 = common::hexToBytes("da23614e02469a0d7c7bd1bdab5c9c474b1904dc");
+const auto hash1 = common::hexToBytes("600ccd1b71569232d01d110bc63e906beab04d8c");
+const auto hash2 = common::hexToBytes("72f77e84ba0149b2af1051f1318128dccf60ab60");
+const auto hash3 = common::hexToBytes("4fe0d24231b6309c90a78eeb8dc6ff2ca2d4cb85");
+const auto hash4 = common::hexToBytes("056eafe7cf52220de2df36845b8ed170c67e23e3");
 
 std::vector<fractals::persist::PieceModel> testPieces{
     {0, 0, 0, 30, hash0, false}, {0, 0, 1, 30, hash1, false}, {0, 0, 2, 30, hash2, false},
@@ -87,3 +86,5 @@ TEST(PieceStateManager, addBlock)
     std::string strBuf(buf.begin(), buf.end());
     EXPECT_EQ(strBuf, "123123412345678912345678111122");
 }
+
+} // namespace fractals::network::p2p

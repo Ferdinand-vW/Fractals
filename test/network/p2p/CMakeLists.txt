@@ -13,13 +13,6 @@ add_executable(
 target_link_libraries(testConnectionWriteHandler gtest_main gmock_main Fractals_lib)
 
 add_executable(
-    testWorkQueue
-    testWorkQueue.cpp
-)
-
-target_link_libraries(testWorkQueue gtest_main gmock_main Fractals_lib)
-
-add_executable(
     testBufferedQueueManager
     testBufferedQueueManager.cpp
 )
@@ -66,7 +59,6 @@ target_link_libraries(testProtocol gtest_main gmock_main Fractals_lib)
 include(GoogleTest)
 gtest_discover_tests(testConnectionReadHandler)
 gtest_discover_tests(testConnectionWriteHandler)
-gtest_discover_tests(testWorkQueue)
 gtest_discover_tests(testBufferedQueueManager)
 gtest_discover_tests(testBitTorrentEncoder)
 gtest_discover_tests(testPieceStateManager)

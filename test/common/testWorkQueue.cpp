@@ -1,11 +1,10 @@
-// #include "fractals/network/p2p/PeerEvent.h"
 #include "fractals/common/WorkQueue.h"
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-// using namespace fractals::network::p2p;
-using namespace fractals::common;
+namespace fractals::common
+{
 
 struct Item
 {
@@ -55,7 +54,7 @@ TEST(WORKQUEUE, CIRCLE)
     queue.push(Item{3});
     queue.push(Item{4});
 
-    for(int i = 5; i < 1000; i++)
+    for (int i = 5; i < 1000; i++)
     {
         queue.push(Item{i});
         ASSERT_EQ(queue.size(), 5);
@@ -91,11 +90,9 @@ TEST(WORKQUEUE, CIRCLE_ONCE_THEN_CLEAR)
     auto res5 = queue.pop();
     ASSERT_EQ(queue.size(), 0);
     ASSERT_EQ(res5.n, 4);
-
 }
 
-template <int MAX_SIZE>
-void alternateTest()
+template <int MAX_SIZE> void alternateTest()
 {
     WorkQueueImpl<MAX_SIZE, Item> queue;
 
@@ -112,9 +109,9 @@ void alternateTest()
     while (iteration < maxIterations)
     {
         ASSERT_EQ(queue.size(), currSize);
-        
+
         pushed = std::max(pushNum % pushMask, 3);
-        for(int i = 0; i < pushed; i++)
+        for (int i = 0; i < pushed; i++)
         {
             queue.push(Item{i});
             currSize = std::min(currSize + 1, MAX_SIZE);
@@ -123,9 +120,9 @@ void alternateTest()
         ASSERT_EQ(queue.size(), currSize);
 
         popped = std::max(pushed - 2, 1);
-        for(int i = 0; i < popped; i++)
+        for (int i = 0; i < popped; i++)
         {
-            if(!queue.isEmpty())
+            if (!queue.isEmpty())
             {
                 queue.pop();
             }
@@ -146,5 +143,4 @@ TEST(WORKQUEUE, alternate)
     // alternateTest<10000>();
 }
 
-
-
+} // namespace fractals::common

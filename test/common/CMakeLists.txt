@@ -22,8 +22,17 @@ add_executable(
 )
 target_link_libraries(testUtils gtest_main gmock_main Fractals_lib)
 
+add_executable(
+    testWorkQueue
+    testWorkQueue.cpp
+)
+
+target_link_libraries(testWorkQueue gtest_main gmock_main Fractals_lib)
+
+
 include(GoogleTest)
 gtest_discover_tests(testCurlPoll)
 gtest_discover_tests(testEncode)
 gtest_discover_tests(testMaybe)
 gtest_discover_tests(testUtils)
+gtest_discover_tests(testWorkQueue)

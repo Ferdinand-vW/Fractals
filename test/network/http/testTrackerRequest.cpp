@@ -68,7 +68,8 @@ TEST_F(TrackerRequestTest, make_tracker_request_empty)
     std::string_view vw{sha1.begin(), sha1.end()};
     common::InfoHash infoHash{sha1};
     const TrackerRequest tr("announce.url", infoHash, common::urlEncode<20>(infoHash.underlying),
-                            req.appId.underlying, common::urlEncode<20>(req.appId.underlying), 6882, 0, 0, 0, 0);
+                            req.appId.underlying, common::urlEncode<20>(req.appId.underlying), 6882,
+                            0, 0, 0, 0);
 
     ASSERT_EQ(tr, req);
 }

@@ -39,10 +39,10 @@
 #include <variant>
 #include <vector>
 
-using namespace fractals::network::p2p;
-using namespace fractals::network::http;
-
 #define ASSERT_READ(readEvent, v) EXPECT_THAT(readEvent.mMessage, v)
+
+namespace fractals::network::p2p
+{
 
 class MockBufferedQueueManager
 {
@@ -104,7 +104,8 @@ class MockBufferedQueueManager
     std::unordered_map<PeerFd, std::deque<ReadMsgState>> bufMap;
 };
 
-using MockReadHandler = EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager, EpollMsgQueue>;
+using MockReadHandler =
+    EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager, EpollMsgQueue>;
 
 void writeToFd(int fd, std::string text)
 {
@@ -122,13 +123,14 @@ std::pair<int, PeerFd> createPeer()
 
     assert(pipeRes == 0);
 
-    PeerId pId("host", 0);
+    http::PeerId pId("host", 0);
     return {pipeFds[1], PeerFd{pId, pipeFds[0]}};
 }
 
 TEST(CONNECTION_READ, sub_and_unsub)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -137,7 +139,11 @@ TEST(CONNECTION_READ, sub_and_unsub)
     MockBufferedQueueManager bqm;
     MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
-    auto t = std::thread([&]() { mr.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mr.run();
+        });
 
     auto [writeFd1, peer1] = createPeer();
     auto [writeFd2, peer2] = createPeer();
@@ -172,7 +178,8 @@ TEST(CONNECTION_READ, sub_and_unsub)
 
 TEST(CONNECTION_READ, one_subscriber_read_one)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -189,11 +196,19 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
     queue.push(Subscribe{peer});
     mr.notify();
     writeToFd(writeFd, "\x04test");
-    auto t = std::thread([&]() { mr.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mr.run();
+        });
 
     {
         std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, [&] { return queue.canPop(); });
+        cv.wait(lock,
+                [&]
+                {
+                    return queue.canPop();
+                });
     }
 
     CtlResponse peerResp{peer, ""};
@@ -201,7 +216,11 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
 
     {
         std::unique_lock<std::mutex> _l(mutex);
-        cv.wait(_l, [&]() { return queue.canPop(); });
+        cv.wait(_l,
+                [&]()
+                {
+                    return queue.canPop();
+                });
     }
     ReadEvent re = std::get<ReadEvent>(queue.pop());
     ASSERT_READ(re, testing::ContainerEq<std::vector<char>>({'t', 'e', 's', 't'}));
@@ -216,7 +235,8 @@ TEST(CONNECTION_READ, one_subscriber_read_one)
 
 TEST(CONNECTION_READ, one_subscribed_read_multiple)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -236,7 +256,11 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
 
     writeToFd(writeFd, "\x04test");
 
-    auto t = std::thread([&]() { mr.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mr.run();
+        });
 
     writeToFd(writeFd, "\x05test1");
     writeToFd(writeFd, "\x05test2");
@@ -244,7 +268,11 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
 
     {
         std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, [&] { return queue.numToRead() >= 5; });
+        cv.wait(lock,
+                [&]
+                {
+                    return queue.numToRead() >= 5;
+                });
     }
 
     CtlResponse ctl = std::get<CtlResponse>(queue.pop());
@@ -270,7 +298,8 @@ TEST(CONNECTION_READ, one_subscribed_read_multiple)
 
 TEST(CONNECTION_READ, multiple_subscriber_read_one)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -297,11 +326,19 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
     writeToFd(writeFd2, "\x05peer2");
     writeToFd(writeFd3, "\x05peer3");
 
-    auto t = std::thread([&]() { mr.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mr.run();
+        });
 
     {
         std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, [&] { return queue.numToRead() >= 6; });
+        cv.wait(lock,
+                [&]
+                {
+                    return queue.numToRead() >= 6;
+                });
     }
 
     CtlResponse resp1{peer1, ""};
@@ -328,7 +365,8 @@ TEST(CONNECTION_READ, multiple_subscriber_read_one)
 
 TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -341,7 +379,11 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
     MockBufferedQueueManager bqm;
     MockReadHandler mr(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
-    auto t = std::thread([&]() { mr.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mr.run();
+        });
 
     constexpr int numPeers = 5;
     std::vector<PeerFd> peers;
@@ -352,11 +394,15 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
         queue.push(Subscribe{peerFd});
         mr.notify();
         peers.push_back(peerFd);
-        writeToFd(writeFd, "\x0dmsg received"+std::to_string(p));
+        writeToFd(writeFd, "\x0dmsg received" + std::to_string(p));
 
         {
             std::unique_lock<std::mutex> lock(mutex);
-            cv.wait(lock, [&] { return queue.numToRead() >= (p + 1) * 2; });
+            cv.wait(lock,
+                    [&]
+                    {
+                        return queue.numToRead() >= (p + 1) * 2;
+                    });
         }
     }
 
@@ -366,8 +412,9 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
         ASSERT_EQ(resp, std::get<CtlResponse>(queue.pop()));
 
         ReadEvent re = std::get<ReadEvent>(queue.pop());
-        ASSERT_READ(re, testing::ContainerEq<std::vector<char>>(
-                                   {'m', 's', 'g', ' ', 'r', 'e', 'c', 'e', 'i', 'v', 'e', 'd', static_cast<char>(p + '0')}));
+        ASSERT_READ(re, testing::ContainerEq<std::vector<char>>({'m', 's', 'g', ' ', 'r', 'e', 'c',
+                                                                 'e', 'i', 'v', 'e', 'd',
+                                                                 static_cast<char>(p + '0')}));
     }
 
     queue.push(Deactivate{});
@@ -375,3 +422,5 @@ TEST(CONNECTION_READ, multiple_subscribed_read_multiple)
 
     t.join();
 }
+
+} // namespace fractals::network::p2p

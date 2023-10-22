@@ -39,9 +39,8 @@
 #include <variant>
 #include <vector>
 
-using namespace fractals::network::p2p;
-using namespace fractals::network::http;
-using namespace fractals;
+namespace fractals::network::p2p
+{
 
 class MockBufferedQueueManager
 {
@@ -63,22 +62,22 @@ class MockBufferedQueueManager
         }
     }
 
-    bool addToReadBuffer(const PeerFd& p, std::vector<char> data)
+    bool addToReadBuffer(const PeerFd &p, std::vector<char> data)
     {
         return true;
     }
 
-    void removeFromWriteBuffer(const PeerFd& p)
+    void removeFromWriteBuffer(const PeerFd &p)
     {
         mBuffers.erase(p);
     }
 
-    std::deque<ReadMsgState>& getReadBuffers(const PeerFd& p)
+    std::deque<ReadMsgState> &getReadBuffers(const PeerFd &p)
     {
         return readBuffers;
     }
 
-    WriteMsgState *getWriteBuffer(const PeerFd& p)
+    WriteMsgState *getWriteBuffer(const PeerFd &p)
     {
         return &mBuffers.at(p);
     }
@@ -87,8 +86,8 @@ class MockBufferedQueueManager
     std::deque<ReadMsgState> readBuffers;
 };
 
-using MockWriteHandler = EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>,
-                                          MockBufferedQueueManager, EpollMsgQueue>;
+using MockWriteHandler =
+    EpollServiceImpl<PeerFd, epoll_wrapper::Epoll<PeerFd>, MockBufferedQueueManager, EpollMsgQueue>;
 
 std::vector<char> readFromFd(int fd)
 {
@@ -111,13 +110,14 @@ std::pair<int, PeerFd> createPeer()
 
     assert(pipeRes == 0);
 
-    PeerId pId("host", pipeFds[0]);
+    http::PeerId pId("host", pipeFds[0]);
     return {pipeFds[0], PeerFd{pId, pipeFds[1]}};
 }
 
 TEST(CONNECTION_WRITE, sub_and_unsub)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -125,7 +125,11 @@ TEST(CONNECTION_WRITE, sub_and_unsub)
     EpollMsgQueue epollQueue;
     MockWriteHandler mw(epoll.getEpoll(), bqm, epollQueue.getRightEnd());
 
-    auto t = std::thread([&]() { mw.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mw.run();
+        });
 
     auto queue = epollQueue.getLeftEnd();
     auto [writeFd1, peer1] = createPeer();
@@ -160,13 +164,14 @@ TEST(CONNECTION_WRITE, sub_and_unsub)
     ASSERT_EQ(std::get<ConnectionCloseEvent>(queue.pop()), peer1Close);
     ASSERT_EQ(std::get<CtlResponse>(queue.pop()), peer2Resp);
     ASSERT_EQ(std::get<ConnectionCloseEvent>(queue.pop()), peer2Close);
-    
+
     ASSERT_FALSE(mw.isActive());
 }
 
 TEST(CONNECTION_WRITE, one_subscriber_write_one)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -179,7 +184,11 @@ TEST(CONNECTION_WRITE, one_subscriber_write_one)
 
     WriteEvent we{peer, {'t', 'e', 's', 't'}};
 
-    auto t = std::thread([&]() { mw.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mw.run();
+        });
 
     queue.push(Subscribe{peer});
     queue.push(we);
@@ -197,7 +206,8 @@ TEST(CONNECTION_WRITE, one_subscriber_write_one)
 
 TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -208,7 +218,11 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
 
     auto [readFd, peer] = createPeer();
 
-    auto t = std::thread([&]() { mw.run(); });
+    auto t = std::thread(
+        [&]()
+        {
+            mw.run();
+        });
 
     {
         WriteEvent we{peer, {'t', 'e', 's', 't'}};
@@ -269,7 +283,8 @@ TEST(CONNECTION_WRITE, one_subscribed_write_multiple)
 
 TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
 {
-    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll = epoll_wrapper::Epoll<PeerFd>::epollCreate();
+    epoll_wrapper::CreateAction<epoll_wrapper::Epoll<PeerFd>> epoll =
+        epoll_wrapper::Epoll<PeerFd>::epollCreate();
 
     ASSERT_TRUE(epoll);
 
@@ -282,8 +297,11 @@ TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
     auto [readFd2, peer2] = createPeer();
     auto [readFd3, peer3] = createPeer();
 
-    auto t = std::thread([&]() { mw.run(); });
-
+    auto t = std::thread(
+        [&]()
+        {
+            mw.run();
+        });
 
     WriteEvent we1{peer1, {'p', 'e', 'e', 'r', '1'}};
     WriteEvent we2{peer2, {'p', 'e', 'e', 'r', '1'}};
@@ -309,3 +327,5 @@ TEST(CONNECTION_WRITE, multiple_subscriber_write_one)
 
     t.join();
 }
+
+} // namespace fractals::network::p2p

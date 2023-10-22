@@ -20,8 +20,7 @@ namespace fractals::network::p2p
 const PeerFd peer{http::PeerId{"", 0}, 0};
 BitTorrentEncoder encoder;
 
-template <size_t N>
-std::string arrToStr(const std::array<char,N>& arr)
+template <size_t N> std::string arrToStr(const std::array<char, N> &arr)
 {
     return std::string(arr.begin(), arr.end());
 }
@@ -65,9 +64,11 @@ TEST(BUFFER_MANAGER, HandShakeRead)
     ASSERT_TRUE(std::holds_alternative<HandShake>(msg));
 
     const auto handShake = std::get<HandShake>(msg);
-    EXPECT_EQ(arrToStr(handShake.getInfoHash()), "\x1\x1\x1\x1\x2\x2\x2\x2\x3\x3\x3\x3\x4\x4\x4\x4\x5\x5\x5\x5");
+    EXPECT_EQ(arrToStr(handShake.getInfoHash()),
+              "\x1\x1\x1\x1\x2\x2\x2\x2\x3\x3\x3\x3\x4\x4\x4\x4\x5\x5\x5\x5");
     EXPECT_EQ(handShake.getLen(), 53);
-    EXPECT_EQ(arrToStr(handShake.getPeerId()), "\x5\x5\x5\x5\x6\x6\x6\x6\x7\x7\x7\x7\x8\x8\x8\x8\x9\x9\x9\x9");
+    EXPECT_EQ(arrToStr(handShake.getPeerId()),
+              "\x5\x5\x5\x5\x6\x6\x6\x6\x7\x7\x7\x7\x8\x8\x8\x8\x9\x9\x9\x9");
     EXPECT_EQ(handShake.getPstr(), "abcd");
     EXPECT_EQ(handShake.getPstrLn(), 4);
     EXPECT_EQ(arrToStr(handShake.getReserved()), "\x1\x2\x3\x4\x5\x6\x7\x8");
