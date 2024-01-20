@@ -1,4 +1,4 @@
-#include "fractals/common/CurlPoll.h"
+#include <fractals/common/CurlPoll.h>
 
 #include <chrono>
 #include <curl/curl.h>

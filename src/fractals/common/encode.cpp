@@ -4,7 +4,7 @@
 #include <openssl/sha.h>
 #include <iostream>
 
-#include "fractals/common/encode.h"
+#include <fractals/common/encode.h>
 
 namespace fractals::common {
 

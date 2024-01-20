@@ -1,9 +1,9 @@
 #pragma once
 
-#include "fractals/common/Tagged.h"
-#include "fractals/network/http/Request.h"
-#include "fractals/persist/Models.h"
-#include "fractals/torrent/MetaInfo.h"
+#include <fractals/common/Tagged.h>
+#include <fractals/network/http/Request.h>
+#include <fractals/persist/Models.h>
+#include <fractals/torrent/MetaInfo.h>
 namespace fractals::network::http
 {
     struct AddTrackers

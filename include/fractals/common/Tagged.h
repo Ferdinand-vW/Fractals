@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fractals/common/utils.h"
+#include <fractals/common/utils.h>
 #include <array>
 #include <cstring>
 #include <istream>

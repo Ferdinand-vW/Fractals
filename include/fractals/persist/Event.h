@@ -6,9 +6,9 @@
 #include <variant>
 #include <vector>
 
-#include "fractals/common/Tagged.h"
-#include "fractals/persist/Models.h"
-#include "fractals/torrent/TorrentMeta.h"
+#include <fractals/common/Tagged.h>
+#include <fractals/persist/Models.h>
+#include <fractals/torrent/TorrentMeta.h>
 
 namespace fractals::persist
 {

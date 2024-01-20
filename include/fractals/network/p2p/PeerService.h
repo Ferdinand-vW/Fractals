@@ -1,16 +1,16 @@
 #pragma once
 
 #include "EpollService.h"
-#include "fractals/common/TcpService.h"
-#include "fractals/common/utils.h"
-#include "fractals/network/http/Peer.h"
-#include "fractals/network/p2p/BitTorrentEncoder.h"
-#include "fractals/network/p2p/BitTorrentMsg.h"
-#include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/EpollMsgQueue.h"
-#include "fractals/network/p2p/EpollServiceEvent.h"
-#include "fractals/network/p2p/PeerEvent.h"
-#include "fractals/network/p2p/PeerFd.h"
+#include <fractals/common/TcpService.h>
+#include <fractals/common/utils.h>
+#include <fractals/network/http/Peer.h>
+#include <fractals/network/p2p/BitTorrentEncoder.h>
+#include <fractals/network/p2p/BitTorrentMsg.h>
+#include <fractals/network/p2p/BufferedQueueManager.h>
+#include <fractals/network/p2p/EpollMsgQueue.h>
+#include <fractals/network/p2p/EpollServiceEvent.h>
+#include <fractals/network/p2p/PeerEvent.h>
+#include <fractals/network/p2p/PeerFd.h>
 #include <arpa/inet.h>
 #include <asm-generic/errno.h>
 #include <chrono>

@@ -10,7 +10,7 @@
 #include <ftxui/screen/color.hpp>
 #include <ftxui/screen/string.hpp>
 
-#include "fractals/app/TerminalInput.h"
+#include <fractals/app/TerminalInput.h>
 
 namespace fractals::app {
 

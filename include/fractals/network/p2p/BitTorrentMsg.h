@@ -11,8 +11,8 @@
 #include <vector>
 #include <variant>
 
-#include "fractals/common/WorkQueue.h"
-#include "fractals/common/utils.h"
+#include <fractals/common/WorkQueue.h>
+#include <fractals/common/utils.h>
 
 namespace fractals::network::p2p
 {

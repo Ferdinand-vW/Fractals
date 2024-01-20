@@ -4,7 +4,7 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 
-#include "fractals/app/ScreenTicker.h"
+#include <fractals/app/ScreenTicker.h>
 
 namespace fractals::app {
 

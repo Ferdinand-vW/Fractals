@@ -9,8 +9,8 @@
 #include <bencode/bencode.h>
 #include <neither/neither.hpp>
 
-#include "fractals/common/utils.h"
-#include "fractals/torrent/MetaInfo.h"
+#include <fractals/common/utils.h>
+#include <fractals/torrent/MetaInfo.h>
 
 using namespace bencode;
 using namespace neither;

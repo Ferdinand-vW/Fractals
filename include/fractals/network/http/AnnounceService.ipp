@@ -1,15 +1,15 @@
 #include "AnnounceService.h"
 
-#include "fractals/AppId.h"
-#include "fractals/common/CurlPoll.h"
-#include "fractals/common/Tagged.h"
-#include "fractals/common/utils.h"
-#include "fractals/network/http/AnnounceEventQueue.h"
-#include "fractals/network/http/AnnounceService.h"
-#include "fractals/network/http/Event.h"
-#include "fractals/network/http/Request.h"
-#include "fractals/network/http/TrackerClient.h"
-#include "fractals/sync/QueueCoordinator.h"
+#include <fractals/AppId.h>
+#include <fractals/common/CurlPoll.h>
+#include <fractals/common/Tagged.h>
+#include <fractals/common/utils.h>
+#include <fractals/network/http/AnnounceEventQueue.h>
+#include <fractals/network/http/AnnounceService.h>
+#include <fractals/network/http/Event.h>
+#include <fractals/network/http/Request.h>
+#include <fractals/network/http/TrackerClient.h>
+#include <fractals/sync/QueueCoordinator.h>
 #include <chrono>
 #include <ctime>
 #include <thread>

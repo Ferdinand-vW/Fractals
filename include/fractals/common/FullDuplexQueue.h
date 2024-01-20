@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fractals/common/WorkQueue.h"
+#include <fractals/common/WorkQueue.h>
 #include <condition_variable>
 #include <cstdint>
 

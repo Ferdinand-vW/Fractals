@@ -13,10 +13,10 @@
 #include <ftxui/screen/string.hpp>
 #include <neither/either.hpp>
 
-#include "fractals/app/Feedback.h"
-#include "fractals/app/TorrentDisplay.h"
-#include "fractals/app/TorrentDisplayEntry.h"
-#include "fractals/common/utils.h"
+#include <fractals/app/Feedback.h>
+#include <fractals/app/TorrentDisplay.h>
+#include <fractals/app/TorrentDisplayEntry.h>
+#include <fractals/common/utils.h>
 
 using namespace ftxui;
 

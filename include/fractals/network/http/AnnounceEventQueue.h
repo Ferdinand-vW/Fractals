@@ -1,10 +1,10 @@
 #pragma once
 
-#include "fractals/common/FullDuplexQueue.h"
-#include "fractals/common/WorkQueue.h"
-#include "fractals/network/http/Event.h"
-#include "fractals/network/http/Request.h"
-#include "fractals/torrent/TorrentMeta.h"
+#include <fractals/common/FullDuplexQueue.h>
+#include <fractals/common/WorkQueue.h>
+#include <fractals/network/http/Event.h>
+#include <fractals/network/http/Request.h>
+#include <fractals/torrent/TorrentMeta.h>
 
 namespace fractals::network::http
 {

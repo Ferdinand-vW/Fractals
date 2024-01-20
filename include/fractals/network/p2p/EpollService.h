@@ -1,8 +1,8 @@
 #pragma once
 
 #include "PeerFd.h"
-#include "fractals/network/p2p/BufferedQueueManager.h"
-#include "fractals/network/p2p/EpollMsgQueue.h"
+#include <fractals/network/p2p/BufferedQueueManager.h>
+#include <fractals/network/p2p/EpollMsgQueue.h>
 
 #include <epoll_wrapper/Epoll.h>
 #include <epoll_wrapper/Error.h>

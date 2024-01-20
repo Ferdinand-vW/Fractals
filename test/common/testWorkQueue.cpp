@@ -1,4 +1,4 @@
-#include "fractals/common/WorkQueue.h"
+#include <fractals/common/WorkQueue.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

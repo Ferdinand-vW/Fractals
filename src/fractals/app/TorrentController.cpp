@@ -17,18 +17,18 @@
 #include <ftxui/dom/elements.hpp>
 #include <neither/either.hpp>
 
-#include "fractals/app/AppEventQueue.h"
-#include "fractals/app/Event.h"
-#include "fractals/app/Feedback.h"
-#include "fractals/app/TerminalInput.h"
-#include "fractals/app/TorrentController.h"
-#include "fractals/app/TorrentDisplay.h"
-#include "fractals/app/TorrentDisplayEntry.h"
-#include "fractals/common/Tagged.h"
-#include "fractals/common/logger.h"
-#include "fractals/common/utils.h"
-#include "fractals/persist/Event.h"
-#include "fractals/persist/PersistEventQueue.h"
+#include <fractals/app/AppEventQueue.h>
+#include <fractals/app/Event.h>
+#include <fractals/app/Feedback.h>
+#include <fractals/app/TerminalInput.h>
+#include <fractals/app/TorrentController.h>
+#include <fractals/app/TorrentDisplay.h>
+#include <fractals/app/TorrentDisplayEntry.h>
+#include <fractals/common/Tagged.h>
+#include <fractals/common/logger.h>
+#include <fractals/common/utils.h>
+#include <fractals/persist/Event.h>
+#include <fractals/persist/PersistEventQueue.h>
 
 namespace fractals::app
 {

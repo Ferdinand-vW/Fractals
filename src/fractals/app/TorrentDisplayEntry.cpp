@@ -8,10 +8,10 @@
 
 #include <neither/either.hpp>
 
-#include "fractals/app/Event.h"
-#include "fractals/app/TorrentDisplayEntry.h"
-#include "fractals/common/Tagged.h"
-#include "fractals/persist/Event.h"
+#include <fractals/app/Event.h>
+#include <fractals/app/TorrentDisplayEntry.h>
+#include <fractals/common/Tagged.h>
+#include <fractals/persist/Event.h>
 #include <fractals/torrent/MetaInfo.h>
 
 namespace fractals::app

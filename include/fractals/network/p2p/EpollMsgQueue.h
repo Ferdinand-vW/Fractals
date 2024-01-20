@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fractals/common/FullDuplexQueue.h"
-#include "fractals/common/WorkQueue.h"
-#include "fractals/network/p2p/EpollServiceEvent.h"
+#include <fractals/common/FullDuplexQueue.h>
+#include <fractals/common/WorkQueue.h>
+#include <fractals/network/p2p/EpollServiceEvent.h>
 
 #include <cstdint>
 

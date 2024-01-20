@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "fractals/common/Tagged.h"
-#include "fractals/torrent/MetaInfo.h"
+#include <fractals/common/Tagged.h>
+#include <fractals/torrent/MetaInfo.h>
 
 namespace fractals::torrent {
 

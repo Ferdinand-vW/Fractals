@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fractals/common/Tagged.h"
+#include <fractals/common/Tagged.h>
 #include <sqlite_orm/sqlite_orm.h>
 
 namespace fractals::persist

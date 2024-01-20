@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include "fractals/common/utils.h"
+#include <fractals/common/utils.h>
 
 namespace fractals::common
 {

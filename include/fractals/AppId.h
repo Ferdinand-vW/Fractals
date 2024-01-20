@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fractals/common/Tagged.h"
+#include <fractals/common/Tagged.h>
 #include <fractals/app/Client.h>
 
 #include <array>

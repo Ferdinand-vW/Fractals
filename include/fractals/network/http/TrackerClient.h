@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fractals/common/CurlPoll.h"
-#include "fractals/common/Tagged.h"
-#include "fractals/network/http/Request.h"
+#include <fractals/common/CurlPoll.h>
+#include <fractals/common/Tagged.h>
+#include <fractals/network/http/Request.h>
 #include <chrono>
 #include <ratio>
 

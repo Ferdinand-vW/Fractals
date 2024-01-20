@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fractals/network/http/Peer.h"
-#include "fractals/network/p2p/BitTorrentMsg.h"
-#include "fractals/network/p2p/PeerFd.h"
+#include <fractals/network/http/Peer.h>
+#include <fractals/network/p2p/BitTorrentMsg.h>
+#include <fractals/network/p2p/PeerFd.h>
 
 #include <deque>
 #include <epoll_wrapper/Error.h>

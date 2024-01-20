@@ -2,8 +2,8 @@
 
 #include "Event.h"
 
-#include "fractals/common/FullDuplexQueue.h"
-#include "fractals/common/WorkQueue.h"
+#include <fractals/common/FullDuplexQueue.h>
+#include <fractals/common/WorkQueue.h>
 
 namespace fractals::disk
 {

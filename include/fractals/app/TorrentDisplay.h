@@ -7,8 +7,8 @@
 #include <ftxui/component/component_base.hpp> // for ComponentBase
 #include <ftxui/dom/elements.hpp>
 
-#include "fractals/app/Feedback.h"
-#include "fractals/app/TorrentDisplayEntry.h"
+#include <fractals/app/Feedback.h>
+#include <fractals/app/TorrentDisplayEntry.h>
 
 namespace neither
 {

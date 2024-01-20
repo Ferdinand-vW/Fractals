@@ -5,11 +5,11 @@
 #include <filesystem>
 #include <variant>
 
-#include "fractals/common/Tagged.h"
-#include "fractals/common/encode.h"
-#include "fractals/torrent/Bencode.h"
-#include "fractals/torrent/MetaInfo.h"
-#include "fractals/torrent/TorrentMeta.h"
+#include <fractals/common/Tagged.h>
+#include <fractals/common/encode.h>
+#include <fractals/torrent/Bencode.h>
+#include <fractals/torrent/MetaInfo.h>
+#include <fractals/torrent/TorrentMeta.h>
 
 namespace fractals::torrent {
 
